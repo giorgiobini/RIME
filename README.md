@@ -58,7 +58,8 @@ You can download the original_files folder from this link (put a link). If you d
 Skip this section if you only need inference.
 
 Run these scripts from the src directory in the following order:
-
+-
+-
 
 ## 4. Inference
 Put your files inside the directory dataset/external_dataset/your_folder/
@@ -86,4 +87,4 @@ ENSFAKE003_ENSFAKE004
 
 Run these scripts from the src directory in the following order:
 -
-
+-

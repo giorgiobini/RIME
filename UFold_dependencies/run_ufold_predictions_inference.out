@@ -1,0 +1,7 @@
+nohup: ignoring input
+==========Start Loading Pretrained Model==========
+==========Finish Loading Pretrained Model==========
+/data01/gbini/projects/DETR/UFold_dependencies/ufold/data_generator.py:229: VisibleDeprecationWarning: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray.
+  self.data_x = np.array([self.one_hot_600(item) for item in self.seq])
+chunk0 done in 14.271483858426413 minutes
+Done in 14.305395448207856 minutes

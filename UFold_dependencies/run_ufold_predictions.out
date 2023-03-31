@@ -1,0 +1,48 @@
+nohup: ignoring input
+==========Start Loading Pretrained Model==========
+==========Finish Loading Pretrained Model==========
+/data01/gbini/projects/DETR/UFold_dependencies/ufold/data_generator.py:229: VisibleDeprecationWarning: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray.
+  self.data_x = np.array([self.one_hot_600(item) for item in self.seq])
+chunk0 done in 61.17255513270696 minutes
+chunk1 done in 65.09578669071198 minutes
+chunk2 done in 59.87618091503779 minutes
+chunk3 done in 57.85296454826991 minutes
+chunk4 done in 56.713016815980275 minutes
+chunk5 done in 54.21664108037949 minutes
+chunk6 done in 55.37840647697449 minutes
+chunk7 done in 53.77406855026881 minutes
+chunk8 done in 59.046221387386325 minutes
+chunk9 done in 74.03632626930873 minutes
+chunk10 done in 69.65606653292974 minutes
+chunk11 done in 68.08690465291342 minutes
+chunk12 done in 65.01918634970983 minutes
+chunk13 done in 62.335901920000715 minutes
+chunk14 done in 59.50154721339543 minutes
+chunk15 done in 58.1667683839798 minutes
+chunk16 done in 58.1608135620753 minutes
+chunk17 done in 54.24303762515386 minutes
+chunk18 done in 53.93674346208572 minutes
+chunk19 done in 53.86941521167755 minutes
+chunk20 done in 50.97178879578908 minutes
+chunk21 done in 50.02884975274404 minutes
+chunk22 done in 50.2832247376442 minutes
+chunk23 done in 46.95501389106115 minutes
+chunk24 done in 44.514340968926746 minutes
+chunk25 done in 43.39559216101964 minutes
+chunk26 done in 41.96174390713374 minutes
+chunk27 done in 37.33427294890086 minutes
+chunk28 done in 39.9466397245725 minutes
+chunk29 done in 34.9941968758901 minutes
+chunk30 done in 43.01818966468175 minutes
+chunk31 done in 54.070096711317696 minutes
+chunk32 done in 47.24390790859858 minutes
+chunk33 done in 47.36294165054957 minutes
+chunk34 done in 41.2080441236496 minutes
+chunk35 done in 34.76786330143611 minutes
+chunk36 done in 33.05686182578405 minutes
+chunk37 done in 30.64019099076589 minutes
+chunk38 done in 29.95155636072159 minutes
+chunk39 done in 28.028602345784506 minutes
+chunk40 done in 26.702057977517445 minutes
+chunk41 done in 7.912001919746399 minutes
+Done in 2064.5141312877336 minutes

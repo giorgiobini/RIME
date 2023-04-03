@@ -18,9 +18,6 @@ export PATH="/home/username/miniconda/bin:$PATH"
 ```
 conda create --name rnarna
 conda activate rnarna
-
-git clone https://github.com/google/jax.git
-python build/build.py --enable_cuda --cuda_path  /usr/local/cuda-11.1 --cudnn_path ~/anaconda3/envs/jax
 ```
 
 (Optional)

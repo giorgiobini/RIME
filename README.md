@@ -18,6 +18,9 @@ export PATH="/home/username/miniconda/bin:$PATH"
 ```
 conda create --name rnarna
 conda activate rnarna
+
+git clone https://github.com/google/jax.git
+python build/build.py --enable_cuda --cuda_path  /usr/local/cuda-11.1 --cudnn_path ~/anaconda3/envs/jax
 ```
 
 (Optional)
@@ -32,8 +35,16 @@ conda install -c conda-forge jupyterlab
 (Required)
 
 ```
+pip install -U jax[cuda11_cudnn82] -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 cd NT_dependencies
+git clone https://github.com/instadeepai/nucleotide-transformer.git nt
+mv nt/* . 
+mv nt/.* .
+rmdir nt
+cp mypretrained.py nucleotide_transformer/
 pip install .
+cd ..
+pip install -r requirements.txt
 conda install pytorch
 ``` 
  

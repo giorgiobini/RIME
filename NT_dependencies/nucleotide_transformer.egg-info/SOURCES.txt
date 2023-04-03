@@ -5,6 +5,7 @@ nucleotide_transformer/__init__.py
 nucleotide_transformer/constants.py
 nucleotide_transformer/layers.py
 nucleotide_transformer/model.py
+nucleotide_transformer/mypretrained.py
 nucleotide_transformer/pretrained.py
 nucleotide_transformer/tokenizers.py
 nucleotide_transformer/types.py

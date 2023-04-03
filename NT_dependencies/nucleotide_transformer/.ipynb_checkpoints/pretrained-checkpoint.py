@@ -72,13 +72,12 @@ def download_from_s3_bucket(
             )
 
 
-def download_ckpt_and_hyperparams(model_name: str, chkpt_dir: str) -> Tuple[hk.Params, Dict[str, Any]]:
+def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str, Any]]:
     """
     Download checkpoint and hyperparams on kao datacenter.
 
     Args:
         model_name: Name of the model.
-        chkpt_dir: directory where to save and loads the pretrained models.
 
     Returns:
         Model parameters.
@@ -86,11 +85,8 @@ def download_ckpt_and_hyperparams(model_name: str, chkpt_dir: str) -> Tuple[hk.P
 
     """
     # Get directories
-    if os.path.exists(chkpt_dir):
-        save_dir = os.path.join(chkpt_dir, model_name)
-    else:
-        save_dir = os.path.join(_get_dir(), model_name)
-        
+    save_dir = os.path.join(_get_dir(), model_name)
+
     params_save_dir = os.path.join(save_dir, "ckpt.joblib")
     hyperparams_save_dir = os.path.join(save_dir, "hyperparams.json")
 
@@ -149,7 +145,6 @@ def get_pretrained_model(
     embeddings_layers_to_save: Tuple[int, ...] = (),
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
-    chkpt_dir: str = 'fake',
 ) -> Tuple[
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
@@ -164,7 +159,6 @@ def get_pretrained_model(
         embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
-        chkpt_dir: directory where to save and loads the pretrained models.
 
     Returns:
         Model parameters.
@@ -200,7 +194,7 @@ def get_pretrained_model(
         )
 
     # Download weights and hyperparams
-    parameters, hyperparams = download_ckpt_and_hyperparams(model_name, chkpt_dir)
+    parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
     tokenizer = FixedSizeNucleotidesKmersTokenizer(
         k_mers=hyperparams["k_for_kmers"],

@@ -32,7 +32,20 @@ conda install -c conda-forge jupyterlab
 (Required)
 
 ```
-pip install -U jax[cuda11_cudnn82] -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+conda create -n rnarna python=3.10 ipython 
+conda activate rnarna
+conda install -c conda-forge jupyterlab
+conda install pandas=1.5.3
+conda install pytorch torchvision -c pytorch
+conda install -c anaconda scikit-learn=1.2.2
+conda install -c anaconda seaborn=0.12.2
+conda install -c conda-forge matplotlib=3.7.1
+conda install -c conda-forge matplotlib-venn
+``` 
+
+```
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+#metti export XLA_FLAGS="--xla_gpu_force_compilation_parallelism=1" in /home/gbini/.bashrc (subito prima di # >>> conda initialize >>>)
 cd NT_dependencies
 git clone https://github.com/instadeepai/nucleotide-transformer.git nt
 mv nt/* . 
@@ -42,7 +55,6 @@ cp mypretrained.py nucleotide_transformer/
 pip install .
 cd ..
 pip install -r requirements.txt
-conda install pytorch
 ``` 
  
 ## 2. Data

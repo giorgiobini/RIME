@@ -9,6 +9,23 @@ from matplotlib import pyplot as plt
 import pickle
 from matplotlib_venn import venn3
 
+def get_df(df_hub, dataset_data_dir, original_files_dir):
+    filename = os.path.join(dataset_data_dir, 'df_train_test_val.csv')
+    if os.path.isfile(filename):
+        df = pd.read_csv(filename)
+    else:
+        df_int = read_dataframe(os.path.join(original_files_dir, 'rise_paris_tr.new.mapped_interactions.tx_regions.txt'), columns_to_drop = ['Unnamed: 0','cdna_1','cdna_2']) #for the moment I don't need the sequences
+        df_con = read_dataframe(os.path.join(original_files_dir, 'rise_paris_tr.controls.seq.txt'), columns_to_drop = ['Unnamed: 0', 'cdna_1','cdna_2']) #for the moment I don't need the sequences
+        df_con = merge_features(df_int, df_con)
+        df_int = create_features(df_int, df_hub = df_hub, df_interactors = True).reset_index(drop=True)
+        df_con = create_features(df_con, df_hub = df_hub, df_interactors = False).reset_index(drop=True) #5 min to execute
+        df = pd.concat([df_int, df_con], axis = 0, ignore_index=True).reset_index(drop=True)
+        df = df.sample(frac=1).reset_index(drop=True) #shuffle_rows and reset the index
+        df['n_protein_codings_in_the_pair'] = df[['protein_coding_2', 'protein_coding_1']].apply(lambda x: sum(list(x)), axis = 1)
+        assert df.shape[0] == df_int.shape[0] + df_con.shape[0]
+        df.to_csv(filename, index = False)
+    return df
+
 def read_dataframe(file_path, columns_to_drop = []):
     cols = list(pd.read_csv(file_path, sep ='\t', nrows =1))
     # Use list comprehension to remove the unwanted column in **usecol**
@@ -19,12 +36,12 @@ def merge_features(df_int, df_con):
     """
     I only need this merge because the controls dataframe does not have the same features of the interactors one
     """
-    df_int1 = df_int[['ensembl_transcript_id_1', 'transcript_biotype_1', 'species']].drop_duplicates().rename({'ensembl_transcript_id_1':'ensembl_transcript_id',  'transcript_biotype_1':'transcript_biotype'}, axis =1)
-    df_int2 = df_int[['ensembl_transcript_id_2', 'transcript_biotype_2', 'species']].drop_duplicates().rename({'ensembl_transcript_id_2':'ensembl_transcript_id', 'transcript_biotype_2':'transcript_biotype'}, axis =1)
+    df_int1 = df_int[['gene_id1', 'transcript_biotype_1', 'species']].drop_duplicates().rename({'gene_id1':'gene_id',  'transcript_biotype_1':'transcript_biotype'}, axis =1)
+    df_int2 = df_int[['gene_id2', 'transcript_biotype_2', 'species']].drop_duplicates().rename({'gene_id2':'gene_id', 'transcript_biotype_2':'transcript_biotype'}, axis =1)
     df_transcripts = pd.concat([df_int1, df_int2], axis = 0).drop_duplicates().reset_index(drop = True)
-    df_con_merged = df_con.merge(df_transcripts, left_on = ['ensembl_transcript_id_1'], right_on = ['ensembl_transcript_id']).rename({'transcript_biotype':'transcript_biotype_1'}, axis = 1)                                                                                                             
-    df_con_merged = df_con_merged.merge(df_transcripts, left_on = ['ensembl_transcript_id_2', 'species'], right_on = ['ensembl_transcript_id', 'species']).rename({'transcript_biotype':'transcript_biotype_2'}, axis = 1)                                                                                                                      
-    df_con_merged = df_con_merged.drop(['ensembl_transcript_id_x', 'ensembl_transcript_id_y'], axis = 1)
+    df_con_merged = df_con.merge(df_transcripts, left_on = ['gene_id1'], right_on = ['gene_id']).rename({'transcript_biotype':'transcript_biotype_1'}, axis = 1)                                                                                                             
+    df_con_merged = df_con_merged.merge(df_transcripts, left_on = ['gene_id2', 'species'], right_on = ['gene_id', 'species']).rename({'transcript_biotype':'transcript_biotype_2'}, axis = 1)                                                                                                                      
+    df_con_merged = df_con_merged.drop(['gene_id_x', 'gene_id_y'], axis = 1)
     assert df_con_merged.shape[0] == df_con.shape[0]
     return df_con_merged
 
@@ -33,10 +50,11 @@ def create_features(df, df_hub, df_interactors):
     df['protein_coding_1'] = df['transcript_biotype_1'].apply(lambda x: True if x == 'protein_coding' else False)
     df['protein_coding_2'] = df['transcript_biotype_2'].apply(lambda x: True if x == 'protein_coding' else False)
     if df_interactors:
-        assert df['width_map1'].min() > 0 
-        assert df['width_map2'].min() > 0 
-        df['area_of_the_interaction'] = df['width_map1']*df['width_map2']
+        assert (df['end_map1'] - df['start_map1']).min() > 0 
+        assert (df['end_map2'] - df['start_map2']).min() > 0 
+        df['area_of_the_interaction'] = (df['end_map1'] - df['start_map1'])*(df['end_map2'] - df['start_map2'])
         df['there_is_interaction'] = True
+        assert set(pd.get_dummies(df.cell_line).columns) == set(['HEK293T', 'HeLa', 'HEK293', 'mES', 'Mouse_brain'])
         df = pd.concat([df, pd.get_dummies(df.cell_line)], axis = 1).drop('cell_line', axis = 1)
     else:
         df['there_is_interaction'] = False
@@ -50,11 +68,10 @@ def create_features(df, df_hub, df_interactors):
         df = get_cell_line_of_non_interactors(df, df_hub)
     df[['couples', 'need_to_swap']] = df[['gene_id1', 'gene_id2']].apply(create_pairs, axis = 1)
     df = df.filter(['couples', 'gene_id1', 'gene_id2', 
-    'ensembl_transcript_id_1', 'ensembl_transcript_id_2', 
     'length_1', 'length_2', 'transcript_biotype_1', 'transcript_biotype_2',
     'protein_coding_1', 'protein_coding_2', 'there_is_interaction', 
     'area_of_the_matrix', 'area_of_the_interaction', 'species',
-    'HEK293T', 'Hela(highRNase)', 'Hela(lowRNase)','mES', 
+    'HEK293T', 'HeLa', 'HEK293', 'mES', 'Mouse_brain', 
     'start_map1', 'end_map1', 'start_map2', 'end_map2',
     'tx_id_1_localization', 'tx_id_2_localization', 'need_to_swap'], axis = 1)
     df = swap_genes_if_needed(df)
@@ -67,7 +84,6 @@ def swap_genes_if_needed(df):
     df.loc[where, ['start_map1', 'start_map2']] = (df.loc[where, ['start_map2', 'start_map1']].values)
     df.loc[where, ['end_map1', 'end_map2']] = (df.loc[where, ['end_map2', 'end_map1']].values)
     df.loc[where, ['protein_coding_1', 'protein_coding_2']] = (df.loc[where, ['protein_coding_2', 'protein_coding_1']].values)
-    df.loc[where, ['ensembl_transcript_id_1', 'ensembl_transcript_id_2']] = (df.loc[where, ['ensembl_transcript_id_2', 'ensembl_transcript_id_1']].values)
     df.loc[where, ['transcript_biotype_1', 'transcript_biotype_2']] = (df.loc[where, ['transcript_biotype_2', 'transcript_biotype_1']].values)
     df.loc[where, ['tx_id_1_localization', 'tx_id_2_localization']] = (df.loc[where, ['tx_id_2_localization', 'tx_id_1_localization']].values)
     return df.drop('need_to_swap', axis = 1)
@@ -77,7 +93,7 @@ def get_cell_line_of_non_interactors(df, df_hub):
     #I will take the intersection between the cell line sets of each gene of the pair. I need the df_hub for this
     new_cols = df.apply(get_intersection_set, df_hub = df_hub, axis = 1)
     new_cols = new_cols.apply(pd.Series)
-    new_cols.columns = ['HEK293T', 'Hela(highRNase)', 'Hela(lowRNase)','mES']
+    new_cols.columns = ['HEK293T', 'HeLa', 'HEK293', 'mES', 'Mouse_brain']
     df = pd.concat([df, new_cols], axis = 1)
     #df['HEK293T'], df['Hela(highRNase)'], df['Hela(lowRNase)'], df['mES'] = df.apply(get_intersection_set, df_hub = df_hub, axis = 1)
     return df
@@ -88,11 +104,12 @@ def get_intersection_set(x, df_hub):
     set_gene2 = df_hub[df_hub.gene_id == x.gene_id2].cell_line_set.iloc[0]
     set_gene2 = list(ast.literal_eval(set_gene2))
     intersection_set = list(set(set_gene1) & set(set_gene2))
-    Hek = 1 if 'HEK293T' in intersection_set else 0
-    Hela_highRNase = 1 if 'Hela(highRNase)' in intersection_set else 0
-    Hela_lowRNase = 1 if 'Hela(lowRNase)' in intersection_set else 0
+    HEK293T = 1 if 'HEK293T' in intersection_set else 0
+    HeLa = 1 if 'HeLa' in intersection_set else 0
+    HEK293 = 1 if 'HEK293' in intersection_set else 0
     mES = 1 if 'mES' in intersection_set else 0
-    return Hek, Hela_highRNase, Hela_lowRNase, mES
+    Mouse_brain = 1 if 'Mouse_brain' in intersection_set else 0
+    return HEK293T, HeLa, HEK293, mES, Mouse_brain
 
 def create_pairs(x):
     """
@@ -116,7 +133,7 @@ def create_df_hub(df_int, df_con):
     
     df_int1 = df_int[['gene_id1', 'couples']].rename({'gene_id1':'gene_id'}, axis =1)
     df_int2 = df_int[['gene_id2', 'couples']].rename({'gene_id2':'gene_id'}, axis =1)
-    df_int_full = pd.concat([df_int1, df_int2], axis = 0).reset_index(drop = True)
+    df_int_full = pd.concat([df_int1, df_int2], axis = 0, ignore_index=True).reset_index(drop = True)
     df_int_full['n_interactors'] = df_int_full.couples.apply(lambda x: 1/couples_duplicated_dict[x] if x in couples_duplicated_dict.keys() else 1)
     df_int_full = df_int_full.drop('couples', axis = 1)
     df_int_full = df_int_full.groupby('gene_id').sum().reset_index()
@@ -267,22 +284,6 @@ def filter_by_list_of_genes(df, list_of_genes, exclude = False):
     else: 
         return df[df.gene_id1.isin(list_of_genes)|df.gene_id2.isin(list_of_genes)].reset_index(drop = True)
 
-def obtain_bin_edges_and_target(df_int, df_con, specie):
-    target_loss1 = calc_target_loss1(df_int, df_con)
-    bin_edges_loss3 =  calc_bin_edges_loss3_4_5(df_int.area_of_the_matrix) 
-    target_loss3 = calc_target_loss3_4_5(df_int.area_of_the_matrix, bin_edges_loss3)  #target_loss3 sums to 1
-    bin_edges_loss4 = calc_bin_edges_loss3_4_5(df_con.area_of_the_matrix)
-    target_loss4 =  calc_target_loss3_4_5(df_con.area_of_the_matrix, bin_edges_loss4)  #target_loss4 sums to 1
-    bin_edges_loss5 = calc_bin_edges_loss3_4_5(df_int.area_of_the_interaction)
-    target_loss5 =  calc_target_loss3_4_5(df_int.area_of_the_interaction, bin_edges_loss5) #target_loss5 sums to 1
-    bin_edges = bin_edges_loss3, bin_edges_loss4, bin_edges_loss5
-    if specie == 'human':
-        target_loss2 = calc_target_loss2(df_int, df_con)
-        targets = target_loss1, target_loss2, target_loss3, target_loss4, target_loss5
-    else:
-        targets = target_loss1, target_loss3, target_loss4, target_loss5
-    return bin_edges, targets
-
 def get_list_genes(df, unique = True):
     if unique:
         gene1 = df.gene_id1.unique() 
@@ -300,40 +301,18 @@ def find_the_best_couple(x, cand):
     cand = cand.loc[sums.index]
     return cand.iloc[0].gene_id
 
-def calculate_potential_loss(x, df, already_sampled, targets, bin_edges):
-    gene1 = x.gene_id
-    gene2 = x.best_gene_to_sample_with
-    df_already_sampled= filter_by_list_of_genes(df, already_sampled) #work if already_sampled is a list
-    df_to_sample = filter_by_list_of_genes(df, already_sampled, exclude = True)
-    if df_already_sampled is None:
-        assert df_to_sample.shape[0] == df.shape[0]
-    else:
-        assert df_to_sample.shape[0] + df_already_sampled.shape[0] == df.shape[0]
-    subset = filter_by_list_of_genes(df_to_sample, [gene1, gene2])
-    total_df = pd.concat([subset, df_already_sampled], axis = 0).reset_index(drop = True)
-    df_int, df_con = split_df_int_con(total_df)
-    try: #if this doesnt work, then df_int or df_con are empty, and I don t want this. So I penalize these candidates with a loss of 1000000
-        assert len(df_int.species.value_counts()) == len(df_con.species.value_counts()) == 1
-        specie = df_int.species.value_counts().index[0]
-        predictions = calc_predictions_loss(df_int, df_con, specie, bin_edges)
-        return calc_loss(targets, predictions, specie) 
-    except:
-        return 1000000 
-
-def sampling_from_df_hub(df_hub, df_subset, gene_pairs_training, targets, bin_edges, take_into_account_the_first, random = False):
+def sampling_from_df_hub(df_hub, df_subset, gene_pairs_training):
     """
     It samples two genes from df hub. df_subset can contain human or mouse, not both
     """
     df_hub = sort_df_hub(df_hub) # Sort df_hub per max(n_of_interactors, n_of_non_interactors)
-    candidates = df_hub.head(take_into_account_the_first)
+    candidates = df_hub.copy()
     candidates['difference'] = candidates['n_interactors'] - candidates['n_not_interactors']
     candidates['best_gene_to_sample_with'] = candidates.apply(find_the_best_couple, cand = candidates.copy(), axis = 1)
-    if random:
-        idx = np.random.randint(0,take_into_account_the_first) 
-        gene_pair_to_sample = [candidates.iloc[idx].gene_id, candidates.iloc[idx].best_gene_to_sample_with]
-    else:
-        candidates['loss'] = candidates.apply(calculate_potential_loss, args=(df_subset, gene_pairs_training, targets, bin_edges), axis = 1)
-        gene_pair_to_sample = [candidates.sort_values('loss').iloc[0].gene_id, candidates.sort_values('loss').iloc[0].best_gene_to_sample_with]
+
+    idx = np.random.randint(0,candidates.shape[0]) 
+    gene_pair_to_sample = [candidates.iloc[idx].gene_id, candidates.iloc[idx].best_gene_to_sample_with]
+
     rows_for_training = filter_by_list_of_genes(df_subset, list_of_genes = gene_pair_to_sample)
 
     df_hub = update_df_hub(df_hub, rows_for_training) #update df_hub (in order to update df_hub, remember to drop the gene picked and to update with -1 the n_interactors and n_not_interactors columns of the genes that are in pair with the gene picked. Remember, if n_interactors and n_not_interactors are 0 in a row, then I can drop this row).
@@ -350,30 +329,14 @@ def update_df_hub(df_hub, rows_for_training):
     df_hub['n_not_interactors'] = df_hub['n_not_interactors_x'] - df_hub['n_not_interactors_y']
     return df_hub.drop(['n_interactors_x','n_interactors_y', 'n_not_interactors_x', 'n_not_interactors_y'], axis = 1).reset_index(drop = True)
 
-def get_df(df_hub, dataset_data_dir, original_files_dir):
-    filename = os.path.join(dataset_data_dir, 'df_train_test_val.csv')
-    if os.path.isfile(filename):
-        df = pd.read_csv(filename)
-    else:
-        df_int = read_dataframe(os.path.join(original_files_dir, 'rise_paris_tr.new.mapped_interactions.tx_regions.txt'), columns_to_drop = ['Unnamed: 0','cdna_1','cdna_2']) #for the moment I don't need the sequences
-        df_con = read_dataframe(os.path.join(original_files_dir, 'rise_paris_tr.controls.seq.txt'), columns_to_drop = ['Unnamed: 0', 'cdna_1','cdna_2']) #for the moment I don't need the sequences
-        df_con = merge_features(df_int, df_con)
-        df_int = create_features(df_int, df_hub = df_hub, df_interactors = True)
-        df_con = create_features(df_con, df_hub = df_hub, df_interactors = False) #5 min to execute
-        df = pd.concat([df_int, df_con]).sample(frac=1).reset_index(drop=True) #shuffle_rows and reset the index
-        df['n_protein_codings_in_the_pair'] = df[['protein_coding_2', 'protein_coding_1']].apply(lambda x: sum(list(x)), axis = 1)
-        assert df.shape[0] == df_int.shape[0] + df_con.shape[0]
-        df.to_csv(filename, index = False)
-    return df
-
-def train_test_split(df, percentage_training = 0.7, random = False):
+def train_test_split(df, percentage_training = 0.7):
     df_human = df[df.species == 'human'].reset_index(drop = True)
     df_mouse = df[df.species == 'mouse'].reset_index(drop = True)
     print('HUMAN:')
-    gene_pairs_training_human, gene_pairs_test_human = train_test_split_for_one_specie(df_human, percentage_training = percentage_training, random = random)
+    gene_pairs_training_human, gene_pairs_test_human = train_test_split_for_one_specie(df_human, percentage_training = percentage_training)
     print('\n')
     print('MOUSE:')
-    gene_pairs_training_mouse, gene_pairs_test_mouse =  train_test_split_for_one_specie(df_mouse, percentage_training = percentage_training, random = random)
+    gene_pairs_training_mouse, gene_pairs_test_mouse =  train_test_split_for_one_specie(df_mouse, percentage_training = percentage_training)
     gene_pairs_training = gene_pairs_training_human + gene_pairs_training_mouse
     gene_pairs_training = list(set(gene_pairs_training)) 
     gene_pairs_test = gene_pairs_test_human + gene_pairs_test_mouse
@@ -381,7 +344,7 @@ def train_test_split(df, percentage_training = 0.7, random = False):
     assert len(gene_pairs_training) + len(gene_pairs_test) == len(df.couples.unique())
     return gene_pairs_training, gene_pairs_test
 
-def train_test_split_for_one_specie(df_subset, percentage_training = 0.7, random = False):  
+def train_test_split_for_one_specie(df_subset, percentage_training = 0.7):  
     start_time = time.time()
     #df_subset have to be 'human' or 'mouse', not both
     assert len(df_subset.species.value_counts()) == 1
@@ -390,13 +353,10 @@ def train_test_split_for_one_specie(df_subset, percentage_training = 0.7, random
     df_int, df_con = split_df_int_con(df_subset)
     
     df_hub = create_df_hub(df_int, df_con)
-
-    bin_edges, targets = obtain_bin_edges_and_target(df_int, df_con, specie)
-    
     gene_pairs_training = [] #Create a empty list of gene pairs samped 
     interrupt = False
     while (interrupt == False):
-        df_hub, gene_pairs_training = sampling_from_df_hub(df_hub, df_subset, gene_pairs_training, targets, bin_edges, take_into_account_the_first = 50, random = random)
+        df_hub, gene_pairs_training = sampling_from_df_hub(df_hub, df_subset, gene_pairs_training)
         gene_pairs_training = list(set(gene_pairs_training)) #get sure I have only unique values of gene_pairs_training
         interrupt = check_interruption(len(gene_pairs_training), len(df_subset.couples.unique()), percentage_training)
         if np.random.uniform()>0.85:
@@ -563,14 +523,11 @@ def stacked_bar_chart_int_not_int(int_perc, con_perc, title_string):
 def filter_series(s, value):
     return s[s<value]
 
-def create_or_load_train_test_val(df, save_path, random = False):
+def create_or_load_train_test_val(df, save_path):
     """
     train-test-val percentages are around 70-20-10%
     """
-    if random:
-        file_names = ['gene_pairs_training_random.txt', 'gene_pairs_test_val_random.txt', 'gene_pairs_test_random.txt', 'gene_pairs_val_random.txt']
-    else:
-        file_names = ['gene_pairs_training.txt', 'gene_pairs_test_val.txt', 'gene_pairs_test.txt', 'gene_pairs_val.txt']
+    file_names = ['gene_pairs_training.txt', 'gene_pairs_test_val.txt', 'gene_pairs_test.txt', 'gene_pairs_val.txt']
 
     file_name_training, file_name_test_val, file_name_test, file_name_val = file_names
     file_training = os.path.join(save_path, file_name_training)
@@ -585,7 +542,7 @@ def create_or_load_train_test_val(df, save_path, random = False):
         with open(file_test_val, "rb") as fp:   # Unpickling
             gene_pairs_test_val = pickle.load(fp)
     else:
-        gene_pairs_training, gene_pairs_test_val =  train_test_split(df, percentage_training = 0.7, random = random) #4,3 hours if not random
+        gene_pairs_training, gene_pairs_test_val =  train_test_split(df, percentage_training = 0.7) #4,3 hours if not random
         with open(file_training, "wb") as fp:   #Pickling
             pickle.dump(gene_pairs_training, fp)
         with open(file_test_val, "wb") as fp:   #Pickling
@@ -601,7 +558,7 @@ def create_or_load_train_test_val(df, save_path, random = False):
         with open(file_val, "rb") as fp:   # Unpickling
             gene_pairs_val = pickle.load(fp)
     else:
-        gene_pairs_test, gene_pairs_val =  train_test_split(test_val, percentage_training = 0.67, random = random) #0.67*0.3 = 0.2
+        gene_pairs_test, gene_pairs_val =  train_test_split(test_val, percentage_training = 0.67) #0.67*0.3 = 0.2
         with open(file_test, "wb") as fp: #Pickling
             pickle.dump(gene_pairs_test, fp)
 

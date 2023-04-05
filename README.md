@@ -16,7 +16,7 @@ export PATH="/home/username/miniconda/bin:$PATH"
 #### 1.2 Create and activate a new virtual environment
 
 ```
-conda create --name rnarna
+conda create -n rnarna python=3.10 ipython 
 conda activate rnarna
 ```
 
@@ -32,19 +32,25 @@ conda install -c conda-forge jupyterlab
 (Required)
 
 ```
-conda create -n rnarna python=3.10 ipython 
-conda activate rnarna
-conda install -c conda-forge jupyterlab
 conda install pandas=1.5.3
 conda install pytorch torchvision -c pytorch
 conda install -c anaconda scikit-learn=1.2.2
 conda install -c anaconda seaborn=0.12.2
 conda install -c conda-forge matplotlib=3.7.1
 conda install -c conda-forge matplotlib-venn
+conda install -c conda-forge tqdm=4.65.0
+conda install -c conda-forge ipywidgets=8.0.4
 ``` 
 
 ```
+VERSIONE CUDA ATTUALE
+Cuda12.0 cudnn8.8.1.3
+
+conda create -n jax python=3.10 ipython 
+conda activate jax
+pip install --upgrade pip
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
 #metti export XLA_FLAGS="--xla_gpu_force_compilation_parallelism=1" in /home/gbini/.bashrc (subito prima di # >>> conda initialize >>>)
 cd NT_dependencies
 git clone https://github.com/instadeepai/nucleotide-transformer.git nt

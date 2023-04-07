@@ -48,8 +48,8 @@ Cuda12.0 cudnn8.8.1.3
 
 conda create -n jax python=3.10 ipython 
 conda activate jax
+conda install -c conda-forge jupyterlab
 pip install --upgrade pip
-pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 #metti export XLA_FLAGS="--xla_gpu_force_compilation_parallelism=1" in /home/gbini/.bashrc (subito prima di # >>> conda initialize >>>)
 cd NT_dependencies
@@ -58,7 +58,13 @@ mv nt/* .
 mv nt/.* .
 rmdir nt
 cp mypretrained.py nucleotide_transformer/
+
 pip install .
+
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+nohup python example_inference.py &> example_inference.out &
+
 cd ..
 pip install -r requirements.txt
 ``` 

@@ -40,6 +40,8 @@ conda install -c conda-forge matplotlib=3.7.1
 conda install -c conda-forge matplotlib-venn
 conda install -c conda-forge tqdm=4.65.0
 conda install -c conda-forge ipywidgets=8.0.4
+conda install -c conda-forge biopython=1.81
+pip install StrEnum==0.4.8
 ``` 
 
 ```
@@ -76,8 +78,9 @@ We need the data to be structured as the example below.
 dataset
 ├── original_files
 │   └── hub.table.paris.txt
-│   └── rise_paris_tr.controls.seq.txt
-│   └── rise_paris_tr.new.mapped_interactions
+│   └── controls_controlled.hub.txt
+│   └── tx_regions.ens99.txt
+│   └── rise_paris_tr.new.mapped_interactions.tx_regions.txt
 │ 
 ├── annotation_files
 ├── processed_files
@@ -90,8 +93,8 @@ You can download the original_files folder from this link (put a link). If you d
 Skip this section if you only need inference.
 
 Run these scripts from the src directory in the following order:
--
--
+- preprocess_adri_data.ipynb
+- train_test_val.ipynb
 
 ## 4. Inference
 Put your files inside the directory dataset/external_dataset/your_folder/

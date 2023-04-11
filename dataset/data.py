@@ -13,17 +13,19 @@ from itertools import groupby
 from pathlib import Path
 from typing import Any, Collection, Dict, List, Mapping, Sequence, Set, Tuple, Union
 from Bio import SeqIO
-
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import torch
 from plotly.graph_objs.layout import Shape
 from strenum import StrEnum
 from torch.utils.data import Dataset, random_split
 from tqdm import tqdm
+from matplotlib.patches import Rectangle
 
 ROOT_DIR = Path(".")
+
+MAX_RNA_SIZE = 5989
 
 AugmentSpec = Mapping[str, Any]
 Interaction = Mapping[str, Any]
@@ -138,7 +140,7 @@ class AugmentPolicy:
             Mapping[float, float], Mapping[Tuple[int, int], float]
         ],
         interacting: Collection[bool],
-        max_size: int = 512,
+        max_size: int = MAX_RNA_SIZE,
     ):
         """
 
@@ -982,22 +984,23 @@ class RNADataset(Dataset):
         self,
         gene_info_path: Path,
         interactions_path: Path,
-        dot_bracket_path: Path,
         subset_file: Path,
         augment_policies: Collection[AugmentPolicy],
     ):
         self.gene_info_path: Path = gene_info_path
         self.interactions_path: Path = interactions_path
-        self.dot_bracket_path: Path = dot_bracket_path
         self.subset_file = subset_file
 
         self.gene2info: pd.DataFrame = pd.read_csv(gene_info_path, sep=",")
-        dot_bracket: pd.DataFrame = pd.read_csv(dot_bracket_path, sep="\t")
-
-        self.gene2info: pd.DataFrame = self.gene2info.merge(
-            dot_bracket, left_on="gene_id", right_on="genes"
-        ).drop(["genes"], axis=1)
-
+        self.gene2info.rename(
+            columns={
+                "UTR5": "UTR5_end",
+                "CDS": "CDS_end",
+                "UTR3": "UTR3_end",
+            },
+            inplace=True,
+        )
+    
         self.gene2info["UTR3_start"] = self.gene2info["CDS_end"]
         self.gene2info["CDS_start"] = self.gene2info["UTR5_end"]
 
@@ -1009,13 +1012,11 @@ class RNADataset(Dataset):
             gene_info["interactions"] = []
 
         interactions: pd.DataFrame = pd.read_csv(interactions_path, sep=",")
+        interactions['matrix_area'] = interactions.length_1*interactions.length_2
+        interactions['interaction_area'] = interactions.w*interactions.h
         interactions.rename(
             columns={
-                "Unnamed: 0": "id",
                 "couples": "couple",
-                "there_is_interaction": "interacting",
-                "area_of_the_matrix": "matrix_area",
-                "area_of_the_interaction": "interaction_area",
             },
             inplace=True,
         )
@@ -1167,259 +1168,43 @@ def _sample_target_dimension_multiplier(
 
 
 
-
-# sys.path.insert(0, "..")
-# from util import contact_matrix
-# def plot_sample2(sample: Sample):
-#     list_of_boxes = [
-#         [
-#             sample.seed_interaction_bbox.x1,
-#             sample.seed_interaction_bbox.y1,
-#             sample.seed_interaction_bbox.width,
-#             sample.seed_interaction_bbox.height,
-#         ]
-#     ]
-#     crop_bbox = [
-#         sample.bbox.x1,
-#         sample.bbox.y1,
-#         sample.bbox.width,
-#         sample.bbox.height,
-#     ]
-#     contact_matrix.plot_contact_matrix(
-#         sample.gene1_info["cdna"],
-#         sample.gene2_info["cdna"],
-#         list_of_boxes,
-#         crop_bbox=crop_bbox,
-#         plot_geoms=False,
-#     )
-
-
 def plot_sample(sample: Sample, plot_cdna=False):
     sample_bbox: BBOX = sample.bbox
     interaction_bbox: BBOX = sample.seed_interaction_bbox
-
-    width = len(sample.gene1_info["cdna"])
-    height = len(sample.gene2_info["cdna"])
-
-    fig = go.Figure()
-    if plot_cdna:
-        show_axis = True
-        fig.update_xaxes(
-            tickmode="array",
-            tickvals=np.arange(0, width),
-            ticktext=[b for b in sample.gene1_info["cdna"]],
-        )
-        fig.update_yaxes(
-            tickmode="array",
-            tickvals=np.arange(0, height),
-            ticktext=[b for b in sample.gene2_info["cdna"]],
-        )  # tickangle = 90,
-    else:
-        show_axis = False
-        fig.update_xaxes(range=[0, width])
-        fig.update_yaxes(range=[0, height])
-
+    
+    cdna1 = sample.gene1_info["cdna"]
+    cdna2 = sample.gene2_info["cdna"]
+    width = len(cdna1)
+    height = len(cdna2)
+    
     real_bboxes = [
         BBOX.from_interaction(interaction=interaction)
         for interaction in sample.all_couple_interactions
     ]
-    fig.update_layout(
-        shapes=[
-            Shape(
-                type="rect",
-                x0=0,
-                y0=0,
-                x1=width,
-                y1=height,
-                fillcolor="lightgrey",
-                xref="x",
-                yref="y",
-                opacity=0.5,
-            ),
-            *(
-                Shape(
-                    type="rect",
-                    x0=real_bbox.x1,
-                    y0=real_bbox.y1,
-                    x1=real_bbox.x2,
-                    y1=real_bbox.y2,
-                    fillcolor="blue",
-                    xref="x",
-                    yref="y",
-                    opacity=0.8,
-                    line=dict(
-                        color="blue",
-                        width=2,
-                    ),
-                )
-                for real_bbox in real_bboxes
-            ),
-            Shape(
-                type="rect",
-                x0=sample_bbox.x1,
-                y0=sample_bbox.y1,
-                x1=sample_bbox.x2,
-                y1=sample_bbox.y2,
-                fillcolor="red",
-                xref="x",
-                yref="y",
-                opacity=0.5,
-                line=dict(
-                    color="red",
-                    width=2,
-                ),
-            ),
-        ]
-    )
+    
+    # Create figure and axes
+    fig, ax = plt.subplots()
 
-    fig.update_layout(
-        showlegend=True, autosize=False
-    )  # , width=int(width), height=int(height))
-    fig.update_xaxes(
-        showgrid=False, showticklabels=show_axis, showline=False, zeroline=False
-    )
-    fig.update_yaxes(
-        showgrid=False, showticklabels=show_axis, showline=False, zeroline=False
-    )
-
-    # print(f"{interaction_bbox=} | {sample_bbox=} | {width=} | {height=}")
+    ax.plot([0, width],[0, height], 'ro', color = 'white')
+    
+    rect = Rectangle((sample_bbox.x1, sample_bbox.y1), 
+                     sample_bbox.x2-sample_bbox.x1, sample_bbox.y2-sample_bbox.y1,
+                             linewidth=2, edgecolor='darkblue', fill=False)
+    ax.add_patch(rect) # Add the patch to the Axes
+    
+    for real_bbox in real_bboxes:
+        # Create a Rectangle patch
+        rect = Rectangle((real_bbox.x1, real_bbox.y1), 
+                         real_bbox.x2-real_bbox.x1, real_bbox.y2-real_bbox.y1, 
+                         linewidth=2, edgecolor='red', fill=True, facecolor='red',)
+        ax.add_patch(rect) # Add the patch to the Axes
+    
     return fig
-
-
-def _valentino_test():
-    from tqdm import tqdm
-
-    pos_width_multipliers = {3: 0.1, 5: 0.2, 7: 0.2, 9: 0.1, 10: 0.1, 11: 0.1, 18: 0.2}
-    pos_height_multipliers = {3: 0.1, 5: 0.2, 7: 0.2, 9: 0.1, 10: 0.1, 11: 0.1, 18: 0.2}
-    neg_width_windows = {
-        (50, 80): 0.1,
-        (80, 120): 0.25,
-        (120, 200): 0.3,
-        (200, 300): 0.17,
-        (300, 400): 0.07,
-        (400, 500): 0.03,
-        (500, 512): 0.03,
-    }
-    neg_height_windows = {
-        (50, 80): 0.1,
-        (80, 120): 0.25,
-        (120, 200): 0.3,
-        (200, 300): 0.17,
-        (300, 400): 0.07,
-        (400, 500): 0.03,
-        (500, 512): 0.03,
-    }
-
-    _SUBSET_SIZE: int = 100
-    seed_everything(seed)
-    for policy in (
-        # EasyPosAugment(
-        #     per_sample=20,
-        #     interaction_selection=InteractionSelectionPolicy.LARGEST,
-        #     width_multipliers=pos_width_multipliers,
-        #     height_multipliers=pos_height_multipliers,
-        # ),
-        # RegionSpecNegAugment(
-        #     per_sample = 20,
-        #     width_windows = neg_width_windows,
-        #     height_windows = neg_height_windows,
-        #     target_rna = "random",
-        #     interaction_selection = InteractionSelectionPolicy.RANDOM_ONE,
-        # ),
-        # EasyNegAugment(
-        #     per_sample=20,
-        #     width_windows=neg_width_windows,
-        #     height_windows=neg_height_windows,
-        # ),
-        # HardPosAugment(
-        #     per_sample=0.5,
-        #     interaction_selection=InteractionSelectionPolicy.RANDOM_ONE,
-        #     min_width_overlap=0.3,
-        #     min_height_overlap=0.3,
-        #     width_multipliers=pos_width_multipliers,
-        #     height_multipliers=pos_height_multipliers,
-        # ),
-        # HardNegAugment(
-        #     per_sample=0.9,
-        #     width_windows=neg_width_windows,
-        #     height_windows=neg_height_windows,
-        # ),
-        RegionSpecNegAugment(
-            per_sample=20,
-            width_windows=neg_width_windows,
-            height_windows=neg_height_windows,
-        ),
-    ):
-        start_time = time.time()
-
-        dataset = RNADataset(
-            gene_info_path=os.path.join(processed_files_dir, "df_cdna.csv"),
-            interactions_path=os.path.join(
-                processed_files_dir, "df_annotation_files_cleaned.csv"
-            ),  # subset_valentino.csv
-            dot_bracket_path=os.path.join(processed_files_dir, "dot_bracket.txt"),
-            subset_file=os.path.join(
-                rna_rna_files_dir, "gene_pairs_training_random_filtered.txt"
-            ),
-            augment_policies=[
-                policy,
-            ],
-        )
-        # dataset = Subset(dataset=dataset, indices=[i for i, sample in enumerate(dataset) if len(sample["all_couple_interactions"]) > 1])
-        dataset = random_split(
-            dataset=dataset,
-            lengths=[_SUBSET_SIZE, len(dataset) - _SUBSET_SIZE],
-            generator=torch.Generator().manual_seed(42),
-        )[0]
-
-        dst_dir = Path(os.path.join(processed_files_dir, "sample", policy.name))
-
-        shutil.rmtree(dst_dir, ignore_errors=True)
-        dst_dir.mkdir(exist_ok=True, parents=True)
-        sampled_widths, sampled_heights = [], []
-        for i, sample in tqdm(enumerate(dataset)):
-            if i != 2:
-                continue
-
-            """
-            if ((len(sample['gene1_info']['cdna'])<400) & (len(sample['gene2_info']['cdna'])<400)):
-                plot_sample2(sample)
-                sample_fig = plot_sample(sample=sample)
-                sample_fig.show(dpi=600)
-                sample_fig.write_image(dst_dir / f"{i}.png")
-            """
-
-            width = sample.bbox.x2 - sample.bbox.x1
-            height = sample.bbox.y2 - sample.bbox.y1
-
-            if i == 2:
-                print(
-                    f"{sample.bbox=}\n {sample.seed_interaction_bbox=} {len(sample.gene1_info['cdna'])=} {len(sample.gene2_info['cdna'])=})"
-                )
-
-            sampled_widths.append(width)
-            sampled_heights.append(height)
-            # print()
-
-            sample_fig = plot_sample(sample=sample)
-            # sample_fig.show(dpi=600)
-            sample_fig.write_image(dst_dir / f"{i}.png")
-
-        print(policy)
-        print(f"Count: {len(sampled_widths)}")
-        print(f"Mean Width:{np.mean(sampled_widths)}")
-        print(f"Mean Height:{np.mean(sampled_heights)}")
-        print(f"std Width:{np.std(sampled_heights)}")
-        print(f"std Height:{np.std(sampled_heights)}")
-        print(f"Total time: {(time.time()-start_time)/60} minutes")
-        print()
-        # break
-
 
 class FindSplits:
     def __init__(
         self,
-        max_size: int = 512,
+        max_size: int = MAX_RNA_SIZE,
     ):
         self.max_size = max_size
         
@@ -1449,15 +1234,11 @@ class RNADatasetInference(Dataset):
         self,
         gene_info_path: Path,
         interactions_path: Path,
-        dot_bracket_path: Path,
         step_size: int
     ):
         self.gene_info_path: Path = gene_info_path
         self.interactions_path: Path = interactions_path
-        self.dot_bracket_path: Path = dot_bracket_path
         self.step_size = step_size
-
-        dot_bracket: pd.DataFrame = pd.read_csv(dot_bracket_path, sep="\t")
         
         d = {}
         for i, fasta in enumerate(SeqIO.parse(open(gene_info_path),'fasta')):
@@ -1468,13 +1249,9 @@ class RNADatasetInference(Dataset):
             
         self.gene2info: pd.DataFrame = pd.DataFrame.from_dict(d, orient = 'index')
         
-        self.gene2info: pd.DataFrame = self.gene2info.merge(
-            dot_bracket, left_on="gene_id", right_on="genes"
-        ).drop(["genes"], axis=1)
-        
         self.gene2info['length'] = self.gene2info.cdna.str.len()
         
-        fs = FindSplits(max_size = 512)
+        fs = FindSplits(max_size = MAX_RNA_SIZE)
         self.gene2info['coords'] = self.gene2info.length.apply(lambda x: fs.get_split_coords(length = x, step_size=self.step_size))
         
         self.gene2info: Mapping[str, Mapping[str, Any]] = {
@@ -1527,59 +1304,3 @@ class RNADatasetInference(Dataset):
         )
     def __len__(self):
         return self.interactions.shape[0]
-
-        
-
-
-if __name__ == "__main__":
-    seed = 42
-    seed_everything(seed)
-
-    original_files_dir: Path = ROOT_DIR / "dataset" / "original_files"
-    processed_files_dir: Path = ROOT_DIR / "dataset" / "processed_files"
-    rna_rna_files_dir = os.path.join(ROOT_DIR, "dataset", "rna_rna_pairs")
-    _valentino_test()
-    exit()
-
-    pos_width_multipliers = {1: 0.1, 1.2: 0.1, 2.0: 1.0}
-    pos_height_multipliers = {1: 0.1, 1.2: 0.1, 2.0: 1.0}
-
-    neg_width_windows = {(10, 100): 0.1, (100, 512): 1.0}
-    neg_height_windows = {(10, 100): 0.1, (100, 512): 1.0}
-
-    policies = [
-        EasyPosAugment(
-            per_sample=10,
-            interaction_selection=InteractionSelectionPolicy.LARGEST,
-            width_multipliers=pos_width_multipliers,
-            height_multipliers=pos_height_multipliers,
-        ),
-        EasyNegAugment(
-            per_sample=10,
-            width_windows=neg_width_windows,
-            height_windows=neg_height_windows,
-        ),
-        HardPosAugment(
-            per_sample=10,
-            interaction_selection=InteractionSelectionPolicy.RANDOM_ONE,
-            min_width_overlap=0.3,
-            min_height_overlap=0.3,
-            width_multipliers=pos_width_multipliers,
-            height_multipliers=pos_height_multipliers,
-        ),
-        HardNegAugment(
-            per_sample=10,
-            width_windows=neg_width_windows,
-            height_windows=neg_height_windows,
-        ),
-    ]
-
-    dataset = RNADataset(
-        gene_info_path=processed_files_dir / "df_cdna.csv",
-        interactions_path=processed_files_dir / "subset_valentino.csv",
-        dot_bracket_path=processed_files_dir / "dot_bracket.txt",
-        augment_policies=policies,
-    )
-
-    for x in tqdm(dataset):
-        continue

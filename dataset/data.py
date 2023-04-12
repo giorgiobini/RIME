@@ -23,7 +23,7 @@ from torch.utils.data import Dataset, random_split
 from tqdm import tqdm
 from matplotlib.patches import Rectangle
 
-ROOT_DIR = Path(".")
+ROOT_DIR = os.path.dirname(os.path.abspath('.'))
 
 MAX_RNA_SIZE = 5989
 

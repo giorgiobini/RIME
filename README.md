@@ -42,33 +42,9 @@ conda install -c conda-forge tqdm=4.65.0
 conda install -c conda-forge ipywidgets=8.0.4
 conda install -c conda-forge biopython=1.81
 pip install StrEnum==0.4.8
-``` 
-
-```
-VERSIONE CUDA ATTUALE
-Cuda12.0 cudnn8.8.1.3
-
-conda create -n jax python=3.10 ipython 
-conda activate jax
-conda install -c conda-forge jupyterlab
-pip install --upgrade pip
-
-#metti export XLA_FLAGS="--xla_gpu_force_compilation_parallelism=1" in /home/gbini/.bashrc (subito prima di # >>> conda initialize >>>)
 cd NT_dependencies
-git clone https://github.com/instadeepai/nucleotide-transformer.git nt
-mv nt/* . 
-mv nt/.* .
-rmdir nt
-cp mypretrained.py nucleotide_transformer/
-
 pip install .
-
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
-nohup python example_inference.py &> example_inference.out &
-
-cd ..
-pip install -r requirements.txt
 ``` 
  
 ## 2. Data
@@ -95,6 +71,10 @@ Skip this section if you only need inference.
 Run these scripts from the src directory in the following order:
 - preprocess_adri_data.ipynb
 - train_test_val.ipynb
+- data_augmentation.ipynb (to test if valentino classes work) 
+- Decide_hyperparameters_dataloader.ipynb (to decide the hyperparameters before creating the dataset)
+- download_nt_embeddings.ipynb
+- train_binary_cl.py
 
 ## 4. Inference
 Put your files inside the directory dataset/external_dataset/your_folder/

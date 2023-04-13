@@ -173,6 +173,7 @@ class AugmentPolicy:
             "EasyNegAugment": "easyneg",
             "HardNegAugment": "hardneg",
             "RegionSpecNegAugment": "regionneg",
+            "SmartNegAugment": "smartneg",
         }
         return mapping[type(self).__name__]
 
@@ -206,9 +207,10 @@ class AugmentPolicy:
     def generate_augment_specs(
         self, couple_interactions: Sequence[Interaction]
     ) -> Sequence[AugmentSpec]:
+        #print(couple_interactions[0]) -> {'couple': 'ENSG00000000419_ENSG00000249150', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000249150', 'interacting': False, 'length_1': 1161, ...}
         interacting = set(
             interaction["interacting"] for interaction in couple_interactions
-        )
+        ) 
         assert len(interacting) == 1
         if len(set.intersection(interacting, self.interacting)) == 0:
             return []
@@ -254,6 +256,133 @@ class EasyPosAugment(AugmentPolicy):
             width_probabilities=width_multipliers,
             height_probabilities=height_multipliers,
             interacting=[True],
+        )
+        self.interaction_selection: InteractionSelectionPolicy = interaction_selection
+
+    def get_target_interactions(
+        self, couple_interactions: Sequence[Interaction]
+    ) -> Sequence[int]:
+        #print(couple_interactions) -> [{'couple': 'ENSG00000000419_ENSG00000280193', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000280193', 'interacting': True, 'length_1': 1161, 'length_2': 2327, 'protein_coding_1': True, 'protein_coding_2': False, 'x1': 543, 'y1': 1294, 'w': 30, 'h': 44, 'matrix_area': 2701647, 'interaction_area': 1320}]
+        if self.interaction_selection == InteractionSelectionPolicy.ALL:
+            target_interactions = list(range(len(couple_interactions)))
+        elif self.interaction_selection == InteractionSelectionPolicy.RANDOM_ONE:
+            target_interactions = [random.randint(0, len(couple_interactions) - 1)]
+        elif self.interaction_selection == InteractionSelectionPolicy.LARGEST:
+            target_interactions = [
+                sorted(
+                    enumerate(couple_interactions),
+                    key=lambda index2interaction: index2interaction[1][
+                        "interaction_area"
+                    ],
+                )[-1][0]
+            ]
+
+        elif self.interaction_selection == InteractionSelectionPolicy.SMALLER:
+            target_interactions = [
+                sorted(
+                    enumerate(couple_interactions),
+                    key=lambda index2interaction: index2interaction[1][
+                        "interaction_area"
+                    ],
+                )[0][0]
+            ]
+        else:
+            raise NotImplementedError
+
+        return target_interactions
+
+    def augment(
+        self,
+        target_interaction: int,
+        couple_interactions: Sequence[Interaction],
+        gene1: str,
+        gene2: str,
+        dataset: "RNADataset",
+    ) -> AugmentResult:
+        """
+        Augment a positive sample by sampling a new width and height for the target interaction.
+        :param target_interaction: index of the interaction to augment
+        :param couple_interactions: list of interactions for the couple
+        :param gene1: name of the first gene
+        :param gene2: name of the second gene
+        :param dataset: dataset containing the gene info"""
+        # Get the target interaction
+        interaction: Interaction = couple_interactions[target_interaction]
+
+        # Get the gene info
+        gene1_info: Mapping[str, Any] = dataset.gene2info[gene1]
+        gene2_info: Mapping[str, Any] = dataset.gene2info[gene2]
+
+        # gene1 refers to dim1 of the matrix, so to the width. Symmetrically, gene2 refers to the height (dim 0)
+        gene1_length: int = len(gene1_info["cdna"])
+        gene2_length: int = len(gene2_info["cdna"])
+
+        # First, sample the target width & height from their distributions
+        # TODO: limit lengths to not intersect with other interactions?
+        target_width: int = _sample_target_dimension_multiplier(
+            bins=self.width_bins,
+            probabilities=self.width_probabilities,
+            max_size=min(gene1_length, self.max_size),
+            starting_dim=interaction["w"],
+        )
+        target_height: int = _sample_target_dimension_multiplier(
+            bins=self.height_bins,
+            probabilities=self.height_probabilities,
+            max_size=min(gene2_length, self.max_size),
+            starting_dim=interaction["h"],
+        )
+
+        # We can now crop each dimension separately.
+        interaction_x1: int = int(interaction["x1"])
+        interaction_x2: int = int(interaction_x1 + interaction["w"])
+        target_x1 = _compute_target(
+            interaction_p1=interaction_x1,
+            interaction_p2=interaction_x2,
+            min_overlap=1,
+            max_length=gene1_length,
+            interaction_length=interaction["w"],
+            target_length=target_width,
+        )
+        target_x2 = min(target_x1 + target_width, gene1_length)
+
+        interaction_y1: int = int(interaction["y1"])
+        interaction_y2: int = int(interaction_y1 + interaction["h"])
+        target_y1 = _compute_target(
+            interaction_p1=interaction_y1,
+            interaction_p2=interaction_y2,
+            min_overlap=1,
+            max_length=gene2_length,
+            interaction_length=interaction["h"],
+            target_length=target_height,
+        )
+        target_y2 = min(target_y1 + target_height, gene2_length)
+
+        return dict(
+            bbox=BBOX(
+                x1=int(target_x1),
+                x2=int(target_x2),
+                y1=int(target_y1),
+                y2=int(target_y2),
+            ),
+            gene1=gene1,
+            gene2=gene2,
+            interacting=True,
+        )
+
+
+class SmartNegAugment(AugmentPolicy):
+    def __init__(
+        self,
+        interaction_selection: InteractionSelectionPolicy,
+        per_sample: Union[float, int],
+        width_multipliers: Mapping[float, float],
+        height_multipliers: Mapping[float, float],
+    ) -> None:
+        super().__init__(
+            per_sample=per_sample,
+            width_probabilities=width_multipliers,
+            height_probabilities=height_multipliers,
+            interacting=[False],  #only difference from EasyPosAugment
         )
         self.interaction_selection: InteractionSelectionPolicy = interaction_selection
 
@@ -363,10 +492,9 @@ class EasyPosAugment(AugmentPolicy):
             ),
             gene1=gene1,
             gene2=gene2,
-            interacting=True,
+            interacting=False, #The other difference with respect to EasyPosAugment
         )
-
-
+    
 class HardPosAugment(AugmentPolicy):
     def __init__(
         self,
@@ -982,16 +1110,14 @@ def _compute_target(
 class RNADataset(Dataset):
     def __init__(
         self,
-        gene_info_path: Path,
-        interactions_path: Path,
+        gene2info: pd.DataFrame,
+        interactions: pd.DataFrame,
         subset_file: Path,
         augment_policies: Collection[AugmentPolicy],
     ):
-        self.gene_info_path: Path = gene_info_path
-        self.interactions_path: Path = interactions_path
         self.subset_file = subset_file
 
-        self.gene2info: pd.DataFrame = pd.read_csv(gene_info_path, sep=",")
+        self.gene2info = gene2info
         self.gene2info.rename(
             columns={
                 "UTR5": "UTR5_end",
@@ -1011,15 +1137,9 @@ class RNADataset(Dataset):
         for gene_info in self.gene2info.values():
             gene_info["interactions"] = []
 
-        interactions: pd.DataFrame = pd.read_csv(interactions_path, sep=",")
         interactions['matrix_area'] = interactions.length_1*interactions.length_2
         interactions['interaction_area'] = interactions.w*interactions.h
-        interactions.rename(
-            columns={
-                "couples": "couple",
-            },
-            inplace=True,
-        )
+        interactions.rename(columns={"couples": "couple"}, inplace=True)
 
         if os.path.isfile(self.subset_file):
             with open(self.subset_file, "rb") as fp:  # Unpickling
@@ -1053,6 +1173,7 @@ class RNADataset(Dataset):
                 operator.itemgetter("couple"),
             )
         ]
+        #print(all_pair_interactions[0]) --> [{'couple': 'ENSG00000000419_ENSG00000249150', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000249150', 'interacting': False, ...}]
 
         self.all_pair_interactions = {
             frozenset(
@@ -1075,7 +1196,7 @@ class RNADataset(Dataset):
 
     def __getitem__(self, item: int) -> Sample:
         """ """
-        augment_spec: AugmentSpec = self.augment_specs[item]
+        augment_spec: AugmentSpec = self.augment_specs[item] #{'augment_policy': <dataset.data.EasyPosAugment object at 0x7f96bc340370>, 'couple_interactions': [{'couple': 'ENSG00000000419_ENSG00000280193', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000280193', 'interacting': True, ....}
         augment_policy: AugmentPolicy = augment_spec["augment_policy"]
         couple_interactions = augment_spec["couple_interactions"]
 
@@ -1168,37 +1289,31 @@ def _sample_target_dimension_multiplier(
 
 
 
-def plot_sample(sample: Sample, plot_cdna=False):
+def plot_sample(sample: Sample, plot_interaction_negatives=False):
     sample_bbox: BBOX = sample.bbox
-    interaction_bbox: BBOX = sample.seed_interaction_bbox
+    real_bbox: BBOX = sample.seed_interaction_bbox
     
     cdna1 = sample.gene1_info["cdna"]
     cdna2 = sample.gene2_info["cdna"]
     width = len(cdna1)
     height = len(cdna2)
-    
-    real_bboxes = [
-        BBOX.from_interaction(interaction=interaction)
-        for interaction in sample.all_couple_interactions
-    ]
-    
+    print(width, height)
     # Create figure and axes
     fig, ax = plt.subplots()
-
+    ratio = width/height
+    print(ratio)
+    fig.set_figwidth(7*ratio)
+    fig.set_figheight(7)
     ax.plot([0, width],[0, height], 'ro', color = 'white')
-    
     rect = Rectangle((sample_bbox.x1, sample_bbox.y1), 
                      sample_bbox.x2-sample_bbox.x1, sample_bbox.y2-sample_bbox.y1,
                              linewidth=2, edgecolor='darkblue', fill=False)
     ax.add_patch(rect) # Add the patch to the Axes
-    
-    for real_bbox in real_bboxes:
-        # Create a Rectangle patch
+    if (sample.interacting | plot_interaction_negatives):
         rect = Rectangle((real_bbox.x1, real_bbox.y1), 
                          real_bbox.x2-real_bbox.x1, real_bbox.y2-real_bbox.y1, 
                          linewidth=2, edgecolor='red', fill=True, facecolor='red',)
         ax.add_patch(rect) # Add the patch to the Axes
-    
     return fig
 
 class FindSplits:

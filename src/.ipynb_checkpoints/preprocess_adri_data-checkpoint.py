@@ -10,7 +10,7 @@ import random
 from pathlib import Path
 sys.path.insert(0, '..')
 from util.engine import train_one_epoch_mlp as train_one_epoch
-from util.engine import evaluate_mlp as evaluate
+from util.engine import evaluate_one_epoch_mlp as evaluate
 from models.mlp import build as build_model 
 import util.misc as utils
 import json
@@ -35,7 +35,6 @@ class MeanEmbDataset(Dataset):
         sample = self.samples[idx]
         label = self.labels[idx]
         return torch.from_numpy(sample).float(), label
-
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)

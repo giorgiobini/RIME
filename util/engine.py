@@ -113,14 +113,14 @@ def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
         metric_logger.update(**metric_dict)
         
     # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
+    #metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
 
 @torch.no_grad()
-def evaluate_mlp(model, criterion, postprocessors, data_loader, device, output_dir, frequency_print = 1000):
+def evaluate_mlp(model, criterion, data_loader, frequency_print = 1000):
     model.eval()
     criterion.eval()
 
@@ -138,7 +138,7 @@ def evaluate_mlp(model, criterion, postprocessors, data_loader, device, output_d
         metric_logger.update(**metric_dict)       
 
     # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
+    #metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}

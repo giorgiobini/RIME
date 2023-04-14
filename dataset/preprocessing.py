@@ -46,7 +46,7 @@ def obtain_df_pos_controls(cc):
     diz = {}
     idx = 0
     for _, row in cc.iterrows():
-        controlled_gene = row.controlled
+        controlled_gene = row.controlled # controlled è il positivo
         control_gene = row.controls
         d_neg = ast.literal_eval(row.couples_negative)
         d_pos = ast.literal_eval(row.couples_rr_ctrlled)
@@ -57,8 +57,10 @@ def obtain_df_pos_controls(cc):
             first_gene, second_gene = rgx.group(1), rgx.group(2)
             gene_to_search = second_gene if first_gene == controlled_gene else first_gene
             negative_pair =  get_couple_id(control_gene, gene_to_search)
-            assert negative_pair in negatives
-            diz[idx] = {'positive': pair, 'negative':negative_pair}
+            if negative_pair in negatives:
+                diz[idx] = {'positive': pair, 'negative':negative_pair}
+            else:
+                diz[idx] = {'positive': pair, 'negative':np.nan}
             idx+=1
         
     df_pairs = pd.DataFrame.from_dict(diz, 'index')
@@ -75,7 +77,9 @@ def swap_genes_if_needed(df):
     df.loc[where, ['gene_type1', 'gene_type2']] = (df.loc[where, ['gene_type2', 'gene_type1']].values)
     df.loc[where, ['cdna_1', 'cdna_2']] = (df.loc[where, ['cdna_2', 'cdna_1']].values)
     df = df.drop('need_to_swap', axis = 1)
-    assert df.drop_duplicates().shape[0] == original_dim 
+    df = df.drop_duplicates().reset_index(drop = True)
+    n_duplicates = original_dim - df.shape[0] 
+    print(f"{n_duplicates} interactions were duplicated (the genes were swopped, now they have a unique couples_id so I can see only now that they are duplicated)")
     return df
 
 def create_features(df):
@@ -108,6 +112,40 @@ def create_boxes_xywh(row):
     #     assert False
     
     return pd.Series([x, y, w, h])
+
+#  - - - - - - - - - - - - - - Create fake coordinates for negatives - - - - - - - - - - - - - - - 
+
+def create_fake_coord_neg(x, df_coord, df_pairs_full, df_int):
+    g1 = x.gene1
+    g2 = x.gene2
+    s1 = df_coord[df_coord.gene == g1].sample(1).iloc[0]
+    s2 = df_coord[df_coord.gene == g2].sample(1).iloc[0]
+    
+    pos = df_pairs_full[df_pairs_full.negative == x.couples].sample(1).iloc[0] #dovrebbe essere 1 ma non sono sicuro (e possibile piu di una? dovrei ragionarci su con l assert di prima), nel dubbio campiono.
+    p1, p2 = pos.positive.split('_')
+    
+    interaction_coords = df_int[df_int.couples == pos.positive].sample(1).iloc[0] #puo essere piu di una, se ho piu di una regione di interzione
+    
+    if g1 == p1:
+        x1, w = interaction_coords.x1, interaction_coords.w
+        y1, h = s2.c1, s2.l
+        
+    elif g1 == p2:
+        x1, w = interaction_coords.y1, interaction_coords.h
+        y1, h = s2.c1, s2.l
+        
+    elif g2 == p1:
+        x1, w = s1.c1, s1.l
+        y1, h = interaction_coords.x1, interaction_coords.w
+        
+    elif g2 == p2:
+        x1, w = s1.c1, s1.l
+        y1, h = interaction_coords.y1, interaction_coords.h
+        
+    else:
+        raise NotImplementedError
+    
+    return x1, y1, w, h
 
 #  - - - - - - - - - - - - - - Clean bounding boxes of df interactions - - - - - - - - - - - - - - 
 
@@ -148,7 +186,7 @@ def clean_bounding_boxes(list_bboxes):
             else:
                 new_list_of_boxes.append(list_bboxes[group_idx[0]])
         return new_list_of_boxes
-        
+
 class IndexNode(object):
     """
     credits: https://breakingcode.wordpress.com/2013/04/08/finding-connected-components-in-a-graph/

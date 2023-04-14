@@ -19,14 +19,13 @@ class MLP(nn.Module):
             self.hidden_layers.append(nn.Linear(hidden_sizes[i], hidden_sizes[i+1]))
         
         # Define the output layer
-        self.output_layer = nn.Linear(hidden_sizes[-1], 1)
+        self.output_layer = nn.Linear(hidden_sizes[-1], 2)
         
         # Define the activation functions
         self.activation_functions = nn.ModuleList()
         self.activation_functions.append(nn.Tanh())
-        for i in range(num_hidden_layers):
+        for i in range(num_hidden_layers + 1):
             self.activation_functions.append(nn.ReLU())
-        self.activation_functions.append(nn.Sigmoid())
         
         # Define the dropout layers
         self.dropout_layers = nn.ModuleList()

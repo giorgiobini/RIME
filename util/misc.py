@@ -13,7 +13,6 @@ from pathlib import Path
 import torch
 import torch.distributed as dist
 from torch import Tensor
-from .encoding_sequences import dot2onehot, prepare_sequence_for_DNABERT
 
 # needed due to empty tensor bug in pytorch and torchvision 0.5
 import torchvision

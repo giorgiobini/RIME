@@ -72,8 +72,8 @@ Run these scripts from the src directory in the following order:
 - preprocess_adri_data.ipynb
 - train_test_val.ipynb
 - data_augmentation.ipynb (to test if valentino classes work) 
-- Decide_hyperparameters_dataloader.ipynb (to decide the hyperparameters before creating the dataset)
-- download_nt_embeddings.ipynb
+- Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets)
+- download_embeddings.py
 - train_binary_cl.py
 
 ## 4. Inference

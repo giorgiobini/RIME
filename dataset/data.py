@@ -23,9 +23,8 @@ from torch.utils.data import Dataset, random_split
 from tqdm import tqdm
 from matplotlib.patches import Rectangle
 
-ROOT_DIR = os.path.dirname(os.path.abspath('.'))
-
-MAX_RNA_SIZE = 5989
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import ROOT_DIR, MAX_RNA_SIZE
 
 AugmentSpec = Mapping[str, Any]
 Interaction = Mapping[str, Any]

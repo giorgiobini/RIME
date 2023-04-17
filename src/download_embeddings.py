@@ -115,28 +115,37 @@ def main(args):
         labels = list(meta[slices[i]:slices[i+1]].interacting.values.astype(int))
         ids = list(meta[slices[i]:slices[i+1]].id_sample.values)
 
-        sequences1 = list(meta_slice.cdna1.values)
-        outs1, tokens1 = infer(sequences1, forward_fn, tokenizer, parameters, random_key)
+        try:
+            sequences1 = list(meta_slice.cdna1.values)
+            outs1, tokens1 = infer(sequences1, forward_fn, tokenizer, parameters, random_key)
 
-        sequences2 = list(meta_slice.cdna2.values)
-        outs2, tokens2 = infer(sequences2, forward_fn, tokenizer, parameters, random_key)
+            sequences2 = list(meta_slice.cdna2.values)
+            outs2, tokens2 = infer(sequences2, forward_fn, tokenizer, parameters, random_key)
 
-        for layer in embeddings_layers_to_save:
-            layer_folder = os.path.join(k_dir, str(layer))
-            if not os.path.exists(layer_folder):
-                os.makedirs(layer_folder)
+            for layer in embeddings_layers_to_save:
+                layer_folder = os.path.join(k_dir, str(layer))
+                if not os.path.exists(layer_folder):
+                    os.makedirs(layer_folder)
 
-            mean_embeddings1 = calculate_grouped_mean_embeddings(outs1, layer, tokens1, tokenizer, k) #shape is (batch_size, 2560)
-            mean_embeddings2 = calculate_grouped_mean_embeddings(outs2, layer, tokens2, tokenizer, k) #shape is (batch_size, 2560)
+                mean_embeddings1 = calculate_grouped_mean_embeddings(outs1, layer, tokens1, tokenizer, k) #shape is (batch_size, 2560)
+                mean_embeddings2 = calculate_grouped_mean_embeddings(outs2, layer, tokens2, tokenizer, k) #shape is (batch_size, 2560)
 
-            #concatenate the two embeddings (check if I am doing this properly, with the rigth axis)
-            embeddings = np.concatenate((mean_embeddings1, mean_embeddings2), axis=1) #shape is (2*batch_size, 5120)
+                #concatenate the two embeddings (check if I am doing this properly, with the rigth axis)
+                embeddings = np.concatenate((mean_embeddings1, mean_embeddings2), axis=1) #shape is (2*batch_size, 5120)
 
-            #save the embeddings
-            save_data_to_folder(embeddings, labels, ids, os.path.join(layer_folder, set_data))
+                #save the embeddings
+                save_data_to_folder(embeddings, labels, ids, os.path.join(layer_folder, set_data))
 
-        del outs1
-        del outs2
+            del outs1
+            del outs2
+        except:
+            with open(os.path.join(metadata_dir, f"excluded_{set_data}.txt"), 'a') as f:
+                for idx in ids:
+                    f.write(str(idx) + '\n')
+
+        with open(os.path.join(metadata_dir, f"done_{set_data}.txt"), 'a') as f:
+            for idx in ids:
+                f.write(str(idx) + '\n')
 
         if i%190 == 0:
             perc = np.round(i/len(slices) * 100, 2)

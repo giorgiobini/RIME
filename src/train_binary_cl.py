@@ -16,6 +16,15 @@ import util.misc as utils
 import json
 from torch.utils.data import Dataset, DataLoader
 
+import torch
+from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import WeightedRandomSampler
+import numpy as np
+import os
+import sys
+sys.path.insert(0, '..')
+from config import *
+
 class MeanEmbDataset(Dataset):
     def __init__(self, folder_path):
         self.folder_path = folder_path
@@ -31,10 +40,47 @@ class MeanEmbDataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
+    def shuffle_vectors(self, sample):
+        # data augmentation
+        # Split the concatenated sample into two vectors of size (2560,) 
+        vec1, vec2 = np.split(sample, 2)
+        # Shuffle the order of the two vectors randomly
+        if np.random.rand() < 0.5:
+            return np.concatenate([vec1, vec2])
+        else:
+            return np.concatenate([vec2, vec1])
+
     def __getitem__(self, idx):
         sample = self.samples[idx]
+        sample = self.shuffle_vectors(sample)  # Shuffle the order of the two feature vectors
         label = self.labels[idx]
         return torch.from_numpy(sample).float(), label
+
+def create_data_loader_training(folder_path, batch_size, num_workers=0):
+    dataset = MeanEmbDataset(folder_path)
+
+    # count the number of samples for each class
+    class_sample_count = [0, 0]
+    for label in dataset.labels:
+        class_sample_count[label] += 1
+    
+    num_samples = sum(class_sample_count)
+    class_weights = [num_samples/class_sample_count[i] for i in range(len(class_sample_count))]
+    weights = [class_weights[dataset.labels[i]] for i in range(int(num_samples))]
+
+    # create a weighted sampler to sample the data
+    sampler = WeightedRandomSampler(torch.DoubleTensor(weights), int(num_samples))
+
+    # create a data loader with the weighted sampler
+    data_loader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, drop_last=True, num_workers = num_workers)
+    return data_loader
+
+def create_data_loader_test(folder_path, batch_size, shuffle=False, num_workers=0):
+    dataset = MeanEmbDataset(folder_path)
+    
+    # create a data loader with the default sampler
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=num_workers)
+    return data_loader
 
 
 def get_args_parser():
@@ -85,17 +131,11 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
     
-    dataset_train = MeanEmbDataset(os.path.join(args.layer_folder, 'training'))
-    dataset_val = MeanEmbDataset(os.path.join(args.layer_folder, 'val'))
+    folder_training = os.path.join(args.layer_folder, 'training')
+    folder_val = os.path.join(args.layer_folder, 'val')
+    data_loader_train = create_data_loader_training(folder_training, args.batch_siz, num_workers=args.num_workers)
+    data_loader_test = create_data_loader_test(folder_val, args.batch_siz, True, num_workers=args.num_workers)
 
-    sampler_train = torch.utils.data.RandomSampler(dataset_train)
-    sampler_val = torch.utils.data.SequentialSampler(dataset_val)
-
-    # batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=False)
-    # data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train, num_workers=args.num_workers)
-    data_loader_train = DataLoader(dataset_train,  args.batch_size, sampler=sampler_train,  drop_last=False, num_workers=args.num_workers)
-    data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val, drop_last=False, num_workers=args.num_workers)
-        
     device = torch.device(args.device)
     model = build_model(args)
     model.to(device)

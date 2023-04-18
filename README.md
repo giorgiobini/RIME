@@ -47,6 +47,7 @@ git clone https://github.com/instadeepai/nucleotide-transformer.git
 mv nucleotide-transformer nt
 mv nt/* .
 rm -r nt
+cp mypretrained.py nucleotide_transformer/.
 pip install .
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ``` 

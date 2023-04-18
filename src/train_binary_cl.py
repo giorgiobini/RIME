@@ -91,7 +91,7 @@ def get_args_parser():
     parser.add_argument('--epochs', default=50, type=int)
 
     # * Model
-    parser.add_argument('--num_hidden_layers', default=1, type=int,
+    parser.add_argument('--num_hidden_layers', default=5, type=int,
                         help="Number of hidden layers in the MLP")
     parser.add_argument('--dropout_prob', default=0.2, type=float,
                         help="Dropout applied in the model")
@@ -101,7 +101,7 @@ def get_args_parser():
                         help='device to use for training / testing') # originally was 'cuda'
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=10, type=int)
-    parser.add_argument('--embedding_layer', default='', 
+    parser.add_argument('--embedding_layer', default='22', 
                         help='Which is the embedding layer you cutted the NT model')
     
     # training parameters
@@ -210,22 +210,13 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python train_binary_cl.py &> train_binary_cl.out &
-    #nohup python train_binary_cl.py --drop_secondary_structure=true &> train_binary_cl.out &
-
-    ROOT_DIR = os.path.dirname(os.path.abspath('.'))
-    original_files_dir = os.path.join(ROOT_DIR, 'dataset', 'original_files')
-    processed_files_dir = os.path.join(ROOT_DIR, 'dataset', 'processed_files')
-    rna_rna_files_dir = os.path.join(ROOT_DIR, 'dataset', 'rna_rna_pairs')
-    nt_data_dir = os.path.join(processed_files_dir, "nt_data")
-    embedding_dir = os.path.join(nt_data_dir, "embeddings")
-
+    
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()
     
     layer = str(args.embedding_layer)
     args.layer_folder = os.path.join(embedding_dir, layer)
-    args.input_size = 2560 #input size depends on the layer you cut? or the embedding dim is fixed?
-    folder_name = layer + '_' + str(args.num_hidden_layers)
+    folder_name = f'NTlayer{layer}_hiddenlayers{args.num_hidden_layers}'
     args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'nt', folder_name)
     args.dataset_path = os.path.join(ROOT_DIR, 'dataset')
     

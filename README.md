@@ -22,7 +22,7 @@ conda activate rnarna
 
 (Optional)
 ```
-conda install -c conda-forge jupyterlab
+conda install -c conda-forge jupyterlab -y
 ```
 
 #### 1.3 Install the package and other requirements
@@ -32,17 +32,21 @@ conda install -c conda-forge jupyterlab
 (Required)
 
 ```
-conda install pandas=1.5.3
-conda install pytorch torchvision -c pytorch
-conda install -c anaconda scikit-learn=1.2.2
-conda install -c anaconda seaborn=0.12.2
-conda install -c conda-forge matplotlib=3.7.1
-conda install -c conda-forge matplotlib-venn
-conda install -c conda-forge tqdm=4.65.0
-conda install -c conda-forge ipywidgets=8.0.4
-conda install -c conda-forge biopython=1.81
+conda install pandas=1.5.3 -y
+conda install pytorch torchvision -c pytorch -y
+conda install -c anaconda scikit-learn=1.2.2 -y
+conda install -c anaconda seaborn=0.12.2 -y
+conda install -c conda-forge matplotlib=3.7.1 -y
+conda install -c conda-forge matplotlib-venn -y
+conda install -c conda-forge tqdm=4.65.0 -y
+conda install -c conda-forge ipywidgets=8.0.4 -y
+conda install -c conda-forge biopython=1.81 -y
 pip install StrEnum==0.4.8
 cd NT_dependencies
+git clone https://github.com/instadeepai/nucleotide-transformer.git
+mv nucleotide-transformer nt
+mv nt/* .
+rm -r nt
 pip install .
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ``` 

@@ -80,6 +80,7 @@ Run these scripts from the src directory in the following order:
 - Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets)
 - download_embeddings.py
 - nohup python download_embeddings.py --set_data val --batch_size 20 &> embeddings_val.out &
+- nohup python download_embeddings.py --set_data test --batch_size 25 &> embeddings_test.out &
 - train_binary_cl.py
 
 ## 4. Inference

@@ -690,7 +690,7 @@ class EasyNegAugment(AugmentPolicy):
 class HardNegAugment(AugmentPolicy):
 
     _NUM_TRIES: int = (
-        100  # 100 tries should be enough given the sparsity of interactions...
+        150  # 150 tries should be enough given the sparsity of interactions...
     )
 
     def __init__(
@@ -755,8 +755,8 @@ class HardNegAugment(AugmentPolicy):
             ] = 1
 
         for _ in range(HardNegAugment._NUM_TRIES):
-            x1 = np.random.randint(low=0, high=gene1_length)
-            y1 = np.random.randint(low=0, high=gene2_length)
+            x1 = np.random.randint(low=0, high=gene1_length-target_width)
+            y1 = np.random.randint(low=0, high=gene2_length-target_height)
 
             try:
                 sample_interaction: torch.Tensor = full_matrix[

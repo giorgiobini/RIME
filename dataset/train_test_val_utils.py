@@ -43,8 +43,10 @@ def check_interruption(n_already_sampled, n_total, percentage_training, toleranc
     return interrupt
 
 def sample_gene(list_of_genes):
+    #random gene sampling
     random.shuffle(list_of_genes)
     return list_of_genes[0], list_of_genes[1:]
+
 
 def sample_one_gene(df, gene_sampled):
     condition = (df.gene1 == gene_sampled)|(df.gene2 == gene_sampled)|\
@@ -52,7 +54,7 @@ def sample_one_gene(df, gene_sampled):
     return list(set(df[condition].positive)), df[~condition]
     
 
-def train_test_split_from_df_pairs(df_subset, percentage_training = 0.7, seed = 123): 
+def train_test_split_from_df_pairs(df_subset, percentage_training = 0.7, n_randoms=10000000000, seed = 123): 
     random.seed(seed)
     percentage_test = 1-percentage_training
     all_possible_pairs = set(df_subset.positive)

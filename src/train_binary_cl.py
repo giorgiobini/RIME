@@ -26,8 +26,9 @@ sys.path.insert(0, '..')
 from config import *
 
 class MeanEmbDataset(Dataset):
-    def __init__(self, folder_path):
+    def __init__(self, folder_path, augment):
         self.folder_path = folder_path
+        self.augment = augment
         self.samples = []
         self.labels = []
         for class_label in ['class_0', 'class_1']:
@@ -52,12 +53,13 @@ class MeanEmbDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
-        sample = self.shuffle_vectors(sample)  # Shuffle the order of the two feature vectors
+        if self.augment:
+            sample = self.shuffle_vectors(sample)  # Shuffle the order of the two feature vectors
         label = self.labels[idx]
         return torch.from_numpy(sample).float(), label
 
 def create_data_loader_training(folder_path, batch_size, num_workers=0):
-    dataset = MeanEmbDataset(folder_path)
+    dataset = MeanEmbDataset(folder_path, True)
 
     # count the number of samples for each class
     class_sample_count = [0, 0]
@@ -76,7 +78,7 @@ def create_data_loader_training(folder_path, batch_size, num_workers=0):
     return data_loader
 
 def create_data_loader_test(folder_path, batch_size, shuffle=False, num_workers=0):
-    dataset = MeanEmbDataset(folder_path)
+    dataset = MeanEmbDataset(folder_path, False)
     
     # create a data loader with the default sampler
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=num_workers)
@@ -86,30 +88,34 @@ def create_data_loader_test(folder_path, batch_size, shuffle=False, num_workers=
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
-    parser.add_argument('--lr', default=5e-5, type=float)
-    parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--epochs', default=50, type=int)
+    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--batch_size', default=128, type=int)
+    parser.add_argument('--epochs', default=6000, type=int)
 
     # * Model
-    parser.add_argument('--num_hidden_layers', default=5, type=int,
+    parser.add_argument('--num_hidden_layers', default=2, type=int,
                         help="Number of hidden layers in the MLP")
-    parser.add_argument('--dropout_prob', default=0.2, type=float,
+    parser.add_argument('--dividing_factor', default=100, type=int,
+                        help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
+    parser.add_argument('--dropout_prob', default=0.1, type=float,
                         help="Dropout applied in the model")
 
     # dataset parameters
-    parser.add_argument('--device', default='cuda:1',
+    parser.add_argument('--device', default='cuda:0',
                         help='device to use for training / testing') # originally was 'cuda'
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--embedding_layer', default='22', 
                         help='Which is the embedding layer you cutted the NT model')
+    parser.add_argument('--k', default='999', 
+                    help='k is the k-group based parameters. 999 means you take the mean of the whole embedding sequence.')
     
     # training parameters
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--n_epochs_early_stopping', default=10)
+    parser.add_argument('--n_epochs_early_stopping', default=3000)
     return parser
 
 def seed_worker(worker_id):
@@ -119,7 +125,7 @@ def seed_worker(worker_id):
     torch.manual_seed(worker_seed)
 
 def main(args):
-    seed_worker(123)
+    seed_worker(4567)
 
     #Se il data loader non funziona leva il commento
     #torch.multiprocessing.set_sharing_strategy('file_system')
@@ -133,21 +139,18 @@ def main(args):
     
     folder_training = os.path.join(args.layer_folder, 'training')
     folder_val = os.path.join(args.layer_folder, 'val')
-    data_loader_train = create_data_loader_training(folder_training, args.batch_siz, num_workers=args.num_workers)
-    data_loader_test = create_data_loader_test(folder_val, args.batch_siz, True, num_workers=args.num_workers)
+    data_loader_train = create_data_loader_training(folder_training, args.batch_size, num_workers=args.num_workers)
+    data_loader_val = create_data_loader_test(folder_val, args.batch_size, True, num_workers=args.num_workers)
 
     device = torch.device(args.device)
     model = build_model(args)
     model.to(device)
 
-    model_without_ddp = model
-
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)
     
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr,
-                                  weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     
     if args.resume:
         if args.resume.startswith('https'):
@@ -155,7 +158,7 @@ def main(args):
                 args.resume, map_location='cpu', check_hash=True)
         else:
             checkpoint = torch.load(args.resume, map_location='cpu')
-        model_without_ddp.load_state_dict(checkpoint['model'])
+        model.load_state_dict(checkpoint['model'])
         if not args.eval and 'optimizer' in checkpoint and 'epoch' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
@@ -171,7 +174,7 @@ def main(args):
             
         train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch)
     
-        test_stats = evaluate(model, criterion, data_loader_val)
+        test_stats = evaluate(model, criterion, data_loader_val, device)
             
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'test_{k}': v for k, v in test_stats.items()},
@@ -187,7 +190,7 @@ def main(args):
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 100 epochs
-            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 100 == 0:
+            if (epoch + 1) % 100 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
                 
             if best_model_epoch == epoch:
@@ -195,7 +198,7 @@ def main(args):
                 
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
-                    'model': model_without_ddp.state_dict(),
+                    'model': model.state_dict(),
                     'optimizer': optimizer.state_dict(),
                     'epoch': epoch,
                     'args': args,
@@ -215,8 +218,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     layer = str(args.embedding_layer)
-    args.layer_folder = os.path.join(embedding_dir, layer)
-    folder_name = f'NTlayer{layer}_hiddenlayers{args.num_hidden_layers}'
+    args.layer_folder = os.path.join(embedding_dir, args.k, layer)
+    folder_name = f'NTlayer{layer}_dividing_factor{args.dividing_factor}_hiddenlayers{args.num_hidden_layers}'
     args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'nt', folder_name)
     args.dataset_path = os.path.join(ROOT_DIR, 'dataset')
     

@@ -11,6 +11,7 @@ from . import misc as utils
 import numpy as np
 
 
+
 def train_one_epoch_binary_cl(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, max_norm: float = 0, frequency_print: int = 500): #frequency_print: int = 1000
@@ -94,13 +95,15 @@ def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
     model.train()
     criterion.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    #metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     
     for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
+        inputs=inputs.to(device)
+        labels=labels.to(device)
         # Forward pass
         outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        loss = torch.nn.functional.cross_entropy(outputs, labels) #loss = criterion(outputs, labels)
 
         # Backward pass and optimization
         optimizer.zero_grad()
@@ -120,7 +123,7 @@ def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
 
 
 @torch.no_grad()
-def evaluate_mlp(model, criterion, data_loader, frequency_print = 1000):
+def evaluate_mlp(model, criterion, data_loader, device, frequency_print = 1000):
     model.eval()
     criterion.eval()
 
@@ -129,6 +132,8 @@ def evaluate_mlp(model, criterion, data_loader, frequency_print = 1000):
 
     for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
         # Forward pass
+        inputs=inputs.to(device)
+        labels=labels.to(device)
         outputs = model(inputs)
         loss = criterion(outputs, labels)
         
@@ -152,7 +157,7 @@ def calc_metrics(predictions, ground_truth, beta = 2):
     add true positive rate, ec..
     """
 
-    pred = (predictions > 0.5)
+    pred = (torch.argmax(predictions, dim=1) == 1)
     label = (ground_truth == 1)
     TP = (pred & label).sum().float()
     TN = ((~pred) & (~label)).sum().float()

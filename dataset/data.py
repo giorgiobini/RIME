@@ -761,8 +761,8 @@ class HardNegAugment(AugmentPolicy):
 
             try:
                 if (_ > HardNegAugment._NUM_TRIES/2)&(reduced == False):
-                    target_width = target_width//2 #it should be easier to find under these conditions
-                    target_height = target_height//2 #it should be easier to find under these conditions
+                    target_width = target_width//5 #it should be easier to find under these conditions
+                    target_height = target_height//5 #it should be easier to find under these conditions
                     reduced = True
                     
                 sample_interaction: torch.Tensor = full_matrix[

@@ -1,0 +1,61 @@
+nohup: ignoring input
+/home/gbini/miniconda3/envs/rnarna/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/data01/gbini/miniconda3/envs/rnarna/lib/python3.10/site-packages/torchvision/image.so: undefined symbol: _ZN5torch3jit17parseSchemaOrNameERKSs'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+We have 80493 pairs interacting (they can have multiple interactions) 
+
+We have 160145 pairs not interacting 
+
+972 interactions were duplicated (the genes were swopped, now they have a unique couples_id so I can see only now that they are duplicated)
+  0%|          | 0/80493 [00:00<?, ?it/s]
+#interazioni prima 82642, #interazioni dopo: 81754
+Total time create_fake_coord_neg: 106.53023744821549 minutes
+Final dataframe exported, now I do checks
+1.69% in 0.6752159754435222 minutes
+1.8% in 0.7204717040061951 minutes
+2.04% in 0.8214585185050964 minutes
+2.35% in 0.9470636049906412 minutes
+3.41% in 1.3740365266799928 minutes
+3.43% in 1.3843500057856242 minutes
+5.06% in 2.043424745400747 minutes
+5.78% in 2.327102768421173 minutes
+7.0% in 2.81216356754303 minutes
+8.67% in 3.4810083786646526 minutes
+10.14% in 4.067314604918162 minutes
+12.73% in 5.111737410227458 minutes
+17.02% in 6.845611278216044 minutes
+17.02% in 6.846049555142721 minutes
+18.86% in 7.594994954268137 minutes
+19.49% in 7.8459475119908655 minutes
+20.4% in 8.208476368586222 minutes
+24.22% in 9.72330028216044 minutes
+28.45% in 11.403635597229004 minutes
+31.01% in 12.420402665932974 minutes
+31.72% in 12.70458344221115 minutes
+33.12% in 13.255240774154663 minutes
+36.49% in 14.575716817378998 minutes
+39.39% in 15.734329450130463 minutes
+40.74% in 16.27455849647522 minutes
+41.2% in 16.46196713844935 minutes
+47.81% in 19.102135117848714 minutes
+48.13% in 19.229166185855867 minutes
+50.07% in 19.99248254696528 minutes
+50.58% in 20.20066969394684 minutes
+57.96% in 23.17850460211436 minutes
+60.11% in 24.0451180656751 minutes
+62.39% in 24.96818590561549 minutes
+64.36% in 25.753895684083304 minutes
+64.39% in 25.764666616916656 minutes
+70.58% in 28.14860190153122 minutes
+71.77% in 28.60465697447459 minutes
+71.84% in 28.63305877049764 minutes
+75.16% in 29.908117711544037 minutes
+79.49% in 31.55848376353582 minutes
+84.85% in 33.6874300122261 minutes
+87.01% in 34.59616473118464 minutes
+90.56% in 36.115858403841656 minutes
+93.15% in 37.194519591331485 minutes
+93.77% in 37.43931421438853 minutes
+96.13% in 38.4046103199323 minutes
+96.46% in 38.537813087304436 minutes
+Total time to check: 39.94392114877701 minutes
+Total time: 157.42751677036284 minutes

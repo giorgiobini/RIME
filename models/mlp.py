@@ -11,6 +11,8 @@ class MLP(nn.Module):
     def __init__(self, input_size, dividing_factor, num_hidden_layers, dropout_prob):
         super(MLP, self).__init__()
         
+        layer_norm = nn.LayerNorm(input_size)
+        
         num_layers = num_hidden_layers+2 #input and output layer
 
         first_layer_size = int(input_size/dividing_factor)
@@ -18,7 +20,7 @@ class MLP(nn.Module):
         hidden_sizes = list(np.linspace(2, first_layer_size, num_layers, dtype = np.int64)[1:][::-1])
         
         # Define the input layer
-        self.input_layer = nn.Linear(input_size, first_layer_size)
+        self.input_layer = nn.Sequential(layer_norm, nn.Linear(input_size, first_layer_size))
         
         # Define the hidden layers
         self.hidden_layers = nn.ModuleList()

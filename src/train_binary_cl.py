@@ -90,14 +90,14 @@ def get_args_parser():
     
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--epochs', default=3000, type=int)
+    parser.add_argument('--epochs', default=2000, type=int)
 
     # * Model
-    parser.add_argument('--num_hidden_layers', default=3, type=int,
+    parser.add_argument('--num_hidden_layers', default=1, type=int,
                         help="Number of hidden layers in the MLP")
-    parser.add_argument('--dividing_factor', default=80, type=int,
+    parser.add_argument('--dividing_factor', default=20, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--dropout_prob', default=0.3, type=float,
+    parser.add_argument('--dropout_prob', default=0.01, type=float,
                         help="Dropout applied in the model")
 
     # dataset parameters

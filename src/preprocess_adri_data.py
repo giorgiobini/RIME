@@ -53,6 +53,9 @@ def main():
     gene_info = pd.concat([gene_info1, gene_info2], axis = 0, ignore_index = True).drop_duplicates()
     #assert set(gene_info.gene_id) == set(df_genes.gene_id)
     df_genes = df_genes.merge(gene_info)
+    df_genes.UTR5 = df_genes.UTR5.apply(lambda x: int(x) if x!= '/' else np.nan)
+    df_genes.UTR3 = df_genes.UTR3.apply(lambda x: int(x) if x!= '/' else np.nan)
+    df_genes.CDS = df_genes.CDS.apply(lambda x: int(x) if x!= '/' else np.nan)
     df_genes.to_csv(os.path.join(processed_files_dir, 'df_genes.csv'), index = False)
     #clean int_or
     int_or = int_or.drop(['cdna_1', 'cdna_2'], axis = 1)
@@ -90,6 +93,11 @@ def main():
     df_int2 = df_int[['gene2', 'y1', 'h']].rename({'gene2':'gene', 'y1':'c1',  'h': 'l'}, axis = 1)
     df_coord = pd.concat([df_int1, df_int2], ignore_index = True)#.drop_duplicates().reset_index(drop = True)
     #df_coord may have duplicates. but this is something I want. If a gene appears more than once, I want it to be sampled according to its distribution.
+    df_coord = df_coord.merge(
+    df_genes.filter(['gene_id', 'UTR5', 'CDS', 'UTR3', 'protein_coding'], axis = 1).rename({'gene_id':'gene'}, axis = 1)
+)
+    df_coord['where_c1'] = df_coord.apply(utils.where_interacts, axis = 1)
+    
     assert set(df_neg.gene1).union(set(df_neg.gene2)) - set(df_coord.gene) == set()
     #65 min
     start_time = time.time()

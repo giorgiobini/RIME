@@ -753,12 +753,18 @@ class HardNegAugment(AugmentPolicy):
                 interaction_bbox.y1 : interaction_bbox.y2,
                 interaction_bbox.x1 : interaction_bbox.x2,
             ] = 1
-
+            
+        reduced = False
         for _ in range(HardNegAugment._NUM_TRIES):
-            x1 = np.random.randint(low=0, high=gene1_length-target_width)
-            y1 = np.random.randint(low=0, high=gene2_length-target_height)
+            x1 = np.random.randint(low=0, high=gene1_length - (target_width-1))
+            y1 = np.random.randint(low=0, high=gene2_length - (target_height-1))
 
             try:
+                if (_ > HardNegAugment._NUM_TRIES/2)&(reduced == False):
+                    target_width = target_width//2 #it should be easier to find under these conditions
+                    target_height = target_height//2 #it should be easier to find under these conditions
+                    reduced = True
+                    
                 sample_interaction: torch.Tensor = full_matrix[
                     y1 : y1 + target_height, x1 : x1 + target_width
                 ]
@@ -777,7 +783,7 @@ class HardNegAugment(AugmentPolicy):
             )
         else:
             raise RuntimeError(
-                f"Couldn't find a non-interacting region with {HardNegAugment._NUM_TRIES} tries"
+                f"Couldn't find a non-interacting region with {HardNegAugment._NUM_TRIES} tries for genes {gene1}, {gene2}, that interacts here {interaction_bbox}"
             )
 
 

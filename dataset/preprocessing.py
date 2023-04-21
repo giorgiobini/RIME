@@ -115,11 +115,25 @@ def create_boxes_xywh(row):
 
 #  - - - - - - - - - - - - - - Create fake coordinates for negatives - - - - - - - - - - - - - - - 
 
-def create_fake_coord_neg(x, df_coord, df_pairs_full, df_int):
+def where_interacts(x):
+    if x.protein_coding == False:
+        return 'all'
+    elif x.c1 <= x.UTR5:
+        return 'UTR5'
+    elif (x.c1 > x.UTR5) & (x.c1 <= x.CDS):
+        return 'CDS'
+    else:
+        return 'UTR3'
+
+def create_fake_coord_neg(x, df_coord, df_pairs_full, df_int, max_num_tries = 100):
     g1 = x.gene1
     g2 = x.gene2
-    s1 = df_coord[df_coord.gene == g1].sample(1).iloc[0]
-    s2 = df_coord[df_coord.gene == g2].sample(1).iloc[0]
+    for _ in range(max_num_tries):
+        s1 = df_coord[df_coord.gene == g1].sample(1).iloc[0]
+        s2 = df_coord[df_coord.gene == g2].sample(1).iloc[0]
+        if ((s1.where_c1 == 'CDS')&(s2.where_c1 == 'CDS')) == False:
+            break
+        #it can be CDS-CDS only if (s1.where_c1 == 'CDS')&(s2.where_c1 == 'CDS') after max_num_tries iterations
     
     pos = df_pairs_full[df_pairs_full.negative == x.couples].sample(1).iloc[0] #dovrebbe essere 1 ma non sono sicuro (e possibile piu di una? dovrei ragionarci su con l assert di prima), nel dubbio campiono.
     p1, p2 = pos.positive.split('_')

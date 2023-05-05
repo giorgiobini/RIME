@@ -19,7 +19,19 @@ def various_metrics(df_res, eps = 1e-6):
     npv = tn/(tn+fn + eps)
     return acc, prec, recall, f2, specificity, npv
 
-def obtain_list_of_metrics(df_res, n_conf):
+def remove_last_n_if_below_threshold(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, excluding_treshold):
+    N = 0
+    for i in range(len(percs_subset) - 1, -1, -1):
+        if percs_subset[i] < excluding_treshold:
+            N += 1
+        else:
+            break
+    
+    if N > 0:
+        for lst in [confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs]:
+            lst[:] = lst[:-N]
+
+def obtain_list_of_metrics(df_res, n_conf, excluding_treshold):
 
     confidence = []
     percs_subset = []
@@ -30,8 +42,7 @@ def obtain_list_of_metrics(df_res, n_conf):
     specificities = []
     npvs = []
 
-
-    for diff in np.linspace(0, 0.49, n_conf):
+    for diff in np.linspace(0, 0.49, n_conf): #0.49
         subset = df_res[(df_res['probability'] > 0.5+diff)|(df_res['probability'] < 0.5-diff)]
         N_subset = subset.shape[0]
         perc_N = N_subset/df_res.shape[0]
@@ -48,6 +59,8 @@ def obtain_list_of_metrics(df_res, n_conf):
         specificities.append(specificity)
         npvs.append(npv)
         
+    remove_last_n_if_below_threshold(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, excluding_treshold)
+    
     return confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs
 
 def plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, title, suptitle):
@@ -70,8 +83,8 @@ def plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s,
     plt.legend()
     plt.show()
     
-def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10):
-    confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs = obtain_list_of_metrics(df_res, n_conf)
+def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10, excluding_treshold = 0.01):
+    confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs = obtain_list_of_metrics(df_res, n_conf, excluding_treshold)
 
     perc = np.round(df_res.shape[0]/n_original_df*100, 2)
 
@@ -79,7 +92,6 @@ def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10):
     count0 = vc.loc[0] if 0 in vc.index else 0
     count1 = vc.loc[1] if 1 in vc.index else 0
     perc_0, perc_1 = np.round(count0/df_res.shape[0], 2), np.round(count1/df_res.shape[0], 2)
-    
     plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, title = title + f'({perc}% of the data)', suptitle = f'0% :{perc_0}, 1% :{perc_1}')
     
     

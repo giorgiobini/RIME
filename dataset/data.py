@@ -17,7 +17,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from plotly.graph_objs.layout import Shape
 from strenum import StrEnum
 from torch.utils.data import Dataset, random_split
 from tqdm import tqdm

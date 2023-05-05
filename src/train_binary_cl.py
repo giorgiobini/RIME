@@ -21,6 +21,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import WeightedRandomSampler
 import numpy as np
 import os
+import pickle
 import sys
 sys.path.insert(0, '..')
 from config import *
@@ -88,20 +89,20 @@ def create_data_loader_test(folder_path, batch_size, shuffle=False, num_workers=
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
-    parser.add_argument('--lr', default=1e-4, type=float)
-    parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--epochs', default=2000, type=int)
+    parser.add_argument('--lr', default=1e-6, type=float)
+    parser.add_argument('--batch_size', default=256, type=int)
+    parser.add_argument('--epochs', default=1000, type=int)
 
     # * Model
-    parser.add_argument('--num_hidden_layers', default=1, type=int,
+    parser.add_argument('--num_hidden_layers', default=2, type=int,
                         help="Number of hidden layers in the MLP")
     parser.add_argument('--dividing_factor', default=20, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--dropout_prob', default=0.01, type=float,
+    parser.add_argument('--dropout_prob', default=0.2, type=float,
                         help="Dropout applied in the model")
 
     # dataset parameters
-    parser.add_argument('--device', default='cuda:1',
+    parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing') # originally was 'cuda'
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=10, type=int)
@@ -115,7 +116,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--n_epochs_early_stopping', default=1000)
+    parser.add_argument('--n_epochs_early_stopping', default=100)
     return parser
 
 def seed_worker(worker_id):
@@ -130,9 +131,7 @@ def main(args):
     #Se il data loader non funziona leva il commento
     #torch.multiprocessing.set_sharing_strategy('file_system')
 
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-        output_dir = Path(args.output_dir)
+    output_dir = Path(args.output_dir)
 
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
@@ -222,5 +221,11 @@ if __name__ == '__main__':
     folder_name = f'NTlayer{layer}_dividing_factor{args.dividing_factor}_hiddenlayers{args.num_hidden_layers}'
     args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'nt', folder_name)
     args.dataset_path = os.path.join(ROOT_DIR, 'dataset')
+    
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Save the namespace of the args object to a file using pickle
+    with open(os.path.join(args.output_dir, 'args.pkl'), 'wb') as f:
+        pickle.dump(args.__dict__, f)
     
     main(args)

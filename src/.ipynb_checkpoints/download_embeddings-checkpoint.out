@@ -1,0 +1,54 @@
+nohup: ignoring input
+2023-05-17 10:27:05.240380: W external/xla/xla/stream_executor/cuda/cuda_dnn.cc:397] There was an error before creating cudnn handle: cudaErrorMemoryAllocation : out of memory
+2023-05-17 10:27:05.627232: E external/xla/xla/stream_executor/cuda/cuda_dnn.cc:429] Could not create cudnn handle: CUDNN_STATUS_NOT_INITIALIZED
+2023-05-17 10:27:05.627309: E external/xla/xla/stream_executor/cuda/cuda_dnn.cc:438] Possibly insufficient driver version: 525.89.2
+Traceback (most recent call last):
+  File "/data01/giorgio/RNARNA-NT/src/download_embeddings.py", line 13, in <module>
+    random_key = jax.random.PRNGKey(0)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/random.py", line 136, in PRNGKey
+    key = prng.seed_with_impl(impl, seed)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/prng.py", line 270, in seed_with_impl
+    return random_seed(seed, impl=impl)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/prng.py", line 561, in random_seed
+    return random_seed_p.bind(seeds_arr, impl=impl)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/core.py", line 360, in bind
+    return self.bind_with_trace(find_top_trace(args), args, params)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/core.py", line 363, in bind_with_trace
+    out = trace.process_primitive(self, map(trace.full_raise, args), params)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/core.py", line 817, in process_primitive
+    return primitive.impl(*tracers, **params)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/prng.py", line 573, in random_seed_impl
+    base_arr = random_seed_impl_base(seeds, impl=impl)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/prng.py", line 578, in random_seed_impl_base
+    return seed(seeds)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/prng.py", line 813, in threefry_seed
+    lax.shift_right_logical(seed, lax_internal._const(seed, 32)))
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/lax/lax.py", line 458, in shift_right_logical
+    return shift_right_logical_p.bind(x, y)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/core.py", line 360, in bind
+    return self.bind_with_trace(find_top_trace(args), args, params)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/core.py", line 363, in bind_with_trace
+    out = trace.process_primitive(self, map(trace.full_raise, args), params)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/core.py", line 817, in process_primitive
+    return primitive.impl(*tracers, **params)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/dispatch.py", line 117, in apply_primitive
+    compiled_fun = xla_primitive_callable(prim, *unsafe_map(arg_spec, args),
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/util.py", line 253, in wrapper
+    return cached(config._trace_context(), *args, **kwargs)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/util.py", line 246, in cached
+    return f(*args, **kwargs)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/dispatch.py", line 208, in xla_primitive_callable
+    compiled = _xla_callable_uncached(lu.wrap_init(prim_fun), prim.name,
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/dispatch.py", line 254, in _xla_callable_uncached
+    return computation.compile(_allow_propagation_to_outputs=allow_prop).unsafe_call
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/interpreters/pxla.py", line 2816, in compile
+    self._executable = UnloadedMeshExecutable.from_hlo(
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/interpreters/pxla.py", line 3028, in from_hlo
+    xla_executable = dispatch.compile_or_get_cached(
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/dispatch.py", line 526, in compile_or_get_cached
+    return backend_compile(backend, serialized_computation, compile_options,
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/profiler.py", line 314, in wrapper
+    return func(*args, **kwargs)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/jax/_src/dispatch.py", line 471, in backend_compile
+    return backend.compile(built_c, compile_options=options)
+jaxlib.xla_extension.XlaRuntimeError: FAILED_PRECONDITION: DNN library initialization failed. Look at the errors above for more details.

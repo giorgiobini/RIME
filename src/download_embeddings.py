@@ -16,35 +16,6 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
 
-def calculate_grouped_mean_embeddings(outs, layer, tokens, tokenizer, k):
-    # Get the embeddings for the specified layer
-    embeddings = outs[f"embeddings_{layer}"]
-    
-    # Remove the CLS token and paddings
-    embeddings = embeddings[:, 1:, :]
-    padding_mask = jnp.expand_dims(tokens[:, 1:] != tokenizer.pad_token_id, axis=-1)
-    masked_embeddings = embeddings * padding_mask
-    
-    # Calculate the number of groups
-    batch_size = masked_embeddings.shape[0]
-    seq_length = masked_embeddings.shape[1]
-    num_groups = seq_length // k
-    
-    # Reshape the embeddings to form groups
-    grouped_embeddings = jnp.reshape(masked_embeddings[:, :num_groups*k, :], (batch_size, num_groups, k, -1))
-    grouped_padding_mask = jnp.reshape(padding_mask[:, :num_groups*k, :], (batch_size, num_groups, k, -1))
-    
-    # Calculate the mean embeddings for each group
-    group_sum_embeddings = jnp.sum(grouped_embeddings, axis=2)
-    sequence_count_in_groups = grouped_padding_mask.sum(axis=2)
-    sequence_count_in_groups = jnp.where(sequence_count_in_groups == 0, 1, sequence_count_in_groups)  # to avoid division by zero
-    group_mean_embeddings = group_sum_embeddings / sequence_count_in_groups
-    
-    if k == 999:
-        group_mean_embeddings = group_mean_embeddings.squeeze()
-    
-    return group_mean_embeddings
-
 def infer(sequences, forward_fn, tokenizer, parameters, random_key):
     tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
     tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
@@ -53,45 +24,42 @@ def infer(sequences, forward_fn, tokenizer, parameters, random_key):
     outs = forward_fn.apply(parameters, random_key, tokens)
     return outs, tokens
 
-def save_data_to_folder(data, labels, ids, folder_path):
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    for i in range(len(data)):
-        sample = data[i]
-        label = labels[i]
-        id_sample = ids[i]
-        if label == 0:
-            class_folder = os.path.join(folder_path, 'class_0')
-        else:
-            class_folder = os.path.join(folder_path, 'class_1')
-        if not os.path.exists(class_folder):
-            os.makedirs(class_folder)
-        np.save(os.path.join(class_folder, f'{id_sample}.npy'), sample)
+def save_embeddings_from_batch(save_path, embeddings, padding_mask, ids):
+    batch_size = embeddings.shape[0]
+    
+    for i in range(batch_size):
+        sample_embeddings = embeddings[i] #(dim + n_padding_elements, 2560)
+        sample_padding_mask = padding_mask[i]
+
+        # Apply padding mask to remove padding elements
+        masked_embeddings = sample_embeddings[sample_padding_mask]  #(dim, 2560)
+        
+        np.save(os.path.join(save_path, f'{ids[i]}.npy'), masked_embeddings)
+        
+def create_masked_embeddings(outs, layer, tokens, tokenizer):
+    embeddings = outs[f'embeddings_{layer}']
+    
+    # Remove the CLS token and paddings
+    embeddings = embeddings[:, 1:, :]
+    padding_mask = tokens[:, 1:] != tokenizer.pad_token_id
+    
+    return embeddings, padding_mask
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set args', add_help=False)
-    parser.add_argument('--batch_size', default=13, type=int,
+    parser.add_argument('--batch_size', default=19, type=int,
                         help="Batch size for the NT model")
-    parser.add_argument('--k', default=999, type=int,
-                        help="Which is the group size for the embeddings. If k = 999 Then I will have 1 group with the mean embedding of the entire sequence.")
-    parser.add_argument('--set_data', default='training',
-                        help='Can be training val, test') # originally was 'cuda'
+    parser.add_argument('--embedding_layer', default='32',
+                        help="Which is the embedding layer you cutted the NT model")
     return parser
 
 def main(args):
-    set_data = args.set_data
-    assert set_data in ['training', 'val', 'test']
-    k = args.k
-    k_dir = os.path.join(embedding_dir, str(k))
-    if not os.path.exists(k_dir):
-        os.makedirs(k_dir)
-    batch_size = int(args.batch_size)
     
-    meta = pd.read_csv(os.path.join(metadata_dir, f'{set_data}.csv'))
-    embeddings_layers_to_save = (22, 30)
+    df = pd.read_csv(os.path.join(metadata_dir, 'embedding_query.csv'))
 
+    embeddings_layers_to_save = (int(args.embedding_layer),)
     model_name = '2B5_multi_species'
-
+    
     # Get pretrained model
     parameters, forward_fn, tokenizer, config = get_pretrained_model(
         model_name=model_name,
@@ -105,53 +73,42 @@ def main(args):
     forward_fn = hk.transform(forward_fn)
     print('Model loaded')
     
-    n_batch = int(meta.shape[0]/batch_size)
-    slices = np.linspace(0, meta.shape[0], n_batch, dtype = np.int64)
+    print(df.shape[0], 'sequences to download')
+    
+    n_batch = int(df.shape[0]/args.batch_size)
+    slices = np.linspace(0, df.shape[0], n_batch, dtype = np.int64)
     
     start_time = time.time()
     for i in range(len(slices)-1):
 
-        meta_slice = meta[slices[i]:slices[i+1]]
-        labels = list(meta[slices[i]:slices[i+1]].interacting.values.astype(int))
-        ids = list(meta[slices[i]:slices[i+1]].id_sample.values)
+        df_slice = df[slices[i]:slices[i+1]]
+        ids = list(df_slice.id_query.values)
+        sequences = list(df_slice.cdna.values)
 
         try:
-            sequences1 = list(meta_slice.cdna1.values)
-            outs1, tokens1 = infer(sequences1, forward_fn, tokenizer, parameters, random_key)
+            outs, tokens = infer(sequences, forward_fn, tokenizer, parameters, random_key)
+            embeddings, padding_mask = create_masked_embeddings(outs, args.embedding_layer, tokens, tokenizer)
+            del outs
+            save_embeddings_from_batch(save_path, embeddings, padding_mask, ids)
+            del embeddings
+            del padding_mask
 
-            sequences2 = list(meta_slice.cdna2.values)
-            outs2, tokens2 = infer(sequences2, forward_fn, tokenizer, parameters, random_key)
-
-            for layer in embeddings_layers_to_save:
-                layer_folder = os.path.join(k_dir, str(layer))
-                if not os.path.exists(layer_folder):
-                    os.makedirs(layer_folder)
-
-                mean_embeddings1 = calculate_grouped_mean_embeddings(outs1, layer, tokens1, tokenizer, k) #shape is (batch_size, 2560)
-                mean_embeddings2 = calculate_grouped_mean_embeddings(outs2, layer, tokens2, tokenizer, k) #shape is (batch_size, 2560)
-
-                #concatenate the two embeddings (check if I am doing this properly, with the rigth axis)
-                embeddings = np.concatenate((mean_embeddings1, mean_embeddings2), axis=1) #shape is (2*batch_size, 5120)
-
-                #save the embeddings
-                save_data_to_folder(embeddings, labels, ids, os.path.join(layer_folder, set_data))
-
-            del outs1
-            del outs2
+            with open(os.path.join(metadata_dir, f"done_{args.embedding_layer}.txt"), 'a') as f:
+                for idx in ids:
+                    f.write(str(idx) + '\n')
         except:
-            with open(os.path.join(metadata_dir, f"excluded_{set_data}.txt"), 'a') as f:
+            with open(os.path.join(metadata_dir, f"excluded_{args.embedding_layer}.txt"), 'a') as f:
                 for idx in ids:
                     f.write(str(idx) + '\n')
 
-        with open(os.path.join(metadata_dir, f"done_{set_data}.txt"), 'a') as f:
-            for idx in ids:
-                f.write(str(idx) + '\n')
-
-        if i%190 == 0:
+        if i%200 == 0:
             perc = np.round(i/len(slices) * 100, 2)
             print(f'{perc}% done in {(time.time()-start_time)/60} minutes')
     
-    print(f"Total time to process batch: {(time.time()-start_time)/60} minutes")
+    minutes = np.round((time.time()-start_time)/60, 2)
+    hours = np.round(minutes/60, 2)
+    days = np.round(hours/24, 2)
+    print(f"Total time to process batch: {minutes} minutes, {hours} hours, {days} days")
     
     
 if __name__ == '__main__':
@@ -160,5 +117,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Download NT Embeddings', parents=[get_args_parser()])
     args = parser.parse_args()
+    
+    save_path = os.path.join(embedding_dir, args.embedding_layer)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
     
     main(args)

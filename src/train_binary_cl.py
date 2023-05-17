@@ -91,10 +91,10 @@ def get_args_parser():
     
     parser.add_argument('--lr', default=1e-6, type=float)
     parser.add_argument('--batch_size', default=256, type=int)
-    parser.add_argument('--epochs', default=1000, type=int)
+    parser.add_argument('--epochs', default=2500, type=int)
 
     # * Model
-    parser.add_argument('--num_hidden_layers', default=2, type=int,
+    parser.add_argument('--num_hidden_layers', default=1, type=int,
                         help="Number of hidden layers in the MLP")
     parser.add_argument('--dividing_factor', default=20, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
@@ -116,7 +116,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--n_epochs_early_stopping', default=100)
+    parser.add_argument('--n_epochs_early_stopping', default=250)
     return parser
 
 def seed_worker(worker_id):

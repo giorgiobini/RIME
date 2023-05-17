@@ -59,11 +59,6 @@ We need the data to be structured as the example below.
 
 ```
 dataset
-├── original_files
-│   └── hub.table.paris.txt
-│   └── controls_controlled.hub.txt
-│   └── tx_regions.ens99.txt
-│   └── rise_paris_tr.new.mapped_interactions.tx_regions.txt
 │ 
 ├── annotation_files
 ├── processed_files
@@ -76,8 +71,6 @@ You can download the original_files folder from this link (put a link). If you d
 Skip this section if you only need inference.
 
 Run these scripts from the src directory in the following order:
-- preprocess_adri_data.ipynb
-- train_test_val.ipynb
 - data_augmentation.ipynb (to test if valentino classes work) 
 - Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets)
 - download_embeddings.py

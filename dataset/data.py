@@ -209,6 +209,13 @@ class AugmentPolicy:
         interacting = set(
             interaction["interacting"] for interaction in couple_interactions
         ) 
+        
+        if len(interacting) != 1:
+            print(interacting)
+            print(couple_interactions)
+            print(self.gene1)
+            print(self.gene2)
+        
         assert len(interacting) == 1
         if len(set.intersection(interacting, self.interacting)) == 0:
             return []
@@ -333,6 +340,7 @@ class EasyPosAugment(AugmentPolicy):
         # We can now crop each dimension separately.
         interaction_x1: int = int(interaction["x1"])
         interaction_x2: int = int(interaction_x1 + interaction["w"])
+        
         target_x1 = _compute_target(
             interaction_p1=interaction_x1,
             interaction_p2=interaction_x2,

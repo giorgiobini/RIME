@@ -3,10 +3,9 @@ from torch import nn
 import torch.nn.functional as F
 from util.contact_matrix import create_contact_matrix, create_contact_matrix_for_masks
 from util.misc import NestedTensor
-from .bert import build_bert
 from .backbone import build_backbone
 from .transformer import build_transformer
-from .projection_module import build_projection_module
+from .projection_module import build_projection_module, build_projection_module_nt
 from .image_classifier import build_image_cl
 
 class BinaryClassifierRNARNA(nn.Module):
@@ -86,7 +85,72 @@ class BinaryClassifierRNARNA(nn.Module):
     # method for the gradient extraction
     def get_activations_gradient(self):
         return self.image_cl.binary_class_module.gradients
+    
+class BinaryClassifierNT(nn.Module):
+    """ This connects the NT module with the projection_module"""
+    def __init__(self, nt_projection_module, image_cl):
+        """
 
+        """
+        super().__init__()
+        self.nt_projection_module = nt_projection_module
+        self.image_cl = image_cl
+        
+    def create_contact_matrix(self, rna1, rna2):
+        
+        contact_matrix_masks = create_contact_matrix_for_masks(rna1.mask, rna2.mask) 
+        
+        #shapes rna1.tensors, rna2.tensors -> torch.Size([b, 2560, len_rna1]) torch.Size([b, 2560, len_rna2])
+        
+        rna1 = self.nt_projection_module(rna1.tensors)
+        rna2 = self.nt_projection_module(rna2.tensors)
+        #shapes rna1, rna2 -> torch.Size([b, d, len_rna1]) torch.Size([b, d, len_rna2])
+
+        contact_matrix = create_contact_matrix(rna1, rna2), #shape create_contact_matrix(rna1, rna2) -> torch.Size([b, 2d,  len_rna1,  len_rna2])
+        
+        contact_matrix = NestedTensor(
+            create_contact_matrix(rna1, rna2), 
+            contact_matrix_masks
+        )
+        
+        return contact_matrix
+    
+    
+#      def create_contact_matrix(self, rna1, rna2):
+#         # WITHOUT USING NESTED TESOR
+        
+#         #shapes rna1, rna2 -> torch.Size([b, 2560, len_rna1]) torch.Size([b, 2560, len_rna2])
+        
+#         rna1 = self.nt_projection_module(rna1)
+#         rna2 = self.nt_projection_module(rna2)
+#         #shapes rna1, rna2 -> torch.Size([b, d, len_rna1]) torch.Size([b, d, len_rna2])
+
+#         contact_matrix = create_contact_matrix(rna1, rna2), #shape create_contact_matrix(rna1, rna2) -> torch.Size([b, 2d,  len_rna1,  len_rna2])
+        
+#         return contact_matrix
+        
+    def forward(self, rna1, rna2):
+        """ 
+        """
+        
+        contact_matrix = self.create_contact_matrix(rna1, rna2)
+        
+        out = self.image_cl.forward(contact_matrix)
+        return out
+    
+    # method for the activation exctraction
+    def get_activations(self, rna1, rna2):
+        X = self.create_contact_matrix(rna1, rna2)
+        X = self.image_cl.get_transformer_output(X)
+        X = self.image_cl.binary_class_module.bn1(X)
+        X = self.image_cl.binary_class_module.conv1(X)
+        return X
+    
+    # method for the gradient extraction
+    def get_activations_gradient(self):
+        return self.image_cl.binary_class_module.gradients   
+    
+    
 def obtain_predictions_ground_truth(outputs, targets):
     cnn_output = outputs['cnn_output']
 
@@ -166,23 +230,22 @@ def calc_metrics(predictions, ground_truth, beta = 2):
     
     
     
-def build(args, bert_pretrained_path, ufold_pretrained_path):
+def build(args):
     device = torch.device(args.device)
     
-    bert = build_bert(args, bert_pretrained_path)
-    
-    bert_projection_module, ss_projection_module = build_projection_module(args)
+    nt_projection_module = build_projection_module_nt(args)
     
     backbone = build_backbone(args)
     
     transformer = build_transformer(args)
     
-    image_cl = build_image_cl(backbone,
-                              transformer, 
-                              dropout_rate = args.dropout_binary_cl
-                             )
+    image_cl = build_image_cl(
+        backbone,
+        transformer, 
+        dropout_rate = args.dropout_binary_cl
+    )
     
-    model = BinaryClassifierRNARNA(bert, bert_projection_module, ss_projection_module, image_cl)
+    model = BinaryClassifierNT(nt_projection_module, image_cl)
     
     weight_dict = {'loss_ce': 1.0}
     

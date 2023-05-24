@@ -190,7 +190,6 @@ def collate_fn(batch):
     batch = ([rna1, rna2], target)
     return batch
 
-
 def prepare_rna_branch(sample):
     x1, x2, y1, y2 = sample.bbox.coords
 
@@ -209,6 +208,87 @@ def prepare_rna_branch(sample):
 
     #I need to unsqueeze and permute for the nested_tensor_from_tensor_list function
     return dot_br1.permute(1, 0).unsqueeze(-1), seq1.unsqueeze(-1).unsqueeze(0), dot_br2.permute(1, 0).unsqueeze(-1), seq2.unsqueeze(-1).unsqueeze(0)
+
+def collate_fn_nt(batch):
+    batch_size = len(batch)
+    
+    # Extract rna1 and rna2 embeddings from the batch
+    
+    #sample.embedding1 is (N, 2560)
+    
+    rna1 = [torch.transpose(sample.embedding1, 1, 2).unsqueeze(-1) for sample in batch]
+    rna2 = [torch.transpose(sample.embedding2, 1, 2).unsqueeze(-1) for sample in batch]
+
+    #print(rna1[0].shape) #torch.Size([2560, N, 1])
+    
+    rna1 = nested_tensor_from_tensor_list(rna1)
+    rna2 = nested_tensor_from_tensor_list(rna2)
+    
+    rna1.tensors = rna1.tensors.squeeze()
+    rna2.tensors = rna2.tensors.squeeze()
+    
+    if batch_size == 1: #add first dimension for batch
+        rna1.tensors = rna1.tensors.unsqueeze(0)
+        rna2.tensors = rna2.tensors.unsqueeze(0)
+    
+    #print(rna1.tensors.shape) # torch.Size([b, 2560, max_dim])
+    
+    # Prepare the target dictionary
+    target = [{'interacting': 1 if sample.interacting else 0,
+               'gene1': sample.gene1,
+               'gene2': sample.gene2,
+               'bbox': sample.bbox,
+               'policy': sample.policy,
+               'interaction_bbox': sample.seed_interaction_bbox,
+               'couple_id': sample.couple_id}
+              for sample in batch]
+
+    # Return the batch with rna1, rna2, and the target
+    batch = ([rna1, rna2], target)
+    return batch
+
+def collate_fn_nt_no_nested_tensor(batch):
+    batch_size = len(batch)
+    
+    # Extract rna1 and rna2 embeddings from the batch
+    embeddings1 = [sample.embedding1 for sample in batch]
+    embeddings2 = [sample.embedding2 for sample in batch]
+
+    # Calculate the maximum dimensions
+    max_dim1 = max(embedding1.shape[0] for embedding1 in embeddings1)
+    max_dim2 = max(embedding2.shape[0] for embedding2 in embeddings2)
+
+    # Initialize rna1 and rna2 tensors with zero-padding
+    rna1 = torch.zeros((batch_size, max_dim1, 2560), dtype=torch.long)
+    rna2 = torch.zeros((batch_size, max_dim2, 2560), dtype=torch.long)
+
+    # Fill in the tensors with the embeddings
+    for i, embedding1 in enumerate(embeddings1):
+        rna1[i, :embedding1.shape[0]] = torch.from_numpy(embedding1)
+
+    for i, embedding2 in enumerate(embeddings2):
+        rna2[i, :embedding2.shape[0]] = torch.from_numpy(embedding2)
+        
+        
+    # rna1, rna2 are (batch_size, max_dim, 2560)
+    # Transpose rna1 and rna2 to have shape (batch_size, 2560, max_dim)
+    rna1 = torch.transpose(rna1, 1, 2)
+    rna2 = torch.transpose(rna2, 1, 2)
+    
+    # Prepare the target dictionary
+    target = [{'interacting': 1 if sample.interacting else 0,
+               'gene1': sample.gene1,
+               'gene2': sample.gene2,
+               'bbox': sample.bbox,
+               'policy': sample.policy,
+               'interaction_bbox': sample.seed_interaction_bbox,
+               'couple_id': sample.couple_id}
+              for sample in batch]
+
+    # Return the batch with rna1, rna2, and the target
+    batch = ([rna1, rna2], target)
+    return batch
+
     
 def init_distributed_mode(args):
     #"""

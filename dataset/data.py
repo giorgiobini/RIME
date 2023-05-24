@@ -112,6 +112,10 @@ class Sample:
     gene1_info: Mapping[str, Any]
     gene2_info: Mapping[str, Any]
 
+@dataclasses.dataclass(frozen=True)
+class SampleNT(Sample):
+    embedding1: Any
+    embedding2: Any
 
 class AugmentMode(StrEnum):
     EASY_POS = auto()
@@ -1431,3 +1435,35 @@ class RNADatasetInference(Dataset):
         )
     def __len__(self):
         return self.interactions.shape[0]
+    
+class RNADatasetNT(RNADataset):
+    def __init__(self, gene2info, interactions, subset_file, augment_policies, data_dir):
+        super().__init__(gene2info, interactions, subset_file, augment_policies)
+        self.data_dir = data_dir
+
+    def __getitem__(self, index):
+        # Retrieve the item from the base RNADataset
+        sample = super().__getitem__(index)
+
+        # Modify or process the sample as needed
+        sample_nt = self.create_nt_sample(sample)
+
+        return sample_nt
+
+    def create_nt_sample(self, s):   
+        x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
+        s_nt = SampleNT(
+            gene1=s.gene1,
+            gene2=s.gene2,
+            bbox=s.bbox,
+            couple_id=s.couple_id,
+            policy=s.policy,
+            interacting=s.interacting,
+            seed_interaction_bbox=s.seed_interaction_bbox,
+            all_couple_interactions=s.all_couple_interactions,
+            gene1_info=s.gene1_info,
+            gene2_info=s.gene2_info,
+            embedding1 = np.load(os.path.join(self.data_dir, f'{s.gene1}.npy'))[x1_emb:x2_emb, :],
+            embedding2 = np.load(os.path.join(self.data_dir, f'{s.gene2}.npy'))[y1_emb:y2_emb, :],
+        )
+        return s_nt

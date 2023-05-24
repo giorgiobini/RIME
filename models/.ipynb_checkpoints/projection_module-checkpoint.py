@@ -43,33 +43,7 @@ class SecondaryStructureProjectionModule(nn.Module):
         xs = self.bn(xs)
         xs = self.conv1d(xs)
         return xs
-    
-    
-class NTProjectionModule(nn.Module):
-    """ 
-    This is the projection module for NT
-    """
-    def __init__(self, proj_module_N_channels):
-        """ 
-        Parameters:
-            proj_module_N_channels: the number of output channels.
-        """
-        super().__init__()
-        dnabert_dim = 2560
-        self.conv1d = nn.Conv1d(in_channels=dnabert_dim, out_channels=proj_module_N_channels, kernel_size=1)
-        #self.relu = nn.ReLU(inplace=True)
-        self.bn = nn.BatchNorm1d(dnabert_dim)
 
-    def forward(self, xs: Tensor):
-        xs = self.bn(xs)
-        xs = self.conv1d(xs)
-        return xs
-
-
-
-def build_projection_module_nt(args):
-    nt_module = NTProjectionModule(args.proj_module_N_channels)
-    return nt_module
 
 def build_projection_module(args):
     bert_module = BERTProjectionModule(args.proj_module_N_channels)

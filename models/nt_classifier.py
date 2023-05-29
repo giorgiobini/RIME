@@ -7,7 +7,7 @@ from .projection_module import build_projection_module_nt
 from .mlp import build as build_top_classifier
 
 class SmallCNN(nn.Module):
-    def __init__(self, len_rna1, len_rna2, k, n_channels1 = 16, n_channels2 = 32):
+    def __init__(self, k, n_channels1 = 16, n_channels2 = 32):
         super(SmallCNN, self).__init__()
         self.conv1 = nn.Conv2d(k, n_channels1, kernel_size=2, stride=1)
         self.conv2 = nn.Conv2d(n_channels1, n_channels2, kernel_size=1, stride=1)
@@ -124,7 +124,7 @@ def build(args):
     nt_projection_module = build_projection_module_nt(args)
     
     small_cnn = SmallCNN(
-        args.n_groups, args.n_groups, args.output_channels_mlp, n_channels1 = args.n_channels1_cnn, n_channels2 = args.n_channels2_cnn
+        k = args.output_channels_mlp, n_channels1 = args.n_channels1_cnn, n_channels2 = args.n_channels2_cnn
     )
     
     top_classifier = build_top_classifier(args)

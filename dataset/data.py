@@ -21,6 +21,9 @@ from strenum import StrEnum
 from torch.utils.data import Dataset, random_split
 from tqdm import tqdm
 from matplotlib.patches import Rectangle
+from datasets import Dataset as HuggingFaceDataset
+from torch.utils.data import DataLoader
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, MAX_RNA_SIZE
@@ -111,11 +114,6 @@ class Sample:
     all_couple_interactions: Sequence[Interaction]
     gene1_info: Mapping[str, Any]
     gene2_info: Mapping[str, Any]
-
-@dataclasses.dataclass(frozen=True)
-class SampleNT(Sample):
-    embedding1: Any
-    embedding2: Any
 
 class AugmentMode(StrEnum):
     EASY_POS = auto()
@@ -1435,11 +1433,24 @@ class RNADatasetInference(Dataset):
         )
     def __len__(self):
         return self.interactions.shape[0]
-    
+
+#- - - - - - - - - - - - NT DATASET - - - - - - - - - - - -
+
+@dataclasses.dataclass(frozen=True)
+class SampleNT(Sample):
+    embedding1_path: Any
+    embedding2_path: Any
+    scaling_factor: int
+    min_n_groups: int
+    max_n_groups: int
+
 class RNADatasetNT(RNADataset):
-    def __init__(self, gene2info, interactions, subset_file, augment_policies, data_dir):
+    def __init__(self, gene2info, interactions, subset_file, augment_policies, data_dir, scaling_factor = 5, min_n_groups = 2, max_n_groups = 5):
         super().__init__(gene2info, interactions, subset_file, augment_policies)
         self.data_dir = data_dir
+        self.scaling_factor = scaling_factor
+        self.min_n_groups = min_n_groups
+        self.max_n_groups = max_n_groups
 
     def __getitem__(self, index):
         # Retrieve the item from the base RNADataset
@@ -1451,7 +1462,6 @@ class RNADatasetNT(RNADataset):
         return sample_nt
 
     def create_nt_sample(self, s):   
-        x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
         s_nt = SampleNT(
             gene1=s.gene1,
             gene2=s.gene2,
@@ -1463,7 +1473,129 @@ class RNADatasetNT(RNADataset):
             all_couple_interactions=s.all_couple_interactions,
             gene1_info=s.gene1_info,
             gene2_info=s.gene2_info,
-            embedding1 = np.load(os.path.join(self.data_dir, f'{s.gene1}.npy'))[x1_emb:x2_emb, :],
-            embedding2 = np.load(os.path.join(self.data_dir, f'{s.gene2}.npy'))[y1_emb:y2_emb, :],
+            embedding1_path = os.path.join(self.data_dir, f'{s.gene1}.npy'),
+            embedding2_path = os.path.join(self.data_dir, f'{s.gene2}.npy'),
+            scaling_factor = self.scaling_factor,
+            min_n_groups = self.min_n_groups,
+            max_n_groups = self.max_n_groups,
         )
         return s_nt
+    
+#- - - - - - - - - - - - HUGGINGFACE DATASET - - - - - - - - - - - -
+
+def group_averages(arr, k):
+    n = arr.shape[0]
+    remainder = n % k   # Remainder samples
+
+    # Split the array into groups
+    groups = np.split(arr[:n - remainder], k, axis = 0)
+
+    # If there is a remainder, add the remaining samples to the last group
+    if remainder > 0:
+        groups[-1] = np.concatenate((groups[-1], arr[-remainder:]))
+        averages = np.array([np.mean(g, axis = 0) for g in groups])
+    else:
+        # Calculate the mean along the second axis
+        averages = np.mean(groups, axis=1)
+
+    return averages
+
+def load_sample(file_path, c1, c2, num_groups):
+    # Load the sample from the file
+    sample = np.load(file_path)
+    # Perform any necessary preprocessing or augmentation
+    sample = group_averages(sample[c1:c2, :], num_groups)
+    # Return the processed sample
+    return sample
+    
+class HFDataset(HuggingFaceDataset):
+    def __init__(self, augment_list):
+        self.augment_list = augment_list
+
+    def __len__(self):
+        return len(self.augment_list)
+
+    def __getitem__(self, index):
+        return self.augment_list[index]
+
+    def get_batch(self, indices):
+        batch_data = []
+        for index in indices:
+            sample = self.augment_list[index]
+            x1, x2, y1, y2 = sample['bbox'].x1, sample['bbox'].x2, sample['bbox'].y1, sample['bbox'].y2,
+            rna1 = load_sample(sample['embedding1_path'], x1, x2, sample['num_groups1'])
+            rna2 = load_sample(sample['embedding2_path'], y1, y2, sample['num_groups2'])
+            sample_data = {
+                'input_rna1': rna1,
+                'input_rna2': rna2,
+                'gene1':sample['gene1'],
+                'gene2':sample['gene2'],
+                'x1': x1,
+                'x2': x2,
+                'y1': y1,
+                'y2': y2,
+                'seed_x1': sample['interaction_bbox'].x1,
+                'seed_x2': sample['interaction_bbox'].x2,
+                'seed_y1': sample['interaction_bbox'].y1,
+                'seed_y2': sample['interaction_bbox'].y2,
+                'num_groups1': sample['num_groups1'],
+                'num_groups2': sample['num_groups2'],
+                'policy': sample['policy'],
+                'interacting': sample['interacting']
+            }
+            batch_data.append(sample_data)
+        return batch_data
+
+class HFDataLoader(DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __iter__(self):
+        for indices in self.batch_sampler:
+            batch_dataset = self.dataset.get_batch(indices)  # Access dataset directly
+            yield self.collate_fn(batch_dataset)  # Apply the collate_fn explicitly
+            
+def create_augment_list(dataset, all_couples):
+    augment_list = []
+
+    for s in dataset:
+
+        couple_id = s.gene1_info['original_gene_id'] + '_' + s.gene2_info['original_gene_id']
+        couple_id_swapped = s.gene2_info['original_gene_id'] + '_' + s.gene1_info['original_gene_id']
+        
+        if couple_id in all_couples:
+            real_couple_id = couple_id
+        elif couple_id_swapped in all_couples:
+            real_couple_id = couple_id_swapped
+        else:
+            raise NotImplementedError
+
+        policy_res = [
+            i['policy'] for i in s.gene1_info['interactions'] if 
+            (i['couples_id']==real_couple_id)&
+            ( set([i['gene1'],i['gene2']])==set([s.gene1, s.gene2]) )
+        ]
+
+        assert len(policy_res) == 1
+        policy = policy_res[0]
+
+        x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
+        
+        k1 = (x2_emb-x1_emb)//s.scaling_factor
+        k2 = (y2_emb-y1_emb)//s.scaling_factor
+
+        augment_list.append({
+            'interacting': 1 if s.interacting else 0,
+            'gene1': s.gene1,
+            'gene2': s.gene2,
+            'embedding1_path':s.embedding1_path,
+            'embedding2_path':s.embedding2_path,
+            'bbox': s.bbox,
+            'policy': policy,
+            'interaction_bbox': s.seed_interaction_bbox,
+            'scaling_factor':s.scaling_factor,
+            'num_groups1':k1, 
+            'num_groups2':k2,
+        })
+        
+    return augment_list

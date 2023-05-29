@@ -3,6 +3,7 @@ Credits: mostly copy-pasted from this repo:
 https://github.com/facebookresearch/detr/blob/master/util/misc.py
 """
 
+import functools
 import os
 from typing import Optional, List
 from collections import defaultdict, deque
@@ -13,6 +14,7 @@ from pathlib import Path
 import torch
 import torch.distributed as dist
 from torch import Tensor
+import numpy as np
 
 # needed due to empty tensor bug in pytorch and torchvision 0.5
 import torchvision
@@ -209,17 +211,52 @@ def prepare_rna_branch(sample):
     #I need to unsqueeze and permute for the nested_tensor_from_tensor_list function
     return dot_br1.permute(1, 0).unsqueeze(-1), seq1.unsqueeze(-1).unsqueeze(0), dot_br2.permute(1, 0).unsqueeze(-1), seq2.unsqueeze(-1).unsqueeze(0)
 
+def group_averages(arr, k):
+    n = arr.shape[0]
+    remainder = n % k   # Remainder samples
+
+    # Split the array into groups
+    groups = np.split(arr[:n - remainder], k, axis = 0)
+
+    # If there is a remainder, add the remaining samples to the last group
+    if remainder > 0:
+        groups[-1] = np.concatenate((groups[-1], arr[-remainder:]))
+        averages = np.array([np.mean(g, axis = 0) for g in groups])
+    else:
+        # Calculate the mean along the second axis
+        averages = np.mean(groups, axis=1)
+
+    return averages
+
+def prepare_rna_branch_nt(s):
+    x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
+
+    k1 = (x2_emb-x1_emb)//s.scaling_factor
+    k2 = (y2_emb-y1_emb)//s.scaling_factor
+
+    embedding1 = load_embedding(s.embedding1_path)[x1_emb:x2_emb, :]
+    embedding2 = load_embedding(s.embedding2_path)[y1_emb:y2_emb, :]
+
+    #embedding1 is (N, 2560)
+
+    rna1 = torch.transpose(
+            torch.as_tensor(group_averages(embedding1, k1), dtype=torch.float), 0, 1
+            ).unsqueeze(-1)
+    rna2 = torch.transpose(
+        torch.as_tensor(group_averages(embedding2, k2), dtype=torch.float), 0, 1
+        ).unsqueeze(-1)
+    return rna1, rna2
+
+@functools.lru_cache(maxsize=1) #10000
+def load_embedding(embedding_path):
+    return np.load(embedding_path)
+
 def collate_fn_nt(batch):
     batch_size = len(batch)
     
     # Extract rna1 and rna2 embeddings from the batch
-    
-    #sample.embedding1 is (N, 2560)
-    
-    rna1 = [torch.transpose(sample.embedding1, 1, 2).unsqueeze(-1) for sample in batch]
-    rna2 = [torch.transpose(sample.embedding2, 1, 2).unsqueeze(-1) for sample in batch]
 
-    #print(rna1[0].shape) #torch.Size([2560, N, 1])
+    rna1, rna2 = zip(*[prepare_rna_branch_nt(batch[i]) for i in range(batch_size)])
     
     rna1 = nested_tensor_from_tensor_list(rna1)
     rna2 = nested_tensor_from_tensor_list(rna2)
@@ -243,31 +280,84 @@ def collate_fn_nt(batch):
                'couple_id': sample.couple_id}
               for sample in batch]
 
-    # Return the batch with rna1, rna2, and the target
+    # Return the batch with rna1, rna2, and the target.
     batch = ([rna1, rna2], target)
     return batch
 
-def collate_fn_nt_no_nested_tensor(batch):
+def collate_fn_hf(batch):
     batch_size = len(batch)
     
     # Extract rna1 and rna2 embeddings from the batch
-    embeddings1 = [sample.embedding1 for sample in batch]
-    embeddings2 = [sample.embedding2 for sample in batch]
+
+    rna1, rna2 = zip(*[ (
+        torch.transpose(torch.as_tensor(batch[i]['input_rna1'], dtype=torch.float), 0, 1).unsqueeze(-1),
+        torch.transpose(torch.as_tensor(batch[i]['input_rna2'], dtype=torch.float), 0, 1).unsqueeze(-1)
+    ) for i in range(batch_size)])
+    
+    rna1 = nested_tensor_from_tensor_list(rna1)
+    rna2 = nested_tensor_from_tensor_list(rna2)
+    
+    rna1.tensors = rna1.tensors.squeeze()
+    rna2.tensors = rna2.tensors.squeeze()
+    
+    if batch_size == 1: #add first dimension for batch
+        rna1.tensors = rna1.tensors.unsqueeze(0)
+        rna2.tensors = rna2.tensors.unsqueeze(0)
+    
+    #print(rna1.tensors.shape) # torch.Size([b, 2560, max_dim])
+    
+    # Prepare the target dictionary
+    target = [{'interacting': b['interacting'],
+               'gene1': b['gene1'],
+               'gene2': b['gene2'],
+               'policy': b['policy'],
+              }
+              for b in batch]
+
+    # Return the batch with rna1, rna2, and the target.
+    batch = ([rna1, rna2], target)
+    return batch
+
+def prepare_rna_branch_nt2(s, k1, k2):
+    x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
+
+    # k1 = (x2_emb-x1_emb)//s.scaling_factor
+    # k2 = (y2_emb-y1_emb)//s.scaling_factor
+    
+    # k1, k2 = s.num_groups, s.num_groups
+    
+    embedding1 = load_embedding(s.embedding1_path)[x1_emb:x2_emb, :]
+    embedding2 = load_embedding(s.embedding2_path)[y1_emb:y2_emb, :]
+    return group_averages(embedding1, k1), group_averages(embedding2, k2)
+
+def collate_fn_nt2(batch):
+    batch_size = len(batch)
+    
+    
+    min_n_groups, max_n_groups = batch[0].min_n_groups, batch[0].max_n_groups
+    
+    n_groups1 = int(np.random.randint(min_n_groups, max_n_groups + 1, 1))
+    n_groups2 = int(np.random.randint(min_n_groups, max_n_groups + 1, 1))
+    
+    # Extract rna1 and rna2 embeddings from the batch
+    embeddings1, embeddings2  = zip(*[
+        prepare_rna_branch_nt2(batch[i], n_groups1, n_groups2) for i in range(batch_size)
+    ])
 
     # Calculate the maximum dimensions
     max_dim1 = max(embedding1.shape[0] for embedding1 in embeddings1)
     max_dim2 = max(embedding2.shape[0] for embedding2 in embeddings2)
 
     # Initialize rna1 and rna2 tensors with zero-padding
-    rna1 = torch.zeros((batch_size, max_dim1, 2560), dtype=torch.long)
-    rna2 = torch.zeros((batch_size, max_dim2, 2560), dtype=torch.long)
+    rna1 = torch.zeros((batch_size, max_dim1, 2560), dtype=torch.float32)
+    rna2 = torch.zeros((batch_size, max_dim2, 2560), dtype=torch.float32)
 
     # Fill in the tensors with the embeddings
     for i, embedding1 in enumerate(embeddings1):
-        rna1[i, :embedding1.shape[0]] = torch.from_numpy(embedding1)
+        rna1[i, :embedding1.shape[0]] = torch.as_tensor(embedding1)
 
     for i, embedding2 in enumerate(embeddings2):
-        rna2[i, :embedding2.shape[0]] = torch.from_numpy(embedding2)
+        rna2[i, :embedding2.shape[0]] = torch.as_tensor(embedding2)
         
         
     # rna1, rna2 are (batch_size, max_dim, 2560)

@@ -1,14 +1,9 @@
 import torch.nn as nn
 import numpy as np
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import EMBEDDING_DIM
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, dividing_factor, num_hidden_layers, dropout_prob, output_channels):
+    def __init__(self, input_size, dividing_factor, num_hidden_layers, dropout_prob):
         super(MLP, self).__init__()
         
         layer_norm = nn.LayerNorm(input_size)
@@ -17,7 +12,7 @@ class MLP(nn.Module):
 
         first_layer_size = int(input_size/dividing_factor)
 
-        hidden_sizes = list(np.linspace(output_channels, first_layer_size, num_layers, dtype = np.int64)[1:][::-1])
+        hidden_sizes = list(np.linspace(2, first_layer_size, num_layers, dtype = np.int64)[1:][::-1])
         
         # Define the input layer
         self.input_layer = nn.Sequential(layer_norm, nn.Linear(input_size, first_layer_size))
@@ -28,7 +23,7 @@ class MLP(nn.Module):
             self.hidden_layers.append(nn.Linear(hidden_sizes[i], hidden_sizes[i+1]))
         
         # Define the output layer
-        self.output_layer = nn.Linear(hidden_sizes[-1], output_channels)
+        self.output_layer = nn.Linear(hidden_sizes[-1], 2)
         
         # Define the activation functions
         self.activation_functions = nn.ModuleList()
@@ -59,6 +54,5 @@ class MLP(nn.Module):
 
     
 def build(args):
-    input_size = args.proj_module_N_channels*2 if args.use_projection_module else int(EMBEDDING_DIM*2)
-    model = MLP(input_size=input_size, dividing_factor=args.dividing_factor, num_hidden_layers=args.num_hidden_layers, dropout_prob=args.dropout_prob, output_channels=args.output_channels_mlp)
+    model = MLP(input_size=int(args.proj_module_N_channels*2), dividing_factor=args.dividing_factor, num_hidden_layers= args.num_hidden_layers, dropout_prob=args.dropout)
     return model

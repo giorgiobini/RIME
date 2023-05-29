@@ -37,45 +37,6 @@ def create_contact_matrix(rna0, rna1, rna_length_first = False):
     
     return rna_contact
 
-def create_contact_matrix2(rna0, rna1, rna_length_first=False):
-    """
-    Second way to create a contact matrix from two RNA batches. It should give the same result as create_contact_matrix. 
-    
-    I will use the following notation:
-    # b is the batch_size
-    # d is the embedding_dim
-    # N is the rna1 length
-    # M is the rna2 length
-
-    Args:
-        rna0 (torch.Tensor): Batch containing the first RNA of the pair with shape (b * d * N)
-        rna1 (torch.Tensor): Batch containing the second RNA of the pair with shape (b * d * M)
-        rna_length_first (bool): If true, then the tensors are with shape (b * N * d), (b * M * d)
-
-    Returns:
-        contact_tensor (torch.Tensor): Contact matrix with shape (b * 2d * N * M)
-    """
-    if rna_length_first:
-        rna0 = rna0.transpose(1, 2)
-        rna1 = rna1.transpose(1, 2)
-
-    # Get the dimensions of the input tensors
-    b, d, N = rna0.size()
-    _, _, M = rna1.size()
-
-    # Expand the dimensions of the input tensors
-    rna0_expanded = rna0.unsqueeze(3) # Shape: (b, d, N, 1)
-    rna1_expanded = rna1.unsqueeze(2)  # Shape: (b, d, 1, M)
-
-    # Tile the expanded tensors to create contact matrices
-    rna0_tiled = rna0_expanded.repeat(1, 1, 1, M)  # Shape: (b, d, N, M)
-    rna1_tiled = rna1_expanded.repeat(1, 1, N, 1)  # Shape: (b, d, N, M)
-
-    # Concatenate the tiled tensors along the channel dimension
-    contact_tensor = torch.cat([rna0_tiled, rna1_tiled], dim=1)  # Shape: (b, 2d, N, M)
-
-    return contact_tensor
-
 def create_contact_matrix_for_masks(rna0, rna1):
     """
     I will use the following notation:

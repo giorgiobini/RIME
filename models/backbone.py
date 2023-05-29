@@ -199,7 +199,7 @@ class Joiner(nn.Sequential):
         return out, pos
     
 def build_backbone(args):
-    num_input_channels = args.proj_module_N_channels*2 + args.proj_module_secondary_structure_N_channels*2
+    num_input_channels = args.proj_module_N_channels*2
     position_embedding = build_position_encoding(args)
     train_backbone = args.lr_backbone > 0
     backbone = Backbone(args.backbone, train_backbone, args.dilation, 

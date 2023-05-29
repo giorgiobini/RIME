@@ -10,10 +10,9 @@ import random
 import pickle
 from pathlib import Path
 sys.path.insert(0, '..')
-from util.engine import train_one_epoch_binary_cl as train_one_epoch
-from util.engine import evaluate_binary_cl as evaluate
-import util.contact_matrix as cm
-from models.binary_classifier import build as build_model 
+from util.engine import train_one_epoch_mlp as train_one_epoch
+from util.engine import evaluate_mlp as evaluate
+from models.nt_classifier import build as build_model 
 import util.misc as utils
 import json
 from torch.utils.data import DataLoader, DistributedSampler
@@ -41,8 +40,8 @@ def str_to_bool(value):
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
-    parser.add_argument('--lr', default=5e-4, type=float)
-    parser.add_argument('--lr_backbone', default=5e-4, type=float)
+    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--lr_backbone', default=1e-4, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=100, type=int)
@@ -52,48 +51,40 @@ def get_args_parser():
 
     
     # Projection module
-    parser.add_argument('--proj_module_N_channels', default=256, type=int,
+    parser.add_argument('--proj_module_N_channels', default=2000, type=int,
                         help="Number of channels of the projection module for bert")
     parser.add_argument('--proj_module_secondary_structure_N_channels', default=4, type=int,
                         help="Number of channels of the projection module for the secondary structure")
     parser.add_argument('--drop_secondary_structure', type=str_to_bool, nargs='?', const=True, default=False,
                         help="If True, the architecture will remain the same, but the secondary structure tensors will be replaced by tensors of zeros (you will have unuseful weights in the model).")
+    parser.add_argument('--use_projection_module', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True, I will project the embeddings in a reduced space.")
 
-    # * Backbone
-    parser.add_argument('--backbone', default='mini_resnet18', type=str, 
-                        help="Name of the convolutional backbone to use")
-    parser.add_argument('--dilation', default = True, # action='store_true' (non default)
-                        help="If true, we replace stride with dilation in the last convolutional block (DC5)")
-    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
-                        help="Type of positional embedding to use on top of the image features")
-    parser.add_argument('--interediate_resnet_layer', default=3, type=int,
-                        help="Where to cut the resnet model")
-    parser.add_argument('--n_channels_backbone_out', default=64, type=int,
-                        help="Number of channels out from the last layer (the one you cut)")
-    parser.add_argument('--last_layer_intermediate_channels', default=64, type=int,
-                        help="Number of intermediate channels in the last layer")
-
-    # * Transformer
-    parser.add_argument('--enc_layers', default=1, type=int,
-                        help="Number of encoding layers in the transformer")
-    parser.add_argument('--dec_layers', default=1, type=int,
-                        help="Number of decoding layers in the transformer")
-    parser.add_argument('--dim_feedforward', default=64, type=int,
-                        help="Intermediate size of the feedforward layers in the transformer blocks")
-    parser.add_argument('--hidden_dim', default=64, type=int,
-                        help="Size of the embeddings (dimension of the transformer)")
-    parser.add_argument('--dropout', default=0.01, type=float,
-                        help="Dropout applied in the transformer")
-    parser.add_argument('--nheads', default=2, type=int,
-                        help="Number of attention heads inside the transformer's attentions")
-    parser.add_argument('--pre_norm', default = False) #parser.add_argument('--pre_norm', default = True) #parser.add_argument('--pre_norm', default = True, action='store_true')
-    parser.add_argument('--build_decoder', default = False) 
-    
-    # * Binary Classification module
-    parser.add_argument('--dropout_binary_cl', default=0.01, type=float,
-                        help="Dropout applied in the Binary Classification module")
+    # * Model
+    parser.add_argument('--dropout_prob', default=0.01, type=float,
+                         help="Dropout in the MLP model")
+    parser.add_argument('--args.mini_batch_size', default=32, type=int,
+                        help="MLP batch size")
+    parser.add_argument('--num_hidden_layers', default=1, type=int,
+                        help="Number of hidden layers in the MLP")
+    parser.add_argument('--dividing_factor', default=20, type=int,
+                        help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
+    parser.add_argument('--output_channels_mlp', default=2, type=int,
+                        help="The number of channels after mlp processing")
+    parser.add_argument('--n_channels1_cnn', default=16, type=int,
+                    help="Number of hidden channels (1 layer) in the final cnn")
+    parser.add_argument('--n_channels2_cnn', default=32, type=int,
+                    help="Number of hidden channels (2 layer) in the final cnn")
 
     # dataset policies parameters
+    parser.add_argument('--min_n_groups_train', default=2, type=int,
+                       help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
+    parser.add_argument('--max_n_groups_train', default=5, type=int,
+                       help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
+    parser.add_argument('--min_n_groups_val', default=5, type=int,
+                       help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
+    parser.add_argument('--max_n_groups_val', default=5, type=int,
+                       help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
     parser.add_argument('--policies_train', default='',
                         help='policies for training dataset')
     parser.add_argument('--policies_val', default='',
@@ -161,8 +152,7 @@ def main(args):
             width_multipliers=neg_multipliers,
             height_multipliers=neg_multipliers,
         ),
-    ]
-        
+    ] 
         
     dataset_train = RNADatasetNT(
             gene2info=df_genes_nt,
@@ -171,7 +161,10 @@ def main(args):
             augment_policies=policies_train,
             data_dir = os.path.join(embedding_dir, '32'),
             scaling_factor = scaling_factor,
+            min_n_groups = args.min_n_groups_train,
+            max_n_groups = args.max_n_groups_train,
     )
+    
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt.txt")
         
@@ -210,6 +203,8 @@ def main(args):
         augment_policies=policies_val,
         data_dir = os.path.join(embedding_dir, '32'),
         scaling_factor = scaling_factor,
+        min_n_groups = args.min_n_groups_val,
+        max_n_groups = args.max_n_groups_val,
     )
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
 
@@ -227,10 +222,10 @@ def main(args):
 
     batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=False)
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
-                                   collate_fn=utils.collate_fn_nt, num_workers=args.num_workers)
+                                   collate_fn=utils.collate_fn_nt2, num_workers=args.num_workers)
     
     device = torch.device(args.device)
-    model, criterion, postprocessors = build_model(args)
+    model = build_model(args)
     model.to(device)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -239,6 +234,8 @@ def main(args):
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr,
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
+
+    criterion = torch.nn.CrossEntropyLoss()
     
     if args.resume:
         if args.resume.startswith('https'):
@@ -261,7 +258,7 @@ def main(args):
                                 best_model_epoch = utils.best_model_epoch(output_dir / "log.txt")):
             break
 
-        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
+        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch)
 
         lr_scheduler.step()
         
@@ -270,12 +267,12 @@ def main(args):
         g.manual_seed(0)
         data_loader_val = DataLoader(dataset_val, args.batch_size,
                                      sampler=sampler_val, drop_last=False,
-                                     collate_fn=utils.collate_fn_nt,
+                                     collate_fn=utils.collate_fn_nt2,
                                      num_workers=args.num_workers,
                                      worker_init_fn=seed_worker, 
                                      generator=g,)
         
-        test_stats = evaluate(model, criterion, postprocessors, data_loader_val, device, args.output_dir)   
+        test_stats = evaluate(model, criterion, data_loader_val, device)   
             
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
@@ -313,12 +310,14 @@ def main(args):
     
 if __name__ == '__main__':
     #run me with: -> 
-    #nohup python train_binary_cl.py &> train_binary_cl.out &
+    #nohup python train_binary_cl2.py &> train_binary_cl2.out &
 
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()
-    args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl')
+    args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
     args.dataset_path = os.path.join(ROOT_DIR, 'dataset')
+    if args.use_projection_module == False:
+        args.proj_module_N_channels = 0 # In this way I will not count the parameters of the projection module when I define the n_parameters variable
 
     seed_everything(123)
     main(args)

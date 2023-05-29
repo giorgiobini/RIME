@@ -55,10 +55,10 @@ class NTProjectionModule(nn.Module):
             proj_module_N_channels: the number of output channels.
         """
         super().__init__()
-        dnabert_dim = 2560
-        self.conv1d = nn.Conv1d(in_channels=dnabert_dim, out_channels=proj_module_N_channels, kernel_size=1)
+        nt_dim = 2560
+        self.conv1d = nn.Conv1d(in_channels=nt_dim, out_channels=proj_module_N_channels, kernel_size=1)
         #self.relu = nn.ReLU(inplace=True)
-        self.bn = nn.BatchNorm1d(dnabert_dim)
+        self.bn = nn.BatchNorm1d(nt_dim)
 
     def forward(self, xs: Tensor):
         xs = self.bn(xs)

@@ -1,0 +1,57 @@
+nohup: ignoring input
+/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: /data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torchvision/image.so: undefined symbol: _ZN2at4_ops10select_int4callERKNS_6TensorEll
+  warn(f"Failed to load image Python extension: {e}")
+/data01/giorgio/RNARNA-NT/src/train_binary_cl2.py:119: DtypeWarning: Columns (21) have mixed types. Specify dtype option on import or set low_memory=False.
+  df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
+/data01/giorgio/RNARNA-NT/src/../dataset/data.py:1154: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  interactions['matrix_area'] = interactions.length_1*interactions.length_2
+/data01/giorgio/RNARNA-NT/src/../dataset/data.py:1155: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  interactions['interaction_area'] = interactions.w*interactions.h
+/data01/giorgio/RNARNA-NT/src/../dataset/data.py:1156: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  interactions.rename(columns={"couples": "couple"}, inplace=True)
+/data01/giorgio/RNARNA-NT/src/../dataset/data.py:1154: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  interactions['matrix_area'] = interactions.length_1*interactions.length_2
+/data01/giorgio/RNARNA-NT/src/../dataset/data.py:1155: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  interactions['interaction_area'] = interactions.w*interactions.h
+/data01/giorgio/RNARNA-NT/src/../dataset/data.py:1156: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  interactions.rename(columns={"couples": "couple"}, inplace=True)
+/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torch/nn/init.py:405: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+number of params: 1361559
+Start training
+Traceback (most recent call last):
+  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl2.py", line 315, in <module>
+    main(args)
+  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl2.py", line 253, in main
+    train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch)
+  File "/data01/giorgio/RNARNA-NT/src/../util/engine.py", line 29, in train_one_epoch_mlp
+    loss = criterion(outputs, labels) #loss = torch.nn.functional.cross_entropy
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torch/nn/modules/loss.py", line 1174, in forward
+    return F.cross_entropy(input, target, weight=self.weight,
+  File "/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torch/nn/functional.py", line 3029, in cross_entropy
+    return torch._C._nn.cross_entropy_loss(input, target, weight, _Reduction.get_enum(reduction), ignore_index, label_smoothing)
+TypeError: cross_entropy_loss(): argument 'target' (position 2) must be Tensor, not list

@@ -11,10 +11,74 @@ from . import misc as utils
 import numpy as np
 
 
+def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
+                    data_loader: Iterable, optimizer: torch.optim.Optimizer,
+                    device: torch.device, epoch: int, frequency_print: int = 500): #frequency_print: int = 1000
+    model.train()
+    criterion.train()
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    #metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    header = 'Epoch: [{}]'.format(epoch)
+    
+    for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
+        rna1, rna2 = inputs
+        rna1=rna1.to(device)
+        rna2=rna2.to(device)
+        # Forward pass
+        outputs = model(rna1, rna2)
+        labels = torch.tensor([l['interacting'] for l in labels]).to(device)
+        loss = criterion(outputs, labels) #loss = torch.nn.functional.cross_entropy
+
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        metric_dict = calc_metrics(outputs, labels, beta = 2)
+        metric_dict['loss'] = loss
+        
+        metric_logger.update(**metric_dict)
+        
+    # gather the stats from all processes
+    #metric_logger.synchronize_between_processes()
+    print("Averaged stats:", metric_logger)
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+
+
+@torch.no_grad()
+def evaluate_mlp(model, criterion, data_loader, device, frequency_print = 1000):
+    model.eval()
+    criterion.eval()
+
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    header = 'Test:'
+
+    for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
+        # Forward pass
+        rna1, rna2 = inputs
+        rna1=rna1.to(device)
+        rna2=rna2.to(device)
+        outputs = model(rna1, rna2)
+        
+        labels = torch.tensor([l['interacting'] for l in labels]).to(device)
+        loss = criterion(outputs, labels)
+        
+        metric_dict = calc_metrics(outputs, labels, beta = 2)
+        metric_dict['loss'] = loss
+        
+        metric_logger.update(**metric_dict)       
+
+    # gather the stats from all processes
+    #metric_logger.synchronize_between_processes()
+    print("Averaged stats:", metric_logger)
+    
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
 
 def train_one_epoch_binary_cl(model: torch.nn.Module, criterion: torch.nn.Module,
-                    data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, max_norm: float = 0, frequency_print: int = 500): #frequency_print: int = 1000
+                              data_loader: Iterable, optimizer: torch.optim.Optimizer,
+                              device: torch.device, epoch: int, max_norm: float = 0, frequency_print: int = 500): #frequency_print: int = 1000
     model.train()
     criterion.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -23,12 +87,10 @@ def train_one_epoch_binary_cl(model: torch.nn.Module, criterion: torch.nn.Module
     
     for samples, targets in metric_logger.log_every(data_loader, frequency_print, header):
         rna1, rna2 = samples
-        rna1[0] = rna1[0].to(device)
-        rna2[0] = rna2[0].to(device)
-        rna1[1].tensors = rna1[1].tensors.to(device)
-        rna2[1].tensors = rna2[1].tensors.to(device)
-        rna1[1].mask = rna1[1].mask.to(device)
-        rna2[1].mask = rna2[1].mask.to(device)
+        rna1.tensors = rna1.tensors.to(device)
+        rna2.tensors = rna2.tensors.to(device)
+        rna1.mask = rna1.mask.to(device)
+        rna2.mask = rna2.mask.to(device)
         outputs = model(rna1, rna2)
         loss_dict = criterion(outputs, targets)
         weight_dict = criterion.weight_dict
@@ -67,12 +129,10 @@ def evaluate_binary_cl(model, criterion, postprocessors, data_loader, device, ou
 
     for samples, targets in metric_logger.log_every(data_loader, frequency_print, header):
         rna1, rna2 = samples
-        rna1[0] = rna1[0].to(device)
-        rna2[0] = rna2[0].to(device)
-        rna1[1].tensors = rna1[1].tensors.to(device)
-        rna2[1].tensors = rna2[1].tensors.to(device)
-        rna1[1].mask = rna1[1].mask.to(device)
-        rna2[1].mask = rna2[1].mask.to(device)
+        rna1.tensors = rna1.tensors.to(device)
+        rna2.tensors = rna2.tensors.to(device)
+        rna1.mask = rna1.mask.to(device)
+        rna2.mask = rna2.mask.to(device)
         
         outputs = model(rna1, rna2)
         loss_dict = criterion(outputs, targets)
@@ -87,66 +147,6 @@ def evaluate_binary_cl(model, criterion, postprocessors, data_loader, device, ou
     stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
     return stats
-
-
-def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
-                    data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, frequency_print: int = 500): #frequency_print: int = 1000
-    model.train()
-    criterion.train()
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    #metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
-    
-    for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
-        inputs=inputs.to(device)
-        labels=labels.to(device)
-        # Forward pass
-        outputs = model(inputs)
-        loss = torch.nn.functional.cross_entropy(outputs, labels) #loss = criterion(outputs, labels)
-
-        # Backward pass and optimization
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        metric_dict = calc_metrics(outputs, labels, beta = 2)
-        metric_dict['loss'] = loss
-        
-        metric_logger.update(**metric_dict)
-        
-    # gather the stats from all processes
-    #metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-
-
-@torch.no_grad()
-def evaluate_mlp(model, criterion, data_loader, device, frequency_print = 1000):
-    model.eval()
-    criterion.eval()
-
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    header = 'Test:'
-
-    for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
-        # Forward pass
-        inputs=inputs.to(device)
-        labels=labels.to(device)
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        
-        metric_dict = calc_metrics(outputs, labels, beta = 2)
-        metric_dict['loss'] = loss
-        
-        metric_logger.update(**metric_dict)       
-
-    # gather the stats from all processes
-    #metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
 @torch.no_grad()

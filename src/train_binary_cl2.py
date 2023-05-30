@@ -15,7 +15,7 @@ from util.engine import evaluate_mlp as evaluate
 from models.nt_classifier import build as build_model 
 import util.misc as utils
 import json
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data import DataLoader
 from dataset.data import (
     RNADataset,
     RNADatasetNT,

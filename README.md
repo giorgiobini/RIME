@@ -77,7 +77,7 @@ Run these scripts from the src directory in the following order:
 - download_embeddings.py
 - nohup python download_embeddings.py --batch_size 19 &> download_embeddings.out &
 - train_binary_cl.py
-- run_binary_cl_on_test.ipynb
+- run_binary_cl_on_test2.py & plot_test2_results.ipynb
 
 ## 4. Inference
 Put your files inside the directory dataset/external_dataset/your_folder/

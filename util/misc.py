@@ -330,15 +330,27 @@ def prepare_rna_branch_nt2(s, k1, k2):
     embedding2 = load_embedding(s.embedding2_path)[y1_emb:y2_emb, :]
     return group_averages(embedding1, k1), group_averages(embedding2, k2)
 
+def len1len2(s):
+    x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
+    return x2_emb-x1_emb, y2_emb-y1_emb
+
 def collate_fn_nt2(batch):
-    batch_size = len(batch)
     
+    batch_size = len(batch)
     
     min_n_groups, max_n_groups = batch[0].min_n_groups, batch[0].max_n_groups
     
-    n_groups1 = int(np.random.randint(min_n_groups, max_n_groups + 1, 1))
-    n_groups2 = int(np.random.randint(min_n_groups, max_n_groups + 1, 1))
+    len1, len2 = zip(*[
+        len1len2(batch[i]) for i in range(batch_size)
+    ])
     
+    n_groups1 = min(min(len1), max_n_groups)
+    n_groups2 = min(min(len2), max_n_groups)
+    
+    # second way
+    # n_groups1 = int(np.random.randint(min_n_groups, max_n_groups + 1, 1))
+    # n_groups2 = int(np.random.randint(min_n_groups, max_n_groups + 1, 1))
+
     # Extract rna1 and rna2 embeddings from the batch
     embeddings1, embeddings2  = zip(*[
         prepare_rna_branch_nt2(batch[i], n_groups1, n_groups2) for i in range(batch_size)
@@ -378,6 +390,7 @@ def collate_fn_nt2(batch):
     # Return the batch with rna1, rna2, and the target
     batch = ([rna1, rna2], target)
     return batch
+
 
     
 def init_distributed_mode(args):

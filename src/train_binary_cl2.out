@@ -1,3 +1,9 @@
 nohup: ignoring input
 /data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: /data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torchvision/image.so: undefined symbol: _ZN2at4_ops10select_int4callERKNS_6TensorEll
   warn(f"Failed to load image Python extension: {e}")
+/data01/giorgio/RNARNA-NT/src/train_binary_cl2.py:125: DtypeWarning: Columns (21) have mixed types. Specify dtype option on import or set low_memory=False.
+  df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
+/data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/torch/nn/init.py:405: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+number of params: 1361559
+Start training

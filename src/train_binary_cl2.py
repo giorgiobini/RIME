@@ -79,11 +79,11 @@ def get_args_parser():
     # dataset policies parameters
     parser.add_argument('--min_n_groups_train', default=5, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
-    parser.add_argument('--max_n_groups_train', default=70, type=int,
+    parser.add_argument('--max_n_groups_train', default=75, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
-    parser.add_argument('--min_n_groups_val', default=70, type=int,
+    parser.add_argument('--min_n_groups_val', default=75, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
-    parser.add_argument('--max_n_groups_val', default=70, type=int,
+    parser.add_argument('--max_n_groups_val', default=75, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
     parser.add_argument('--policies_train', default='',
                         help='policies for training dataset')

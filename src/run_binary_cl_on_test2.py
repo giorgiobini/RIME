@@ -99,8 +99,6 @@ def main(args):
     original_length2 = []
     ids = []
 
-    all_couples = set(df_nt.couples_id)
-
     for (rna1, rna2), target in data_loader_test:
 
         s = target[0]
@@ -185,7 +183,7 @@ if __name__ == '__main__':
     #nohup python run_binary_cl_on_test2.py &> run_binary_cl_on_test2.out &
 
     
-    MAX_N_GROUP_SIZE = 500 
+    MAX_N_GROUP_SIZE = 300 
      
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
 
@@ -198,7 +196,7 @@ if __name__ == '__main__':
 
     # Convert the dictionary to an argparse.Namespace object
     args = argparse.Namespace(**args_dict)
-    args.resume = os.path.join(args.output_dir, 'best_model.pth')
+    args.resume = os.path.join(args.output_dir, 'best_model.pth') 
 
     seed_everything(123)
     main(args)

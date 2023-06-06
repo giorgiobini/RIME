@@ -8,21 +8,15 @@ import torch
 import matplotlib.pyplot as plt
 import sys
 import datetime
-from sklearn.metrics import classification_report
 from pathlib import Path
 import seaborn as sns
 import time
-import random
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
 sys.path.insert(0, '..')
 from config import *
-from util.plot_utils import obtain_plot, plot_logs
 import util.misc as utils
-from train_binary_cl2 import get_args_parser
 from models.nt_classifier import build as build_model
 from dataset.data import (
-    RNADataset,
     RNADatasetNT,
     EasyPosAugment,
     InteractionSelectionPolicy,
@@ -191,7 +185,7 @@ if __name__ == '__main__':
     #nohup python run_binary_cl_on_test2.py &> run_binary_cl_on_test2.out &
 
     
-    MAX_N_GROUP_SIZE = 250 
+    MAX_N_GROUP_SIZE = 500 
      
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
 

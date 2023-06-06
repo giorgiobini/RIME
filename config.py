@@ -2,6 +2,7 @@ import os
 
 MAX_RNA_SIZE = 5970 #other accepted sequence length (without N) are the ones <= 5974, and also 5976, 5977, 5978, 5979, 5982, 5983, 5984, 5988, 5989, 5994
 EMBEDDING_DIM = 2560 #nucleotide-transformer embedding (number of features for each token)
+N_PCA = 1000 #dimension to reduce nucleotide-transformer embeddings
 
 ROOT_DIR =  '/data01/giorgio/RNARNA-NT/' #/data01/gbini/projects/RNA-RNA/
 original_files_dir = os.path.join(ROOT_DIR, 'dataset', 'original_files')

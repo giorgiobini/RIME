@@ -9,13 +9,13 @@ import sys
 import random
 import pickle
 from pathlib import Path
+from torch.utils.data import DataLoader
 sys.path.insert(0, '..')
 from util.engine import train_one_epoch_mlp as train_one_epoch
 from util.engine import evaluate_mlp as evaluate
 from models.nt_classifier import build as build_model 
 import util.misc as utils
 import json
-from torch.utils.data import DataLoader
 from dataset.data import (
     RNADataset,
     RNADatasetNT,
@@ -66,24 +66,24 @@ def get_args_parser():
     parser.add_argument('--args.mini_batch_size', default=32, type=int,
                         help="MLP batch size")
     parser.add_argument('--num_hidden_layers', default=1, type=int,
-                        help="Number of hidden layers in the MLP")
+                        help="Number of hidden layers in the MLP. The number of total layers will be num_hidden_layers+1")
     parser.add_argument('--dividing_factor', default=20, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--output_channels_mlp', default=2, type=int,
+    parser.add_argument('--output_channels_mlp', default=256, type=int,
                         help="The number of channels after mlp processing")
-    parser.add_argument('--n_channels1_cnn', default=16, type=int,
+    parser.add_argument('--n_channels1_cnn', default=256, type=int,
                     help="Number of hidden channels (1 layer) in the final cnn")
-    parser.add_argument('--n_channels2_cnn', default=32, type=int,
+    parser.add_argument('--n_channels2_cnn', default=512, type=int,
                     help="Number of hidden channels (2 layer) in the final cnn")
 
     # dataset policies parameters
-    parser.add_argument('--min_n_groups_train', default=2, type=int,
+    parser.add_argument('--min_n_groups_train', default=5, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
-    parser.add_argument('--max_n_groups_train', default=5, type=int,
+    parser.add_argument('--max_n_groups_train', default=70, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
-    parser.add_argument('--min_n_groups_val', default=5, type=int,
+    parser.add_argument('--min_n_groups_val', default=70, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
-    parser.add_argument('--max_n_groups_val', default=5, type=int,
+    parser.add_argument('--max_n_groups_val', default=70, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
     parser.add_argument('--policies_train', default='',
                         help='policies for training dataset')
@@ -104,7 +104,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--n_epochs_early_stopping', default=20)
+    parser.add_argument('--n_epochs_early_stopping', default=50)
     return parser
 
 def seed_worker(worker_id):
@@ -166,17 +166,18 @@ def main(args):
     )
     
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt.txt")
+    subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt.txt")
+    # subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt.txt")
         
     with open(subset_val_nt, "rb") as fp:  # Unpickling
         list_val = pickle.load(fp)
 
-    try:
-        vc_val = df_nt[df_nt.couples.isin(list_val)].interacting.value_counts()
-    except:
-        vc_val = df_nt[df_nt.couple.isin(list_val)].interacting.value_counts() #I don t know the reason of this bug
-    assert vc_val[True]>vc_val[False]
-    unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
+    # try:
+    #     vc_val = df_nt[df_nt.couples.isin(list_val)].interacting.value_counts()
+    # except:
+    #     vc_val = df_nt[df_nt.couple.isin(list_val)].interacting.value_counts() #I don t know the reason of this bug
+    # assert vc_val[True]>vc_val[False]
+    # unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
 
     pos_multipliers = {10_000_000:1.,}
     neg_multipliers = pos_multipliers
@@ -189,7 +190,7 @@ def main(args):
             height_multipliers=pos_multipliers,
         ),  
         SmartNegAugment(
-            per_sample=unbalance_factor,
+            per_sample=1, # unbalance_factor
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=neg_multipliers,
             height_multipliers=neg_multipliers,

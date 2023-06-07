@@ -3,12 +3,33 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
+from sklearn.metrics import roc_curve, auc
 
 
 '''
 ------------------------------------------------------------------------------------------
 Result plots:
 '''
+
+def plot_roc_curves(models, ground_truth):
+    plt.figure(figsize=(10, 8))
+    plt.plot([0, 1], [0, 1], 'k--')  # Plotting the random guessing line
+
+    for model in models:
+        probabilities = model['prob']
+        model_name = model['model_name']
+
+        fpr, tpr, _ = roc_curve(ground_truth, probabilities)
+        roc_auc = auc(fpr, tpr)
+
+        plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.2f})')
+
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curves')
+    plt.legend(loc='lower right')
+    plt.show()
+
 def various_metrics(df_res, eps = 1e-6):
     tn, fp, fn, tp = confusion_matrix(df_res['ground_truth'], df_res['prediction'], labels = [0, 1]).ravel()
     acc = (tn+tp) / (tn+fp+tp+fn + eps)

@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from lime.lime_base import LimeBase
 import random
 import pandas as pd
 from . import contact_matrix
+from . import box_ops
 from . import misc as utils
 import sys
 import os
@@ -11,9 +11,10 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import itertools
 from torch.autograd import Variable
+from PIL import Image
 
 sys.path.append("..")
-from UFold_dependencies.running_ufold import get_seq_embeddings_seq_ori, from_matrix_to_dot
+# from UFold_dependencies.running_ufold import get_seq_embeddings_seq_ori, from_matrix_to_dot
 
 """
 -------------- L I M E -------------- L I M E -------------- L I M E --------------
@@ -173,80 +174,8 @@ def distance_from_original_input(original_input: tuple, perturbed: tuple):
 
     return distance_between_matrices(cm, cm_pert, '')
 
-def create1dvector(cdna1_slice, cdna2_slice, cdna1_slice_pert, cdna2_slice_pert):    
-    cdna1d = elementwise_equality(cdna1_slice, cdna1_slice_pert)
-    cdna2d = elementwise_equality(cdna2_slice, cdna2_slice_pert)
-    
-    
-    cdna1d = torch.tensor(cdna1d).unsqueeze(-1).unsqueeze(0) #torch.Size([1, N, 1])
-    cdna2d = torch.tensor(cdna2d).unsqueeze(-1).unsqueeze(0) #torch.Size([1, M, 1])
 
-    cm = contact_matrix.create_contact_matrix(cdna1d, cdna2d, rna_length_first = True).squeeze().mean(dim = 0)
-    #cm: torch.Size([N, M]), 
-    #In every pixel you have the mean of the 2 channel (each channel is binary, 1 if the nucleotide is the same of the original sequence 0 else).
-    #So, every pixel can be 0, 0.5 or 1. NB: if the original pixel is AG, and the alternate is AC the pixel of cm is 0.5. If the alternate is CG the pixel of cm is 0.5. So the surrogate model is not aware of the direction.
-    #NB: if the original pixel is AG, and the alternate is GA the pixel of cm is 0.
-    return cm.flatten().numpy()
-
-def elementwise_equality(cdna_old, cdna_new):
-    return (np.array(list(cdna_old)) == np.array(list(cdna_new))).astype(int)
-
-def lime(cdna1_slice, cdna2_slice, n_iters, max_perturbations_per_iter, probability,s, model, UFoldFeatureExtractor, device):
-    len1 = len(cdna1_slice)
-    len2 = len(cdna2_slice)
-    neighborhood_data = [np.expand_dims(np.ones(len1 * len2), 0)]
-    neighborhood_labels = [float(probability)]
-    distances = [0]
-    for i in range(n_iters):
-    
-        n_pert = random.sample(range(max_perturbations_per_iter), k = 1)[0]    
-
-        cdna1_slice_pert, cdna2_slice_pert = cdna1_slice, cdna2_slice
-
-        for j in range(n_pert):
-            cdna1_slice_pert, cdna2_slice_pert = single_perturbation_2_rna(cdna1_slice_pert, cdna2_slice_pert, perturb_with_prob = False)
-
-        vector1d = create1dvector(cdna1_slice, cdna2_slice, cdna1_slice_pert, cdna2_slice_pert)
-        neighborhood_data.append(np.expand_dims(vector1d, 0))
-
-        probability_pert = forward_func(cdna1_slice_pert, cdna2_slice_pert, s, model, UFoldFeatureExtractor, device)
-        neighborhood_labels.append(float(probability_pert))
-
-        dist = distance_from_original_input((cdna1_slice, cdna2_slice), (cdna1_slice_pert, cdna2_slice_pert))
-        distances.append(float(dist))
-        
-    base = LimeBase(kernel_fn = lambda x: [1-i for i in x], #from distance to similarity
-                    verbose = True,
-                    random_state=123)
-    
-    neighborhood_data = np.concatenate(neighborhood_data, axis = 0)
-
-    label1 = np.expand_dims(np.array(neighborhood_labels), 0)
-    label0 = 1 - label1
-    neighborhood_labels = np.concatenate([label0, label1], axis = 0).T
-
-    distances = np.array(distances)
-    
-    label = 1
-    num_features = len1*len2
-
-    expl = base.explain_instance_with_data(neighborhood_data, 
-                                           neighborhood_labels, 
-                                           distances, 
-                                           1, 
-                                           num_features)
-    
-    res = expl[1]
-    score = expl[2]
-    assert len(res) == num_features
-    coeff = np.array(pd.DataFrame.from_dict(res).sort_values(0).reset_index(drop = True)[1])
-    
-    expl_matrix = np.abs(coeff.reshape(len1, len2))
-    
-    return expl_matrix, score
-
-
-def plot_matrix(matrix, cdna1, cdna2, list_of_boxes,  crop_bbox = [], list_of_predictions = [], cmap = 'viridis'):
+def plot_matrix(matrix, cdna1, cdna2, list_of_boxes,  crop_bbox = [], list_of_predictions = [], scaling_factor = 500, plot_axis = False, cmap = 'viridis'):
     """
     Args:
         matrix (np.array): lime continuous matrix of shape N * M
@@ -259,21 +188,25 @@ def plot_matrix(matrix, cdna1, cdna2, list_of_boxes,  crop_bbox = [], list_of_pr
         plot: matplotilb plot of the hydrogen bond matrix with all the bboxes 
     """
         
-    plt.rcParams["figure.figsize"] = (int(len([b for b in cdna1])/5), int(len([b for b in cdna2])/5))
+    plt.rcParams["figure.figsize"] = (
+        int(len([b for b in cdna1])/scaling_factor), 
+        int(len([b for b in cdna2])/scaling_factor)
+    )
 
     plt.imshow(matrix.T, cmap = cmap);
-
-    plt.xticks(range(len([b for b in cdna1])), [b for b in cdna1], size='small')
-    plt.yticks(range(len([b for b in cdna2])), [b for b in cdna2], size='small')
+    
+    if plot_axis: 
+        plt.xticks(range(len([b for b in cdna1])), [b for b in cdna1], size='small')
+        plt.yticks(range(len([b for b in cdna2])), [b for b in cdna2], size='small')
     ax = plt.gca()
-    colors = itertools.cycle('ygrcmk')
+    colors = itertools.cycle('rcmkgy')
     
     for i, (x, y, w, h) in enumerate(list_of_boxes):
         ax.add_patch(plt.Rectangle((x, y), w-1, h-1, fill=False, color=next(colors), linewidth=4))
     
     if len(crop_bbox) == 4:
         X1, Y1, W_crop, H_crop = crop_bbox
-        ax.add_patch(plt.Rectangle((X1, Y1), W_crop-1, H_crop-1, fill=False, color='black', linestyle = '--', linewidth = 7))
+        ax.add_patch(plt.Rectangle((X1, Y1), W_crop-1, H_crop-1, fill=False, color='black', linestyle = '--', linewidth = 4))
             
     plt.colorbar()
     plt.show()
@@ -331,3 +264,73 @@ def estimate_bbox(expl_matrix_tr, desired_dim = 35):
     what, hhat = x2hat-x1hat, y2hat-y1hat
 
     return x1hat, y1hat, what, hhat
+
+"""
+-------------- GRADCAM -------------- GRADCAM -------------- GRADCAM --------------
+""" 
+
+def gradcam(model, rna1, rna2, counterfactual = False, cnn_layer = 1):
+    if cnn_layer == 1:
+        gradients = model.get_activations_gradient1()
+        activations = model.get_activations1(rna1, rna2).detach()
+        
+    elif cnn_layer == 2:
+        gradients = model.get_activations_gradient2()
+        activations = model.get_activations2(rna1, rna2).detach()
+    else:
+        raise NotImplementedError
+        
+    pooled_gradients = torch.mean(gradients, dim=[0, 2, 3])
+    n_channels = activations.shape[1]
+    if counterfactual:
+        for i in range(n_channels):
+            activations[:, i, :, :] *= - pooled_gradients[i]
+    else:
+        for i in range(n_channels):
+            activations[:, i, :, :] *= pooled_gradients[i]
+    heatmap = torch.mean(activations, dim=1).squeeze()
+    #heatmap /= torch.max(heatmap)
+    heatmap = np.array(heatmap.cpu().squeeze())
+    return heatmap
+
+def interpolate_expl_matrix(expl_matrix, height, width, normalize = True):
+    im = Image.fromarray(expl_matrix)
+    im = im.resize((height, width))
+    #im = im.resize((width, height))
+    expl_matrix_reshaped = np.array(im)
+    if normalize: 
+        expl_matrix_reshaped = (expl_matrix_reshaped - expl_matrix_reshaped.min())/(expl_matrix_reshaped.max() - expl_matrix_reshaped.min())
+    return expl_matrix_reshaped
+
+def collect_metrics_and_prediction(matrix, x1, x2, y1, y2, desired_dim = 300, factor_margin_intensity = 10):
+    
+    cos_sim = float(np.round(cosine_similarity_expl(matrix, [x1, x2, y1, y2]), 3))
+    x1hat, y1hat, what, hhat = estimate_bbox(matrix, desired_dim = desired_dim)
+    iou_value = float(np.round(box_ops.iou_metric([x1hat, y1hat, what, hhat], 
+                                                  [x1, y1, x2-x1, y2-y1]), 
+                               2))
+    
+    w, h = matrix.shape
+    
+    x1_max, y1_max = np.where(matrix == matrix.max())
+    relative_predicted_centroid = np.array([float(x1_max)/w, float(y1_max)/h])
+    relative_real_centroid = np.array([
+        ((x1 + x2)/2)/w,
+        ((y1 + y2)/2)/h
+    ])
+    
+    euclidean = np.linalg.norm(relative_predicted_centroid - relative_real_centroid)
+    
+    euclidean_bbox = np.linalg.norm(
+        np.array([
+            (x1hat + (what/2))/w,
+            (y1hat + (hhat/2))/h
+        ]) 
+        - relative_real_centroid
+    )
+    
+    m_w = w//factor_margin_intensity
+    m_h = h//factor_margin_intensity
+    intensity = matrix[(x1-m_w):(x2+m_w), (y1-m_h):(y2+m_h)].mean()
+    
+    return cos_sim, iou_value, x1hat, y1hat, what, hhat, euclidean, euclidean_bbox, intensity

@@ -17,13 +17,29 @@ class SmallCNN(nn.Module):
         self.global_avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(n_channels2, n_channels2)
         self.output_layer = nn.Linear(n_channels2, 2)
+        self.gradients1 = None
+        self.gradients2 = None
+
+    # hook for the gradients of the activations
+    def activations_hook1(self, grad):
+        self.gradients1 = grad
+        
+     # hook for the gradients of the activations
+    def activations_hook2(self, grad):
+        self.gradients2 = grad
 
     def forward(self, x):
         #print(x.shape) --> torch.Size([batch, k, lenrna1, lenrna2])
         x = self.conv1(x)
+        if x.requires_grad:
+            # register the hook
+            h = x.register_hook(self.activations_hook1)
         x = self.relu(x)
         x = self.maxpool2d(x)
         x = self.conv2(x)
+        if x.requires_grad:
+            # register the hook
+            h = x.register_hook(self.activations_hook2)
         x = self.relu(x)
         x = self.maxpool2d(x)
         #print(x.shape) --> torch.Size([batch, n_channels2, reduced_lenrna1, reduced_lenrna2])
@@ -131,9 +147,29 @@ class BinaryClassifierNT(nn.Module):
 
         return output
 
-
-
-        
+    # method for the activation exctraction
+    def get_activations1(self, rna1, rna2):
+        X = self.obtain_mlp_output_reduced_memory(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
+        X = self.small_cnn.conv1(X)
+        return X
+    
+    # method for the activation exctraction
+    def get_activations2(self, rna1, rna2):
+        X = self.obtain_mlp_output_reduced_memory(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
+        X = self.small_cnn.conv1(X)
+        X = self.small_cnn.relu(X)
+        X = self.small_cnn.maxpool2d(X)
+        X = self.small_cnn.conv2(X)
+        return X
+    
+    # method for the gradient extraction
+    def get_activations_gradient1(self):
+        return self.small_cnn.gradients1
+    
+    # method for the gradient extraction
+    def get_activations_gradient2(self):
+        return self.small_cnn.gradients2
+    
     def forward(self, rna1, rna2):
         output_contact_matrix = self.obtain_mlp_output_reduced_memory(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
         binary_output = self.small_cnn(output_contact_matrix)

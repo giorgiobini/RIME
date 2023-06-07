@@ -54,6 +54,16 @@ conda install -c conda-forge pytorch-gpu=2.0.0 -y (C e una ripetizione del secon
 pip install datasets
 ``` 
 
+``` 
+conda create -n intarna 
+conda activate intarna
+conda install -c conda-forge -c bioconda intarna
+
+create_intarna_fasta.ipynb
+cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/toy/
+nohup time IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=20 --outMode=C --outPairwise -n 5 &> test.csv &
+``` 
+
 
 ## 2. Data
 We need the data to be structured as the example below.
@@ -84,16 +94,14 @@ Put your files inside the directory dataset/external_dataset/your_folder/
 You must have these files inside your_folder:
 
 ```
-genes.fa 
+embedding_query.csv
 
->ENSFAKE001
-CGUUUCGCUAAACUCUG
->ENSFAKE002
-UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
->ENSFAKE003
-GUGAACGUCGCGAUAGGCGGAACAA
->ENSFAKE004
-AGUAACAACGCUAGGUGCGAGUGUCGUC
+id_query,cdna
+ENSFAKE001,CGUUUCGCUAAACUCUG
+ENSFAKE002,UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
+ENSFAKE003,GUGAACGUCGCGAUAGGCGGAACAA
+ENSFAKE004,AGUAACAACGCUAGGUGCGAGUGUCGUC
+
 
 
 pairs.txt
@@ -104,5 +112,5 @@ ENSFAKE003_ENSFAKE004
 ```
 
 Run these scripts from the src directory in the following order:
--
--
+- nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/embeddings &> download_embeddings_inference.out &
+- run_inference.ipynb

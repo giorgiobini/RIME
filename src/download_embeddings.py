@@ -51,11 +51,15 @@ def get_args_parser():
                         help="Batch size for the NT model")
     parser.add_argument('--embedding_layer', default='32',
                         help="Which is the embedding layer you cutted the NT model")
+    parser.add_argument('--path_to_embedding_query_dir', default='/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/metadata',
+                        help="Where is the embedding_query.csv file")
+    parser.add_argument('--embedding_dir', default='/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/embeddings',
+                        help="Where is the embedding directory. If it doesn t exist, it will be created")
     return parser
 
 def main(args):
     
-    df = pd.read_csv(os.path.join(metadata_dir, 'embedding_query.csv'))
+    df = pd.read_csv(os.path.join(args.path_to_embedding_query_dir, 'embedding_query.csv'))
 
     embeddings_layers_to_save = (int(args.embedding_layer),)
     model_name = '2B5_multi_species'
@@ -118,7 +122,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Download NT Embeddings', parents=[get_args_parser()])
     args = parser.parse_args()
     
-    save_path = os.path.join(embedding_dir, args.embedding_layer)
+    if not os.path.exists(args.embedding_dir):
+        os.makedirs(args.embedding_dir)
+    
+    save_path = os.path.join(args.embedding_dir, args.embedding_layer)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     

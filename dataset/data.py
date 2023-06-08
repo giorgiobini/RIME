@@ -1150,7 +1150,8 @@ class RNADataset(Dataset):
 
         for gene_info in self.gene2info.values():
             gene_info["interactions"] = []
-
+        
+        interactions = interactions.copy()
         interactions['matrix_area'] = interactions.length_1*interactions.length_2
         interactions['interaction_area'] = interactions.w*interactions.h
         interactions.rename(columns={"couples": "couple"}, inplace=True)

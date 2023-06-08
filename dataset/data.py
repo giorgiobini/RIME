@@ -28,6 +28,8 @@ from torch.utils.data import DataLoader
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, MAX_RNA_SIZE
 
+#MAX_RNA_SIZE = 500
+
 AugmentSpec = Mapping[str, Any]
 Interaction = Mapping[str, Any]
 

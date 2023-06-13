@@ -135,7 +135,11 @@ def main(args):
     assert vc_train[False]>vc_train[True]
     unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
 
-    pos_multipliers = {150: 0.3, 300: 0.3, 10_000_000: 0.4}
+    pos_multipliers = {15:0.2, 
+                   50:0.2, 
+                   100:0.1, 
+                   150:0.1, 
+                   10_000_000: 0.4}
     neg_multipliers = pos_multipliers
     scaling_factor = 5
 
@@ -179,7 +183,11 @@ def main(args):
     # assert vc_val[True]>vc_val[False]
     # unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
 
-    pos_multipliers = {10_000_000:1.,}
+    pos_multipliers = {15:0.2, 
+                   50:0.2, 
+                   100:0.1, 
+                   150:0.1, 
+                   10_000_000: 0.4}
     neg_multipliers = pos_multipliers
 
     policies_val = [

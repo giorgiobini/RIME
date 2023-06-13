@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, '..')
 from config import *
 import util.misc as utils
+import util.xai as xai
 from models.nt_classifier import build as build_model
 from dataset.data import (
     RNADatasetNT,
@@ -27,17 +28,14 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
+RUN_FINETUNING = True
+
 def main(args):
     
     start_time = time.time() 
 
     file_test  = os.path.join(rna_rna_files_dir, "gene_pairs_test_nt.txt")
-    with open(file_test, "rb") as fp:   # Unpickling
-        gene_pairs_test = pickle.load(fp)
-
-    file_val  = os.path.join(rna_rna_files_dir, "gene_pairs_val_nt.txt")
-    with open(file_val, "rb") as fp:   # Unpickling
-        gene_pairs_val = pickle.load(fp)
+    #file_val  = os.path.join(rna_rna_files_dir, "gene_pairs_val_nt.txt")
     
     df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
     df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
@@ -95,32 +93,48 @@ def main(args):
     len_g1 = []
     len_g2 = []
     couple_id = []
-    original_length1 = []
-    original_length2 = []
     ids = []
+    gradcam_results = []
 
     for (rna1, rna2), target in data_loader_test:
 
         s = target[0]
         interacting = bool(s['interacting'])
+        s_bbox = s['bbox']
+        int_bbox = s['interaction_bbox']
 
         row_original = df_nt[(df_nt['gene1'] == s['gene1'])&(df_nt['gene2'] == s['gene2'])]
         row_swapped = df_nt[(df_nt['gene2'] == s['gene1'])&(df_nt['gene1'] == s['gene2'])]
 
         if len(row_original)>0:
-            assert len(row_original) == 1
+            #assert len(row_original) == 1 #there are few duplicates
             row = row_original.iloc[0]
+            swapped_genes = False
         elif len(row_swapped)>0:
-            assert len(row_swapped) == 1
+            #assert len(row_swapped) == 1 #there are few duplicates
             row = row_swapped.iloc[0]
+            swapped_genes = True
         else:
             raise NotImplementedError
 
-        id_sample = row.couple
+        id_sample = row.couples
         policy_sample = row.policy
         couple_id_sample = row.couples_id
 
-        outputs = model(rna1.to(device), rna2.to(device))
+        rna1, rna2 = rna1.to(device), rna2.to(device)
+
+        outputs = model(rna1, rna2)
+
+        if interacting:
+            outputs[:, 1].backward()
+            x1 = int(int_bbox.x1-s_bbox.x1)
+            x2 = int(int_bbox.x2-s_bbox.x1)
+            y1 = int(int_bbox.y1-s_bbox.y1)
+            y2 = int(int_bbox.y2-s_bbox.y1)
+            width = s_bbox.x2-s_bbox.x1
+            height = s_bbox.y2-s_bbox.y1
+            gradcam_results.append(xai.get_gradcam_results(model, id_sample, swapped_genes, outputs, rna1, rna2, height, width, x1, x2, y1, y2, treshold = 75))
+
         probability += outputs.softmax(-1)[:, 1].tolist()
 
         ground_truth.append(1 if interacting else 0)
@@ -146,10 +160,9 @@ def main(args):
         'couples':couple_id,
     })
 
+    gradcam_results = pd.DataFrame(gradcam_results)
+
     res['prediction'] = (res['probability'] > 0.5).astype(int)
-
-    (res['prediction'] == res['ground_truth']).sum()/res.shape[0]
-
     res['sampled_area'] = res['len_g1']*res['len_g2']
     
     df = pd.read_csv(os.path.join(processed_files_dir,"final_df.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
@@ -172,6 +185,14 @@ def main(args):
     res['gene1_original'], res['gene2_original'] = g12[0], g12[1]
 
     res.to_csv(os.path.join(checkpoint_dir, 'test_results.csv'))
+    gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results.csv'))
+
+    if RUN_FINETUNING:
+        res.to_csv(os.path.join(checkpoint_dir, 'test_results_finetuning.csv'))
+        gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results_finetuning.csv'))
+    else:
+        res.to_csv(os.path.join(checkpoint_dir, 'test_results.csv'))
+        gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results.csv'))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -196,7 +217,11 @@ if __name__ == '__main__':
 
     # Convert the dictionary to an argparse.Namespace object
     args = argparse.Namespace(**args_dict)
-    args.resume = os.path.join(args.output_dir, 'best_model.pth') 
+
+    if RUN_FINETUNING:
+        args.resume = os.path.join(args.output_dir, 'best_model_fine_tuning.pth') 
+    else:
+        args.resume = os.path.join(args.output_dir, 'best_model.pth') 
 
     seed_everything(123)
     main(args)

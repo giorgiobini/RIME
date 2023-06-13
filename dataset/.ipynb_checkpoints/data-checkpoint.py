@@ -13,17 +13,22 @@ from itertools import groupby
 from pathlib import Path
 from typing import Any, Collection, Dict, List, Mapping, Sequence, Set, Tuple, Union
 from Bio import SeqIO
-
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import torch
-from plotly.graph_objs.layout import Shape
 from strenum import StrEnum
 from torch.utils.data import Dataset, random_split
 from tqdm import tqdm
+from matplotlib.patches import Rectangle
+from datasets import Dataset as HuggingFaceDataset
+from torch.utils.data import DataLoader
 
-ROOT_DIR = Path(".")
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import ROOT_DIR, MAX_RNA_SIZE
+
+MAX_RNA_SIZE = 500
 
 AugmentSpec = Mapping[str, Any]
 Interaction = Mapping[str, Any]
@@ -112,7 +117,6 @@ class Sample:
     gene1_info: Mapping[str, Any]
     gene2_info: Mapping[str, Any]
 
-
 class AugmentMode(StrEnum):
     EASY_POS = auto()
     EASY_NEG = auto()
@@ -138,7 +142,7 @@ class AugmentPolicy:
             Mapping[float, float], Mapping[Tuple[int, int], float]
         ],
         interacting: Collection[bool],
-        max_size: int = 512,
+        max_size: int = MAX_RNA_SIZE,
     ):
         """
 
@@ -171,6 +175,7 @@ class AugmentPolicy:
             "EasyNegAugment": "easyneg",
             "HardNegAugment": "hardneg",
             "RegionSpecNegAugment": "regionneg",
+            "SmartNegAugment": "smartneg",
         }
         return mapping[type(self).__name__]
 
@@ -204,9 +209,17 @@ class AugmentPolicy:
     def generate_augment_specs(
         self, couple_interactions: Sequence[Interaction]
     ) -> Sequence[AugmentSpec]:
+        #print(couple_interactions[0]) -> {'couple': 'ENSG00000000419_ENSG00000249150', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000249150', 'interacting': False, 'length_1': 1161, ...}
         interacting = set(
             interaction["interacting"] for interaction in couple_interactions
-        )
+        ) 
+        
+        if len(interacting) != 1:
+            print(interacting)
+            print(couple_interactions)
+            print(self.gene1)
+            print(self.gene2)
+        
         assert len(interacting) == 1
         if len(set.intersection(interacting, self.interacting)) == 0:
             return []
@@ -252,6 +265,134 @@ class EasyPosAugment(AugmentPolicy):
             width_probabilities=width_multipliers,
             height_probabilities=height_multipliers,
             interacting=[True],
+        )
+        self.interaction_selection: InteractionSelectionPolicy = interaction_selection
+
+    def get_target_interactions(
+        self, couple_interactions: Sequence[Interaction]
+    ) -> Sequence[int]:
+        #print(couple_interactions) -> [{'couple': 'ENSG00000000419_ENSG00000280193', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000280193', 'interacting': True, 'length_1': 1161, 'length_2': 2327, 'protein_coding_1': True, 'protein_coding_2': False, 'x1': 543, 'y1': 1294, 'w': 30, 'h': 44, 'matrix_area': 2701647, 'interaction_area': 1320}]
+        if self.interaction_selection == InteractionSelectionPolicy.ALL:
+            target_interactions = list(range(len(couple_interactions)))
+        elif self.interaction_selection == InteractionSelectionPolicy.RANDOM_ONE:
+            target_interactions = [random.randint(0, len(couple_interactions) - 1)]
+        elif self.interaction_selection == InteractionSelectionPolicy.LARGEST:
+            target_interactions = [
+                sorted(
+                    enumerate(couple_interactions),
+                    key=lambda index2interaction: index2interaction[1][
+                        "interaction_area"
+                    ],
+                )[-1][0]
+            ]
+
+        elif self.interaction_selection == InteractionSelectionPolicy.SMALLER:
+            target_interactions = [
+                sorted(
+                    enumerate(couple_interactions),
+                    key=lambda index2interaction: index2interaction[1][
+                        "interaction_area"
+                    ],
+                )[0][0]
+            ]
+        else:
+            raise NotImplementedError
+
+        return target_interactions
+
+    def augment(
+        self,
+        target_interaction: int,
+        couple_interactions: Sequence[Interaction],
+        gene1: str,
+        gene2: str,
+        dataset: "RNADataset",
+    ) -> AugmentResult:
+        """
+        Augment a positive sample by sampling a new width and height for the target interaction.
+        :param target_interaction: index of the interaction to augment
+        :param couple_interactions: list of interactions for the couple
+        :param gene1: name of the first gene
+        :param gene2: name of the second gene
+        :param dataset: dataset containing the gene info"""
+        # Get the target interaction
+        interaction: Interaction = couple_interactions[target_interaction]
+
+        # Get the gene info
+        gene1_info: Mapping[str, Any] = dataset.gene2info[gene1]
+        gene2_info: Mapping[str, Any] = dataset.gene2info[gene2]
+
+        # gene1 refers to dim1 of the matrix, so to the width. Symmetrically, gene2 refers to the height (dim 0)
+        gene1_length: int = len(gene1_info["cdna"])
+        gene2_length: int = len(gene2_info["cdna"])
+
+        # First, sample the target width & height from their distributions
+        # TODO: limit lengths to not intersect with other interactions?
+        target_width: int = _sample_target_dimension_multiplier(
+            bins=self.width_bins,
+            probabilities=self.width_probabilities,
+            max_size=min(gene1_length, self.max_size),
+            starting_dim=interaction["w"],
+        )
+        target_height: int = _sample_target_dimension_multiplier(
+            bins=self.height_bins,
+            probabilities=self.height_probabilities,
+            max_size=min(gene2_length, self.max_size),
+            starting_dim=interaction["h"],
+        )
+
+        # We can now crop each dimension separately.
+        interaction_x1: int = int(interaction["x1"])
+        interaction_x2: int = int(interaction_x1 + interaction["w"])
+        
+        target_x1 = _compute_target(
+            interaction_p1=interaction_x1,
+            interaction_p2=interaction_x2,
+            min_overlap=1,
+            max_length=gene1_length,
+            interaction_length=interaction["w"],
+            target_length=target_width,
+        )
+        target_x2 = min(target_x1 + target_width, gene1_length)
+
+        interaction_y1: int = int(interaction["y1"])
+        interaction_y2: int = int(interaction_y1 + interaction["h"])
+        target_y1 = _compute_target(
+            interaction_p1=interaction_y1,
+            interaction_p2=interaction_y2,
+            min_overlap=1,
+            max_length=gene2_length,
+            interaction_length=interaction["h"],
+            target_length=target_height,
+        )
+        target_y2 = min(target_y1 + target_height, gene2_length)
+
+        return dict(
+            bbox=BBOX(
+                x1=int(target_x1),
+                x2=int(target_x2),
+                y1=int(target_y1),
+                y2=int(target_y2),
+            ),
+            gene1=gene1,
+            gene2=gene2,
+            interacting=True,
+        )
+
+
+class SmartNegAugment(AugmentPolicy):
+    def __init__(
+        self,
+        interaction_selection: InteractionSelectionPolicy,
+        per_sample: Union[float, int],
+        width_multipliers: Mapping[float, float],
+        height_multipliers: Mapping[float, float],
+    ) -> None:
+        super().__init__(
+            per_sample=per_sample,
+            width_probabilities=width_multipliers,
+            height_probabilities=height_multipliers,
+            interacting=[False],  #only difference from EasyPosAugment
         )
         self.interaction_selection: InteractionSelectionPolicy = interaction_selection
 
@@ -361,10 +502,9 @@ class EasyPosAugment(AugmentPolicy):
             ),
             gene1=gene1,
             gene2=gene2,
-            interacting=True,
+            interacting=False, #The other difference with respect to EasyPosAugment
         )
-
-
+    
 class HardPosAugment(AugmentPolicy):
     def __init__(
         self,
@@ -561,7 +701,7 @@ class EasyNegAugment(AugmentPolicy):
 class HardNegAugment(AugmentPolicy):
 
     _NUM_TRIES: int = (
-        100  # 100 tries should be enough given the sparsity of interactions...
+        150  # 150 tries should be enough given the sparsity of interactions...
     )
 
     def __init__(
@@ -624,12 +764,18 @@ class HardNegAugment(AugmentPolicy):
                 interaction_bbox.y1 : interaction_bbox.y2,
                 interaction_bbox.x1 : interaction_bbox.x2,
             ] = 1
-
+            
+        reduced = False
         for _ in range(HardNegAugment._NUM_TRIES):
-            x1 = np.random.randint(low=0, high=gene1_length)
-            y1 = np.random.randint(low=0, high=gene2_length)
+            x1 = np.random.randint(low=0, high=gene1_length - (target_width-1))
+            y1 = np.random.randint(low=0, high=gene2_length - (target_height-1))
 
             try:
+                if (_ > HardNegAugment._NUM_TRIES/2)&(reduced == False):
+                    target_width = target_width//5 #it should be easier to find under these conditions
+                    target_height = target_height//5 #it should be easier to find under these conditions
+                    reduced = True
+                    
                 sample_interaction: torch.Tensor = full_matrix[
                     y1 : y1 + target_height, x1 : x1 + target_width
                 ]
@@ -648,7 +794,7 @@ class HardNegAugment(AugmentPolicy):
             )
         else:
             raise RuntimeError(
-                f"Couldn't find a non-interacting region with {HardNegAugment._NUM_TRIES} tries"
+                f"Couldn't find a non-interacting region with {HardNegAugment._NUM_TRIES} tries for genes {gene1}, {gene2}, that interacts here {interaction_bbox}"
             )
 
 
@@ -980,24 +1126,23 @@ def _compute_target(
 class RNADataset(Dataset):
     def __init__(
         self,
-        gene_info_path: Path,
-        interactions_path: Path,
-        dot_bracket_path: Path,
+        gene2info: pd.DataFrame,
+        interactions: pd.DataFrame,
         subset_file: Path,
         augment_policies: Collection[AugmentPolicy],
     ):
-        self.gene_info_path: Path = gene_info_path
-        self.interactions_path: Path = interactions_path
-        self.dot_bracket_path: Path = dot_bracket_path
         self.subset_file = subset_file
 
-        self.gene2info: pd.DataFrame = pd.read_csv(gene_info_path, sep=",")
-        dot_bracket: pd.DataFrame = pd.read_csv(dot_bracket_path, sep="\t")
-
-        self.gene2info: pd.DataFrame = self.gene2info.merge(
-            dot_bracket, left_on="gene_id", right_on="genes"
-        ).drop(["genes"], axis=1)
-
+        self.gene2info = gene2info
+        self.gene2info.rename(
+            columns={
+                "UTR5": "UTR5_end",
+                "CDS": "CDS_end",
+                "UTR3": "UTR3_end",
+            },
+            inplace=True,
+        )
+    
         self.gene2info["UTR3_start"] = self.gene2info["CDS_end"]
         self.gene2info["CDS_start"] = self.gene2info["UTR5_end"]
 
@@ -1007,18 +1152,11 @@ class RNADataset(Dataset):
 
         for gene_info in self.gene2info.values():
             gene_info["interactions"] = []
-
-        interactions: pd.DataFrame = pd.read_csv(interactions_path, sep=",")
-        interactions.rename(
-            columns={
-                "Unnamed: 0": "id",
-                "couples": "couple",
-                "there_is_interaction": "interacting",
-                "area_of_the_matrix": "matrix_area",
-                "area_of_the_interaction": "interaction_area",
-            },
-            inplace=True,
-        )
+        
+        interactions = interactions.copy()
+        interactions['matrix_area'] = interactions.length_1*interactions.length_2
+        interactions['interaction_area'] = interactions.w*interactions.h
+        interactions.rename(columns={"couples": "couple"}, inplace=True)
 
         if os.path.isfile(self.subset_file):
             with open(self.subset_file, "rb") as fp:  # Unpickling
@@ -1052,6 +1190,7 @@ class RNADataset(Dataset):
                 operator.itemgetter("couple"),
             )
         ]
+        #print(all_pair_interactions[0]) --> [{'couple': 'ENSG00000000419_ENSG00000249150', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000249150', 'interacting': False, ...}]
 
         self.all_pair_interactions = {
             frozenset(
@@ -1074,7 +1213,7 @@ class RNADataset(Dataset):
 
     def __getitem__(self, item: int) -> Sample:
         """ """
-        augment_spec: AugmentSpec = self.augment_specs[item]
+        augment_spec: AugmentSpec = self.augment_specs[item] #{'augment_policy': <dataset.data.EasyPosAugment object at 0x7f96bc340370>, 'couple_interactions': [{'couple': 'ENSG00000000419_ENSG00000280193', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000280193', 'interacting': True, ....}
         augment_policy: AugmentPolicy = augment_spec["augment_policy"]
         couple_interactions = augment_spec["couple_interactions"]
 
@@ -1167,259 +1306,37 @@ def _sample_target_dimension_multiplier(
 
 
 
-
-# sys.path.insert(0, "..")
-# from util import contact_matrix
-# def plot_sample2(sample: Sample):
-#     list_of_boxes = [
-#         [
-#             sample.seed_interaction_bbox.x1,
-#             sample.seed_interaction_bbox.y1,
-#             sample.seed_interaction_bbox.width,
-#             sample.seed_interaction_bbox.height,
-#         ]
-#     ]
-#     crop_bbox = [
-#         sample.bbox.x1,
-#         sample.bbox.y1,
-#         sample.bbox.width,
-#         sample.bbox.height,
-#     ]
-#     contact_matrix.plot_contact_matrix(
-#         sample.gene1_info["cdna"],
-#         sample.gene2_info["cdna"],
-#         list_of_boxes,
-#         crop_bbox=crop_bbox,
-#         plot_geoms=False,
-#     )
-
-
-def plot_sample(sample: Sample, plot_cdna=False):
+def plot_sample(sample: Sample, plot_interaction_negatives=False):
     sample_bbox: BBOX = sample.bbox
-    interaction_bbox: BBOX = sample.seed_interaction_bbox
-
-    width = len(sample.gene1_info["cdna"])
-    height = len(sample.gene2_info["cdna"])
-
-    fig = go.Figure()
-    if plot_cdna:
-        show_axis = True
-        fig.update_xaxes(
-            tickmode="array",
-            tickvals=np.arange(0, width),
-            ticktext=[b for b in sample.gene1_info["cdna"]],
-        )
-        fig.update_yaxes(
-            tickmode="array",
-            tickvals=np.arange(0, height),
-            ticktext=[b for b in sample.gene2_info["cdna"]],
-        )  # tickangle = 90,
-    else:
-        show_axis = False
-        fig.update_xaxes(range=[0, width])
-        fig.update_yaxes(range=[0, height])
-
-    real_bboxes = [
-        BBOX.from_interaction(interaction=interaction)
-        for interaction in sample.all_couple_interactions
-    ]
-    fig.update_layout(
-        shapes=[
-            Shape(
-                type="rect",
-                x0=0,
-                y0=0,
-                x1=width,
-                y1=height,
-                fillcolor="lightgrey",
-                xref="x",
-                yref="y",
-                opacity=0.5,
-            ),
-            *(
-                Shape(
-                    type="rect",
-                    x0=real_bbox.x1,
-                    y0=real_bbox.y1,
-                    x1=real_bbox.x2,
-                    y1=real_bbox.y2,
-                    fillcolor="blue",
-                    xref="x",
-                    yref="y",
-                    opacity=0.8,
-                    line=dict(
-                        color="blue",
-                        width=2,
-                    ),
-                )
-                for real_bbox in real_bboxes
-            ),
-            Shape(
-                type="rect",
-                x0=sample_bbox.x1,
-                y0=sample_bbox.y1,
-                x1=sample_bbox.x2,
-                y1=sample_bbox.y2,
-                fillcolor="red",
-                xref="x",
-                yref="y",
-                opacity=0.5,
-                line=dict(
-                    color="red",
-                    width=2,
-                ),
-            ),
-        ]
-    )
-
-    fig.update_layout(
-        showlegend=True, autosize=False
-    )  # , width=int(width), height=int(height))
-    fig.update_xaxes(
-        showgrid=False, showticklabels=show_axis, showline=False, zeroline=False
-    )
-    fig.update_yaxes(
-        showgrid=False, showticklabels=show_axis, showline=False, zeroline=False
-    )
-
-    # print(f"{interaction_bbox=} | {sample_bbox=} | {width=} | {height=}")
+    real_bbox: BBOX = sample.seed_interaction_bbox
+    
+    cdna1 = sample.gene1_info["cdna"]
+    cdna2 = sample.gene2_info["cdna"]
+    width = len(cdna1)
+    height = len(cdna2)
+    print(width, height)
+    # Create figure and axes
+    fig, ax = plt.subplots()
+    ratio = width/height
+    print(ratio)
+    fig.set_figwidth(7*ratio)
+    fig.set_figheight(7)
+    ax.plot([0, width],[0, height], 'ro', color = 'white')
+    rect = Rectangle((sample_bbox.x1, sample_bbox.y1), 
+                     sample_bbox.x2-sample_bbox.x1, sample_bbox.y2-sample_bbox.y1,
+                             linewidth=2, edgecolor='darkblue', fill=False)
+    ax.add_patch(rect) # Add the patch to the Axes
+    if (sample.interacting | plot_interaction_negatives):
+        rect = Rectangle((real_bbox.x1, real_bbox.y1), 
+                         real_bbox.x2-real_bbox.x1, real_bbox.y2-real_bbox.y1, 
+                         linewidth=2, edgecolor='red', fill=True, facecolor='red',)
+        ax.add_patch(rect) # Add the patch to the Axes
     return fig
-
-
-def _valentino_test():
-    from tqdm import tqdm
-
-    pos_width_multipliers = {3: 0.1, 5: 0.2, 7: 0.2, 9: 0.1, 10: 0.1, 11: 0.1, 18: 0.2}
-    pos_height_multipliers = {3: 0.1, 5: 0.2, 7: 0.2, 9: 0.1, 10: 0.1, 11: 0.1, 18: 0.2}
-    neg_width_windows = {
-        (50, 80): 0.1,
-        (80, 120): 0.25,
-        (120, 200): 0.3,
-        (200, 300): 0.17,
-        (300, 400): 0.07,
-        (400, 500): 0.03,
-        (500, 512): 0.03,
-    }
-    neg_height_windows = {
-        (50, 80): 0.1,
-        (80, 120): 0.25,
-        (120, 200): 0.3,
-        (200, 300): 0.17,
-        (300, 400): 0.07,
-        (400, 500): 0.03,
-        (500, 512): 0.03,
-    }
-
-    _SUBSET_SIZE: int = 100
-    seed_everything(seed)
-    for policy in (
-        # EasyPosAugment(
-        #     per_sample=20,
-        #     interaction_selection=InteractionSelectionPolicy.LARGEST,
-        #     width_multipliers=pos_width_multipliers,
-        #     height_multipliers=pos_height_multipliers,
-        # ),
-        # RegionSpecNegAugment(
-        #     per_sample = 20,
-        #     width_windows = neg_width_windows,
-        #     height_windows = neg_height_windows,
-        #     target_rna = "random",
-        #     interaction_selection = InteractionSelectionPolicy.RANDOM_ONE,
-        # ),
-        # EasyNegAugment(
-        #     per_sample=20,
-        #     width_windows=neg_width_windows,
-        #     height_windows=neg_height_windows,
-        # ),
-        # HardPosAugment(
-        #     per_sample=0.5,
-        #     interaction_selection=InteractionSelectionPolicy.RANDOM_ONE,
-        #     min_width_overlap=0.3,
-        #     min_height_overlap=0.3,
-        #     width_multipliers=pos_width_multipliers,
-        #     height_multipliers=pos_height_multipliers,
-        # ),
-        # HardNegAugment(
-        #     per_sample=0.9,
-        #     width_windows=neg_width_windows,
-        #     height_windows=neg_height_windows,
-        # ),
-        RegionSpecNegAugment(
-            per_sample=20,
-            width_windows=neg_width_windows,
-            height_windows=neg_height_windows,
-        ),
-    ):
-        start_time = time.time()
-
-        dataset = RNADataset(
-            gene_info_path=os.path.join(processed_files_dir, "df_cdna.csv"),
-            interactions_path=os.path.join(
-                processed_files_dir, "df_annotation_files_cleaned.csv"
-            ),  # subset_valentino.csv
-            dot_bracket_path=os.path.join(processed_files_dir, "dot_bracket.txt"),
-            subset_file=os.path.join(
-                rna_rna_files_dir, "gene_pairs_training_random_filtered.txt"
-            ),
-            augment_policies=[
-                policy,
-            ],
-        )
-        # dataset = Subset(dataset=dataset, indices=[i for i, sample in enumerate(dataset) if len(sample["all_couple_interactions"]) > 1])
-        dataset = random_split(
-            dataset=dataset,
-            lengths=[_SUBSET_SIZE, len(dataset) - _SUBSET_SIZE],
-            generator=torch.Generator().manual_seed(42),
-        )[0]
-
-        dst_dir = Path(os.path.join(processed_files_dir, "sample", policy.name))
-
-        shutil.rmtree(dst_dir, ignore_errors=True)
-        dst_dir.mkdir(exist_ok=True, parents=True)
-        sampled_widths, sampled_heights = [], []
-        for i, sample in tqdm(enumerate(dataset)):
-            if i != 2:
-                continue
-
-            """
-            if ((len(sample['gene1_info']['cdna'])<400) & (len(sample['gene2_info']['cdna'])<400)):
-                plot_sample2(sample)
-                sample_fig = plot_sample(sample=sample)
-                sample_fig.show(dpi=600)
-                sample_fig.write_image(dst_dir / f"{i}.png")
-            """
-
-            width = sample.bbox.x2 - sample.bbox.x1
-            height = sample.bbox.y2 - sample.bbox.y1
-
-            if i == 2:
-                print(
-                    f"{sample.bbox=}\n {sample.seed_interaction_bbox=} {len(sample.gene1_info['cdna'])=} {len(sample.gene2_info['cdna'])=})"
-                )
-
-            sampled_widths.append(width)
-            sampled_heights.append(height)
-            # print()
-
-            sample_fig = plot_sample(sample=sample)
-            # sample_fig.show(dpi=600)
-            sample_fig.write_image(dst_dir / f"{i}.png")
-
-        print(policy)
-        print(f"Count: {len(sampled_widths)}")
-        print(f"Mean Width:{np.mean(sampled_widths)}")
-        print(f"Mean Height:{np.mean(sampled_heights)}")
-        print(f"std Width:{np.std(sampled_heights)}")
-        print(f"std Height:{np.std(sampled_heights)}")
-        print(f"Total time: {(time.time()-start_time)/60} minutes")
-        print()
-        # break
-
 
 class FindSplits:
     def __init__(
         self,
-        max_size: int = 512,
+        max_size: int = MAX_RNA_SIZE,
     ):
         self.max_size = max_size
         
@@ -1449,15 +1366,11 @@ class RNADatasetInference(Dataset):
         self,
         gene_info_path: Path,
         interactions_path: Path,
-        dot_bracket_path: Path,
         step_size: int
     ):
         self.gene_info_path: Path = gene_info_path
         self.interactions_path: Path = interactions_path
-        self.dot_bracket_path: Path = dot_bracket_path
         self.step_size = step_size
-
-        dot_bracket: pd.DataFrame = pd.read_csv(dot_bracket_path, sep="\t")
         
         d = {}
         for i, fasta in enumerate(SeqIO.parse(open(gene_info_path),'fasta')):
@@ -1468,13 +1381,9 @@ class RNADatasetInference(Dataset):
             
         self.gene2info: pd.DataFrame = pd.DataFrame.from_dict(d, orient = 'index')
         
-        self.gene2info: pd.DataFrame = self.gene2info.merge(
-            dot_bracket, left_on="gene_id", right_on="genes"
-        ).drop(["genes"], axis=1)
-        
         self.gene2info['length'] = self.gene2info.cdna.str.len()
         
-        fs = FindSplits(max_size = 512)
+        fs = FindSplits(max_size = MAX_RNA_SIZE)
         self.gene2info['coords'] = self.gene2info.length.apply(lambda x: fs.get_split_coords(length = x, step_size=self.step_size))
         
         self.gene2info: Mapping[str, Mapping[str, Any]] = {
@@ -1528,58 +1437,168 @@ class RNADatasetInference(Dataset):
     def __len__(self):
         return self.interactions.shape[0]
 
+#- - - - - - - - - - - - NT DATASET - - - - - - - - - - - -
+
+@dataclasses.dataclass(frozen=True)
+class SampleNT(Sample):
+    embedding1_path: Any
+    embedding2_path: Any
+    scaling_factor: int
+    min_n_groups: int
+    max_n_groups: int
+
+class RNADatasetNT(RNADataset):
+    def __init__(self, gene2info, interactions, subset_file, augment_policies, data_dir, scaling_factor = 5, min_n_groups = 2, max_n_groups = 5):
+        super().__init__(gene2info, interactions, subset_file, augment_policies)
+        self.data_dir = data_dir
+        self.scaling_factor = scaling_factor
+        self.min_n_groups = min_n_groups
+        self.max_n_groups = max_n_groups
+
+    def __getitem__(self, index):
+        # Retrieve the item from the base RNADataset
+        sample = super().__getitem__(index)
+
+        # Modify or process the sample as needed
+        sample_nt = self.create_nt_sample(sample)
+
+        return sample_nt
+
+    def create_nt_sample(self, s):   
+        s_nt = SampleNT(
+            gene1=s.gene1,
+            gene2=s.gene2,
+            bbox=s.bbox,
+            couple_id=s.couple_id,
+            policy=s.policy,
+            interacting=s.interacting,
+            seed_interaction_bbox=s.seed_interaction_bbox,
+            all_couple_interactions=s.all_couple_interactions,
+            gene1_info=s.gene1_info,
+            gene2_info=s.gene2_info,
+            embedding1_path = os.path.join(self.data_dir, f'{s.gene1}.npy'),
+            embedding2_path = os.path.join(self.data_dir, f'{s.gene2}.npy'),
+            scaling_factor = self.scaling_factor,
+            min_n_groups = self.min_n_groups,
+            max_n_groups = self.max_n_groups,
+        )
+        return s_nt
+    
+#- - - - - - - - - - - - HUGGINGFACE DATASET - - - - - - - - - - - -
+
+def group_averages(arr, k):
+    n = arr.shape[0]
+    remainder = n % k   # Remainder samples
+
+    # Split the array into groups
+    groups = np.split(arr[:n - remainder], k, axis = 0)
+
+    # If there is a remainder, add the remaining samples to the last group
+    if remainder > 0:
+        groups[-1] = np.concatenate((groups[-1], arr[-remainder:]))
+        averages = np.array([np.mean(g, axis = 0) for g in groups])
+    else:
+        # Calculate the mean along the second axis
+        averages = np.mean(groups, axis=1)
+
+    return averages
+
+def load_sample(file_path, c1, c2, num_groups):
+    # Load the sample from the file
+    sample = np.load(file_path)
+    # Perform any necessary preprocessing or augmentation
+    sample = group_averages(sample[c1:c2, :], num_groups)
+    # Return the processed sample
+    return sample
+    
+class HFDataset(HuggingFaceDataset):
+    def __init__(self, augment_list):
+        self.augment_list = augment_list
+
+    def __len__(self):
+        return len(self.augment_list)
+
+    def __getitem__(self, index):
+        return self.augment_list[index]
+
+    def get_batch(self, indices):
+        batch_data = []
+        for index in indices:
+            sample = self.augment_list[index]
+            x1, x2, y1, y2 = sample['bbox'].x1, sample['bbox'].x2, sample['bbox'].y1, sample['bbox'].y2,
+            rna1 = load_sample(sample['embedding1_path'], x1, x2, sample['num_groups1'])
+            rna2 = load_sample(sample['embedding2_path'], y1, y2, sample['num_groups2'])
+            sample_data = {
+                'input_rna1': rna1,
+                'input_rna2': rna2,
+                'gene1':sample['gene1'],
+                'gene2':sample['gene2'],
+                'x1': x1,
+                'x2': x2,
+                'y1': y1,
+                'y2': y2,
+                'seed_x1': sample['interaction_bbox'].x1,
+                'seed_x2': sample['interaction_bbox'].x2,
+                'seed_y1': sample['interaction_bbox'].y1,
+                'seed_y2': sample['interaction_bbox'].y2,
+                'num_groups1': sample['num_groups1'],
+                'num_groups2': sample['num_groups2'],
+                'policy': sample['policy'],
+                'interacting': sample['interacting']
+            }
+            batch_data.append(sample_data)
+        return batch_data
+
+class HFDataLoader(DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __iter__(self):
+        for indices in self.batch_sampler:
+            batch_dataset = self.dataset.get_batch(indices)  # Access dataset directly
+            yield self.collate_fn(batch_dataset)  # Apply the collate_fn explicitly
+            
+def create_augment_list(dataset, all_couples):
+    augment_list = []
+
+    for s in dataset:
+
+        couple_id = s.gene1_info['original_gene_id'] + '_' + s.gene2_info['original_gene_id']
+        couple_id_swapped = s.gene2_info['original_gene_id'] + '_' + s.gene1_info['original_gene_id']
         
+        if couple_id in all_couples:
+            real_couple_id = couple_id
+        elif couple_id_swapped in all_couples:
+            real_couple_id = couple_id_swapped
+        else:
+            raise NotImplementedError
 
+        policy_res = [
+            i['policy'] for i in s.gene1_info['interactions'] if 
+            (i['couples_id']==real_couple_id)&
+            ( set([i['gene1'],i['gene2']])==set([s.gene1, s.gene2]) )
+        ]
 
-if __name__ == "__main__":
-    seed = 42
-    seed_everything(seed)
+        assert len(policy_res) == 1
+        policy = policy_res[0]
 
-    original_files_dir: Path = ROOT_DIR / "dataset" / "original_files"
-    processed_files_dir: Path = ROOT_DIR / "dataset" / "processed_files"
-    rna_rna_files_dir = os.path.join(ROOT_DIR, "dataset", "rna_rna_pairs")
-    _valentino_test()
-    exit()
+        x1_emb, x2_emb, y1_emb, y2_emb = s.bbox.x1//6, s.bbox.x2//6, s.bbox.y1//6, s.bbox.y2//6
+        
+        k1 = (x2_emb-x1_emb)//s.scaling_factor
+        k2 = (y2_emb-y1_emb)//s.scaling_factor
 
-    pos_width_multipliers = {1: 0.1, 1.2: 0.1, 2.0: 1.0}
-    pos_height_multipliers = {1: 0.1, 1.2: 0.1, 2.0: 1.0}
-
-    neg_width_windows = {(10, 100): 0.1, (100, 512): 1.0}
-    neg_height_windows = {(10, 100): 0.1, (100, 512): 1.0}
-
-    policies = [
-        EasyPosAugment(
-            per_sample=10,
-            interaction_selection=InteractionSelectionPolicy.LARGEST,
-            width_multipliers=pos_width_multipliers,
-            height_multipliers=pos_height_multipliers,
-        ),
-        EasyNegAugment(
-            per_sample=10,
-            width_windows=neg_width_windows,
-            height_windows=neg_height_windows,
-        ),
-        HardPosAugment(
-            per_sample=10,
-            interaction_selection=InteractionSelectionPolicy.RANDOM_ONE,
-            min_width_overlap=0.3,
-            min_height_overlap=0.3,
-            width_multipliers=pos_width_multipliers,
-            height_multipliers=pos_height_multipliers,
-        ),
-        HardNegAugment(
-            per_sample=10,
-            width_windows=neg_width_windows,
-            height_windows=neg_height_windows,
-        ),
-    ]
-
-    dataset = RNADataset(
-        gene_info_path=processed_files_dir / "df_cdna.csv",
-        interactions_path=processed_files_dir / "subset_valentino.csv",
-        dot_bracket_path=processed_files_dir / "dot_bracket.txt",
-        augment_policies=policies,
-    )
-
-    for x in tqdm(dataset):
-        continue
+        augment_list.append({
+            'interacting': 1 if s.interacting else 0,
+            'gene1': s.gene1,
+            'gene2': s.gene2,
+            'embedding1_path':s.embedding1_path,
+            'embedding2_path':s.embedding2_path,
+            'bbox': s.bbox,
+            'policy': policy,
+            'interaction_bbox': s.seed_interaction_bbox,
+            'scaling_factor':s.scaling_factor,
+            'num_groups1':k1, 
+            'num_groups2':k2,
+        })
+        
+    return augment_list

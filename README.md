@@ -60,8 +60,8 @@ conda activate intarna
 conda install -c conda-forge -c bioconda intarna
 
 create_intarna_fasta.ipynb
-cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/toy/
-nohup time IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=20 --outMode=C --outPairwise -n 5 &> test.csv &
+cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/test500/
+nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 &> test.csv &
 ``` 
 
 
@@ -88,7 +88,10 @@ Run these scripts from the src directory in the following order:
 - nohup python download_embeddings.py --batch_size 19 &> download_embeddings.out &
 - train_binary_cl.py
 - train_binary_cl2_finetuning.py
-- run_binary_cl_on_test2.py & plot_test2_results.ipynb
+- run_binary_cl_on_test2.py OR run_binary_cl_on_test2_500.py
+- plot_test2_results.ipynb
+
+
 
 ## 4. Inference
 Put your files inside the directory dataset/external_dataset/your_folder/

@@ -295,8 +295,7 @@ def gradcam(model, rna1, rna2, counterfactual = False, cnn_layer = 1):
 
 def interpolate_expl_matrix(expl_matrix, height, width, normalize = True):
     im = Image.fromarray(expl_matrix)
-    im = im.resize((height, width))
-    #im = im.resize((width, height))
+    im = im.resize((width, height)) # its (width, height) and not (height, width) because its a PIL Image
     expl_matrix_reshaped = np.array(im)
     if normalize: 
         expl_matrix_reshaped = (expl_matrix_reshaped - expl_matrix_reshaped.min())/(expl_matrix_reshaped.max() - expl_matrix_reshaped.min())
@@ -313,6 +312,10 @@ def collect_metrics_and_prediction(matrix, x1, x2, y1, y2, desired_dim = 300, fa
     w, h = matrix.shape
     
     x1_max, y1_max = np.where(matrix == matrix.max())
+    if len(x1_max)>0: #take the first one
+        x1_max = x1_max[0]
+    if len(y1_max)>0: #take the first one
+        y1_max = y1_max[0]
     relative_predicted_centroid = np.array([float(x1_max)/w, float(y1_max)/h])
     relative_real_centroid = np.array([
         ((x1 + x2)/2)/w,
@@ -334,3 +337,43 @@ def collect_metrics_and_prediction(matrix, x1, x2, y1, y2, desired_dim = 300, fa
     intensity = matrix[(x1-m_w):(x2+m_w), (y1-m_h):(y2+m_h)].mean()
     
     return cos_sim, iou_value, x1hat, y1hat, what, hhat, euclidean, euclidean_bbox, intensity
+
+
+def get_gradcam_results(model, id_couple, swapped_genes, outputs, rna1, rna2, height, width, x1, x2, y1, y2, treshold = 75):
+    
+    expl_matrix = gradcam(model, rna1, rna2, counterfactual = False, cnn_layer = 2)
+
+    expl_matrix_reshaped = interpolate_expl_matrix(expl_matrix, height, width)
+    
+    desired_dim = int(min(width, height) / 5)
+    scaling_factor = 200
+
+    cos_sim, iou_value, x1hat, y1hat, what, hhat, euclidean, euclidean_bbox, intensity = collect_metrics_and_prediction(expl_matrix_reshaped, x1, x2, y1, y2, desired_dim = desired_dim)
+    
+    
+    expl_matrix_tr = expl_matrix_treshold(expl_matrix_reshaped, treshold = treshold, normalize = True)
+    cos_sim_tr, iou_value_tr, x1hat_tr, y1hat_tr, what_tr, hhat_tr, euclidean_tr, euclidean_bbox_tr, intensity_tr = collect_metrics_and_prediction(expl_matrix_tr, x1, x2, y1, y2, desired_dim = desired_dim)
+
+    
+    random_expl_matrix = np.random.rand(expl_matrix_reshaped.shape[0], expl_matrix_reshaped.shape[1])
+    cos_sim_rand, iou_value_rand, x1hat_rand, y1hat_rand, what_rand, hhat_rand, euclidean_rand, euclidean_bbox_rand, intensity_rand = collect_metrics_and_prediction(random_expl_matrix, x1, x2, y1, y2, desired_dim = desired_dim)
+    
+    return {"id": id_couple, 
+    "probability": float(outputs.softmax(-1)[:, 1]), 
+    "swapped_genes":swapped_genes,
+    "iou_value":iou_value, 
+    "iou_value_tr":iou_value_tr, 
+    "iou_value_rand":iou_value_rand, 
+    "cos_sim":cos_sim, 
+    "cos_sim_tr":cos_sim_tr, 
+    "cos_sim_rand":cos_sim_rand, 
+    "euclidean":euclidean,
+    "euclidean_tr":euclidean_tr,
+    "euclidean_rand":euclidean_rand,
+    "euclidean_bbox":euclidean_bbox,
+    "euclidean_bbox_tr":euclidean_bbox_tr,
+    "euclidean_bbox_rand":euclidean_bbox_rand,
+    "intensity":intensity,
+    "intensity_tr":intensity_tr,
+    "intensity_rand":intensity_rand,
+    }

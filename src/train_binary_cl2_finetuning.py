@@ -28,6 +28,12 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    torch.manual_seed(worker_seed)
+
 def main(args):
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     output_dir = Path(args.output_dir)
@@ -78,16 +84,6 @@ def main(args):
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt.txt")
     # subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt.txt")
-        
-    with open(subset_val_nt, "rb") as fp:  # Unpickling
-        list_val = pickle.load(fp)
-
-    # try:
-    #     vc_val = df_nt[df_nt.couples.isin(list_val)].interacting.value_counts()
-    # except:
-    #     vc_val = df_nt[df_nt.couple.isin(list_val)].interacting.value_counts() #I don t know the reason of this bug
-    # assert vc_val[True]>vc_val[False]
-    # unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
 
     pos_multipliers = {10_000_000:1.,}
     neg_multipliers = pos_multipliers
@@ -221,7 +217,11 @@ if __name__ == '__main__':
 
     # Convert the dictionary to an argparse.Namespace object
     args = argparse.Namespace(**args_dict)
-    args.resume = os.path.join(args.output_dir, 'best_model.pth') 
+
+    if os.path.exists(os.path.join(checkpoint_dir, 'checkpoint_fine_tuning.pth')):
+        args.resume = os.path.join(checkpoint_dir, 'checkpoint_fine_tuning.pth')
+    else:
+        args.resume = os.path.join(args.output_dir, 'best_model.pth') 
 
     args.lr = 1e-5
     args.epochs = 5

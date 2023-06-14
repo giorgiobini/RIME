@@ -137,3 +137,43 @@ def plot_logs(log, metric, best_model):
 '''
 ------------------------------------------------------------------------------------------
 '''
+
+def collect_results_based_on_confidence_level(df, how = 'intarna', n_values = 15):
+    auc_nt = []
+    auc_intarna = []
+    merged_x_axis = []
+    
+    n_total = df.shape[0]
+    
+    confidence_space = np.linspace(0.51, 0.99, n_values)
+    for i in range(n_values):
+        
+        if how == 'intarna':
+            treshold = 1-confidence_space[i]
+            subset = df[
+                (df.E_norm <= df.E_norm.quantile(treshold))|
+                (df.E_norm >= df.E_norm.quantile(1-treshold))
+            ]
+        elif how == 'nt':
+            treshold = confidence_space[i]
+            subset = df[
+                (df.probability >= treshold)|
+                (df.probability <= (1-treshold))
+            ]
+        else:
+            raise NotImplementedError
+        
+        if subset.shape[0]>0:
+            fpr, tpr, _ = roc_curve(subset.ground_truth, subset.probability)
+            roc_auc = auc(fpr, tpr)
+            auc_nt.append(roc_auc)
+
+            fpr, tpr, _ = roc_curve(abs(1 - subset.ground_truth), subset.E_norm)
+            roc_auc = auc(fpr, tpr)
+            auc_intarna.append(roc_auc)
+            
+            tuple_to_print = (np.round(confidence_space[i],2), np.round(subset.shape[0]/n_total, 2))
+            
+            merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
+        
+    return merged_x_axis, auc_nt, auc_intarna

@@ -28,7 +28,7 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
-RUN_FINETUNING = True
+RUN_FINETUNING = False
 
 def main(args):
     

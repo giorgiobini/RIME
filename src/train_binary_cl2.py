@@ -135,23 +135,24 @@ def main(args):
     assert vc_train[False]>vc_train[True]
     unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
 
-    pos_multipliers = {15:0.2, 
-                   50:0.2, 
+    pos_multipliers = {15:0.5, 
+                   50:0.3, 
                    100:0.1, 
-                   150:0.1, 
-                   10_000_000: 0.4}
+                   150:0.05, 
+                   300:0.025, 
+                   10_000_000: 0.025}
     neg_multipliers = pos_multipliers
     scaling_factor = 5
 
     policies_train = [
         EasyPosAugment(
-            per_sample=1,
+            per_sample=0.5,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=pos_multipliers,
             height_multipliers=pos_multipliers,
         ),  
         SmartNegAugment(
-            per_sample=unbalance_factor,
+            per_sample=unbalance_factor * 0.5,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=neg_multipliers,
             height_multipliers=neg_multipliers,
@@ -182,13 +183,6 @@ def main(args):
     #     vc_val = df_nt[df_nt.couple.isin(list_val)].interacting.value_counts() #I don t know the reason of this bug
     # assert vc_val[True]>vc_val[False]
     # unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
-
-    pos_multipliers = {15:0.2, 
-                   50:0.2, 
-                   100:0.1, 
-                   150:0.1, 
-                   10_000_000: 0.4}
-    neg_multipliers = pos_multipliers
 
     policies_val = [
         EasyPosAugment(

@@ -11,3 +11,9 @@ nohup: ignoring input
   ret = ret.dtype.type(ret / rcount)
 /data01/giorgio/ENTER/envs/rnarna/lib/python3.10/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in double_scalars
   ret = ret.dtype.type(ret / rcount)
+/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test2.py:181: FutureWarning: The default value of regex will change from True to False in a future version.
+  res['specie'] = res.specie.str.replace("{'hs'}", "human")
+/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test2.py:182: FutureWarning: The default value of regex will change from True to False in a future version.
+  res['specie'] = res.specie.str.replace("{'mm'}", "mouse")
+Be careful, some prediction will be counted more than one time. The number of duplicated sequences is 0
+Testing time 10:11:18

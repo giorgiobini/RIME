@@ -29,6 +29,7 @@ def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
         labels = torch.tensor([l['interacting'] for l in labels]).to(device)
         loss = criterion(outputs, labels) #loss = torch.nn.functional.cross_entropy
 
+        #se sono in uno step di accumalazione, fai solo loss.backword(). Se sono in uno step finale, fai tutti e 3. Ma l'ordine deve essere loss.backward(), optimizer.step(), optimizer.zero_grad()
         # Backward pass and optimization
         optimizer.zero_grad()
         loss.backward()

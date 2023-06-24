@@ -325,7 +325,6 @@ def prepare_rna_branch_nt2(s, k1, k2):
     # k2 = (y2_emb-y1_emb)//s.scaling_factor
     
     # k1, k2 = s.num_groups, s.num_groups
-    
     embedding1 = load_embedding(s.embedding1_path)[x1_emb:x2_emb, :]
     embedding2 = load_embedding(s.embedding2_path)[y1_emb:y2_emb, :]
     return group_averages(embedding1, k1), group_averages(embedding2, k2)

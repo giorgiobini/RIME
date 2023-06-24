@@ -118,6 +118,7 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python download_embeddings.py &> download_embeddings.out &
+    #nohup python download_embeddings.py --batch_size=2  &> download_embeddings.out & 
 
     parser = argparse.ArgumentParser('Download NT Embeddings', parents=[get_args_parser()])
     args = parser.parse_args()

@@ -20,13 +20,28 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
-RUN_FINETUNING = False
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value.lower() in {'false', 'f', '0', 'no', 'n'}:
+        return False
+    elif value.lower() in {'true', 't', '1', 'yes', 'y'}:
+        return True
+    raise ValueError(f'{value} is not a valid boolean value')
+
+def get_args_parser():
+    parser = argparse.ArgumentParser('Set model args', add_help=False)
+    parser.add_argument('--how', default='test',
+                        help='Can be test or val')
+    parser.add_argument('--run_finetuning', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True, I run the finetuned model")
+    return parser
 
 def main(args):
     
     start_time = time.time() 
 
-    df = pd.read_csv(os.path.join(metadata_dir, 'test500.csv'))
+    df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
     df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt.csv'))
     df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
 
@@ -136,10 +151,10 @@ def main(args):
     res['gene1_original'], res['gene2_original'] = g12[0], g12[1]
 
     if RUN_FINETUNING:
-        res.to_csv(os.path.join(checkpoint_dir, 'test_results500_finetuning.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500_finetuning.csv'))
         gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results500_finetuning.csv'))
     else:
-        res.to_csv(os.path.join(checkpoint_dir, 'test_results500.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500.csv'))
         gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results500.csv'))
 
     total_time = time.time() - start_time
@@ -150,8 +165,14 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_binary_cl_on_test2_500.py &> run_binary_cl_on_test2_500.out &
+    #nohup python run_binary_cl_on_test2_500.py --how=val &> run_binary_cl_on_test2_500.out &
      
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
+
+    parser = argparse.ArgumentParser('Test500', parents=[get_args_parser()])
+    args = parser.parse_args()
+    HOW = args.how 
+    RUN_FINETUNING = args.run_finetuning 
 
     # Define the path to the file containing the args namespace
     args_path = os.path.join(checkpoint_dir, 'args.pkl')

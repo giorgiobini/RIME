@@ -175,7 +175,33 @@ def distance_from_original_input(original_input: tuple, perturbed: tuple):
     return distance_between_matrices(cm, cm_pert, '')
 
 
-def plot_matrix(matrix, cdna1, cdna2, list_of_boxes,  crop_bbox = [], list_of_predictions = [], scaling_factor = 500, plot_axis = False, cmap = 'viridis'):
+def plot_matrix(matrix, list_of_boxes, scaling_factor = 500, plot_axis = False, cmap = 'viridis'):
+    """
+    Args:
+        matrix (np.array): lime continuous matrix of shape N * M
+        list_of_boxes (list): list of the bounding boxes in this matrix
+    Returns:
+        plot: matplotilb plot of the hydrogen bond matrix with all the bboxes 
+    """
+    
+    plt.rcParams["figure.figsize"] = (
+    int(matrix.shape[1]/scaling_factor), 
+    int(matrix.shape[0]/scaling_factor), 
+    )
+
+    plt.imshow(matrix, cmap = 'viridis')
+
+    ax = plt.gca()
+    colors = itertools.cycle('rcmkgy')
+    for i, (x, y, w, h) in enumerate(list_of_boxes):
+        ax.add_patch(plt.Rectangle((x, y), w-1, h-1, fill=False, color=next(colors), linewidth=4))
+
+    plt.xlabel('rna2')
+    plt.ylabel('rna1')           
+    plt.colorbar()
+    plt.show()
+
+def plot_matrix_old_not_working(matrix, cdna1, cdna2, list_of_boxes,  crop_bbox = [], list_of_predictions = [], scaling_factor = 500, plot_axis = False, cmap = 'viridis'):
     """
     Args:
         matrix (np.array): lime continuous matrix of shape N * M
@@ -187,13 +213,19 @@ def plot_matrix(matrix, cdna1, cdna2, list_of_boxes,  crop_bbox = [], list_of_pr
     Returns:
         plot: matplotilb plot of the hydrogen bond matrix with all the bboxes 
     """
+    
+    plt.rcParams["figure.figsize"] = (
+    int(expl_matrix_reshaped.shape[1]/scaling_factor), 
+    int(expl_matrix_reshaped.shape[0]/scaling_factor), 
+)
+
         
     plt.rcParams["figure.figsize"] = (
         int(len([b for b in cdna1])/scaling_factor), 
         int(len([b for b in cdna2])/scaling_factor)
     )
 
-    plt.imshow(matrix.T, cmap = cmap);
+    plt.imshow(matrix, cmap = cmap);
     
     if plot_axis: 
         plt.xticks(range(len([b for b in cdna1])), [b for b in cdna1], size='small')
@@ -295,7 +327,7 @@ def gradcam(model, rna1, rna2, counterfactual = False, cnn_layer = 1):
 
 def interpolate_expl_matrix(expl_matrix, height, width, normalize = True):
     im = Image.fromarray(expl_matrix)
-    im = im.resize((width, height)) # its (width, height) and not (height, width) because its a PIL Image
+    im = im.resize((height, width)) # its (height, width) and not (width, height) because its a PIL Image
     expl_matrix_reshaped = np.array(im)
     if normalize: 
         expl_matrix_reshaped = (expl_matrix_reshaped - expl_matrix_reshaped.min())/(expl_matrix_reshaped.max() - expl_matrix_reshaped.min())

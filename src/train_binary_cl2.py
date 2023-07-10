@@ -40,8 +40,8 @@ def str_to_bool(value):
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
-    parser.add_argument('--lr', default=1e-5, type=float)
-    parser.add_argument('--lr_backbone', default=1e-5, type=float)
+    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--lr_backbone', default=1e-4, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=100, type=int)
@@ -61,7 +61,7 @@ def get_args_parser():
                         help="If True, I will project the embeddings in a reduced space.")
 
     # * Model
-    parser.add_argument('--dropout_prob', default=0.3, type=float,
+    parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
     parser.add_argument('--args.mini_batch_size', default=32, type=int,
                         help="MLP batch size")
@@ -69,7 +69,7 @@ def get_args_parser():
                         help="Number of hidden layers in the MLP. The number of total layers will be num_hidden_layers+1")
     parser.add_argument('--dividing_factor', default=20, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--output_channels_mlp', default=256, type=int,
+    parser.add_argument('--output_channels_mlp', default=400, type=int,
                         help="The number of channels after mlp processing")
     parser.add_argument('--n_channels1_cnn', default=256, type=int,
                     help="Number of hidden channels (1 layer) in the final cnn")
@@ -138,8 +138,8 @@ def main(args):
     pos_multipliers = {15:0.2, 
                    25:0.3,
                    50:0.2, 
-                   100:0.23, 
-                   10_000_000: 0.07}
+                   100:0.23,
+                   100_000_000:0.07}
     neg_multipliers = pos_multipliers
     scaling_factor = 5
 

@@ -175,6 +175,7 @@ class BinaryClassifierNT(nn.Module):
         binary_output = self.small_cnn(output_contact_matrix)
         return binary_output
 
+    
 @torch.no_grad()
 def calc_metrics(predictions, ground_truth, beta = 2):
     """ 

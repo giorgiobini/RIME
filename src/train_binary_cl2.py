@@ -65,11 +65,11 @@ def get_args_parser():
                          help="Dropout in the MLP model")
     parser.add_argument('--args.mini_batch_size', default=32, type=int,
                         help="MLP batch size")
-    parser.add_argument('--num_hidden_layers', default=1, type=int,
+    parser.add_argument('--num_hidden_layers', default=0, type=int,
                         help="Number of hidden layers in the MLP. The number of total layers will be num_hidden_layers+1")
-    parser.add_argument('--dividing_factor', default=20, type=int,
+    parser.add_argument('--dividing_factor', default=10, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--output_channels_mlp', default=400, type=int,
+    parser.add_argument('--output_channels_mlp', default=500, type=int,
                         help="The number of channels after mlp processing")
     parser.add_argument('--n_channels1_cnn', default=256, type=int,
                     help="Number of hidden channels (1 layer) in the final cnn")

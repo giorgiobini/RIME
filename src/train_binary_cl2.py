@@ -71,7 +71,7 @@ def get_args_parser():
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
     parser.add_argument('--output_channels_mlp', default=256, type=int,
                         help="The number of channels after mlp processing")
-    parser.add_argument('--n_channels1_cnn', default=400, type=int,
+    parser.add_argument('--n_channels1_cnn', default=600, type=int,
                     help="Number of hidden channels (1 layer) in the final cnn")
     parser.add_argument('--n_channels2_cnn', default=600, type=int,
                     help="Number of hidden channels (2 layer) in the final cnn")

@@ -13,25 +13,20 @@ chmod +x Miniconda3-latest-Linux-x86_64.sh
 export PATH="/home/username/miniconda/bin:$PATH"
 ```
 
-#### 1.2 Create and activate a new virtual environment
+#### 1.2 Create and activate a new virtual environment, Install the package and other requirements
 
-```
-conda create -n rnarna python=3.10 ipython 
-conda activate rnarna
-```
 
 (Optional)
 ```
 conda install -c conda-forge jupyterlab -y
 ```
 
-#### 1.3 Install the package and other requirements
-
-??
 
 (Required)
 
 ```
+conda create -n rnarna python=3.10 ipython 
+conda activate rnarna
 conda install pandas=1.5.3 -y
 conda install pytorch torchvision -c pytorch -y
 conda install -c anaconda scikit-learn=1.2.2 -y
@@ -53,6 +48,21 @@ pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-re
 conda install -c conda-forge pytorch-gpu=2.0.0 -y (C e una ripetizione del secondo comando; jax dovrebbe comunque funzionare anche dopo questo comando, prova a metterlo prima la prossima volta evitando la ripetizione)
 pip install datasets
 ``` 
+
+(Required)
+
+```
+conda create -n dnabert --file spec-file-dnabert.txt
+conda activate dnabert
+cd DNABERT_dependencies
+python3 -m pip install --editable .
+cd ..
+pip install -r requirements-dnabert.txt
+conda install munch
+conda install -c conda-forge matplotlib-venn
+python -m pip install --no-cache-dir ortools
+```
+
 
 ``` 
 conda create -n intarna 

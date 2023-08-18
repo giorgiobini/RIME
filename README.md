@@ -22,7 +22,7 @@ conda install -c conda-forge jupyterlab -y
 ```
 
 
-(Required)
+NUCLEOTIDE TRANSFORMER (Required)
 
 ```
 conda create -n rnarna python=3.10 ipython 
@@ -49,7 +49,7 @@ conda install -c conda-forge pytorch-gpu=2.0.0 -y (C e una ripetizione del secon
 pip install datasets
 ``` 
 
-(Required)
+DNABERT (Required)
 
 ```
 conda create -n dnabert --file spec-file-dnabert.txt
@@ -63,6 +63,7 @@ conda install -c conda-forge matplotlib-venn
 python -m pip install --no-cache-dir ortools
 ```
 
+INTARNA 
 
 ``` 
 conda create -n intarna 
@@ -91,22 +92,37 @@ dataset
 
 You can download the original_files folder from this link (put a link). If you don't need to train the model you can avoid to download the original_files and keep the directory empty.
 
-## 3. Train your model
+## 3. Prepare the data
+Data preprocessing steps 
+
+- preprocess_adri_data.ipynb [dnabert]
+- train_test_val.ipynb [dnabert]
+
+(OPTIONAL, only needed if you want secondary structure predictions)
+- python create_fasta_query_for_secondary_structure.py [dnabert]
+- cd ../UFold_dependencies/ [dnabert]
+- python run_ufold_predictions.py [dnabert]
+- cd ../src/ [dnabert]
+- python dot_bracket_preprocessing.py [dnabert]
+- Create_df_genes_dot_br.ipynb [dnabert]
+
+
+## 4. Train your model
 Skip this section if you only need inference.
 
 Run these scripts from the src directory in the following order:
-- data_augmentation.ipynb (to test if valentino classes work) 
-- Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets)
-- download_embeddings.py
-- nohup python download_embeddings.py --batch_size 19 &> download_embeddings.out &
-- train_binary_cl.py
-- train_binary_cl2_finetuning.py
-- run_binary_cl_on_test2.py OR run_binary_cl_on_test2_500.py
-- plot_test2_results.ipynb
+- data_augmentation.ipynb (to test if valentino classes work) [rnarna]
+- Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets) [rnarna]
+- download_embeddings.py [rnarna]
+- nohup python download_embeddings.py --batch_size 19 &> download_embeddings.out & [rnarna]
+- train_binary_cl.py [rnarna]
+- train_binary_cl2_finetuning.py [rnarna]
+- run_binary_cl_on_test2.py OR run_binary_cl_on_test2_500.py [rnarna]
+- plot_test2_results.ipynb [rnarna]
 
 
 
-## 4. Inference
+## 5. Inference
 Put your files inside the directory dataset/external_dataset/your_folder/
 You must have these files inside your_folder:
 

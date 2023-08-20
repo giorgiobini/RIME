@@ -59,8 +59,8 @@ python3 -m pip install --editable .
 cd ..
 pip install -r requirements-dnabert.txt
 conda install munch
-conda install -c conda-forge matplotlib-venn
-python -m pip install --no-cache-dir ortools
+conda install -c conda-forge matplotlib-venn -y
+python -m pip install --no-cache-dir ortools -y
 ```
 
 INTARNA 

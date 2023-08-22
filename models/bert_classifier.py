@@ -3,8 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from util.contact_matrix import create_contact_matrix, create_contact_matrix_for_masks
 from util.misc import NestedTensor
-from .projection_module import build_projection_module_nt
 from .mlp import build as build_top_classifier
+from .bert import build_bert
 
 class SmallCNN(nn.Module):
     def __init__(self, k, n_channels1 = 16, n_channels2 = 32):
@@ -52,17 +52,28 @@ class SmallCNN(nn.Module):
         x = self.output_layer(x)
         return x
     
-class BinaryClassifierNT(nn.Module):
-    def __init__(self, nt_projection_module, top_classifier, small_cnn, use_projection_module):
+class BinaryClassifierBERT(nn.Module):
+    def __init__(self, bert, top_classifier, small_cnn):
         super().__init__()
-        self.nt_projection_module = nt_projection_module
+        self.bert = bert
         self.top_classifier = top_classifier
         self.small_cnn = small_cnn
-        self.use_projection_module = use_projection_module
+
+    def obtain_bert_embeddings(self, rna1, rna2):
+        rna1 = self.bert(rna1) 
+        rna1 = rna1[0][:, 1:-1,:] #exclude the first CLS and the last SEP chars
+        rna2 = self.bert(rna2) 
+        rna2 = rna2[0][:, 1:-1,:] #exclude the first CLS and the last SEP chars
+        #shape rna2 ->  torch.Size([b, len_rna1 - 5, 768])
+        #shape rna2 ->  torch.Size([b, len_rna2 - 5, 768])
+        rna1 = rna1.permute(0, 2, 1)
+        rna2 = rna2.permute(0, 2, 1)
+        #shape rna2 ->  torch.Size([b, 768, len_rna1 - 5])
+        #shape rna2 ->  torch.Size([b, 768, len_rna2 - 5])
+        return rna1, rna2
         
     def obtain_mlp_output(self, rna1, rna2):
-        # shapes rna1, rna2 -> torch.Size([batch_size, 2560, len_rna1]) torch.Size([batch_size, 2560, len_rna2])
-        
+
         batch_size, d, len_rna1 = rna1.size()
         _, _, len_rna2 = rna2.size()
         
@@ -97,45 +108,6 @@ class BinaryClassifierNT(nn.Module):
         #shape output -> torch.Size([batch_size, k, len_rna1, len_rna2])
         return output
 
-
-    def obtain_mlp_output_reduced_memory(self, rna1, rna2):
-        # shapes rna1, rna2 -> torch.Size([batch_size, 2560, len_rna1]) torch.Size([batch_size, 2560, len_rna2])
-
-        batch_size, d, len_rna1 = rna1.size()
-        _, _, len_rna2 = rna2.size()
-
-        # I do this for loop such that the contact matrix is not huge
-        mlp_outputs = []
-        for i in range(0, batch_size):
-            rna2_batch = rna2[i, :, :].unsqueeze(0)  # shape rna2_batch -> torch.Size([1, d, len_rna2])
-            
-            rna1_outputs = []
-            for j in range(0, len_rna1):
-                rna1_batch_j = rna1[i, :, j].unsqueeze(1).unsqueeze(0)  # shape rna1_batch -> torch.Size([1, d, 1])
-
-                contact_matrix = create_contact_matrix(rna1_batch_j, rna2_batch)
-                # shape contact_matrix -> torch.Size([1, 2d, 1, len_rna2])
-
-                output_top_classifier = self.top_classifier.forward(contact_matrix.squeeze(2).squeeze(0).permute(1, 0))
-                del contact_matrix
-
-                # shape output_top_classifier -> torch.Size([len_rna2, k])
-                rna1_outputs.append(output_top_classifier.unsqueeze(0))
-                del output_top_classifier
-            
-            rna1_outputs = torch.cat(rna1_outputs, dim=0).unsqueeze(0)
-            # shape rna1_outputs -> torch.Size([1, len_rna1, len_rna2, k])
-            mlp_outputs.append(rna1_outputs)
-            del rna1_outputs
-
-
-        output = torch.cat(mlp_outputs, dim=0)
-        # shape output -> torch.Size([batch_size, len_rna1, len_rna2, k])
-        output = output.permute(0, 3, 1, 2)
-        # shape output -> torch.Size([batch_size, k, len_rna1, len_rna2])
-
-        return output
-
     # method for the activation exctraction
     def get_activations1(self, rna1, rna2):
         X = self.obtain_mlp_output_reduced_memory(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
@@ -160,13 +132,8 @@ class BinaryClassifierNT(nn.Module):
         return self.small_cnn.gradients2
     
     def forward(self, rna1, rna2):
-        
-        if self.use_projection_module:
-            rna1 = self.nt_projection_module(rna1)
-            rna2 = self.nt_projection_module(rna2)
-            # shapes rna1, rna2 -> torch.Size([batch_size, d, len_rna1]) torch.Size([batch_size, d, len_rna2])
-
-        output_contact_matrix = self.obtain_mlp_output_reduced_memory(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
+        rna1, rna2 = self.obtain_bert_embeddings(rna1, rna2)
+        output_contact_matrix = self.obtain_mlp_output(rna1, rna2)
         binary_output = self.small_cnn(output_contact_matrix)
         return binary_output
 
@@ -198,9 +165,9 @@ def calc_metrics(predictions, ground_truth, beta = 2):
     
     
     
-def build(args):
+def build(args, bert_pretrained_path):
     
-    nt_projection_module = build_projection_module_nt(args)
+    bert = build_bert(args, bert_pretrained_path)
     
     small_cnn = SmallCNN(
         k = args.output_channels_mlp, n_channels1 = args.n_channels1_cnn, n_channels2 = args.n_channels2_cnn
@@ -208,6 +175,6 @@ def build(args):
     
     top_classifier = build_top_classifier(args)
     
-    model = BinaryClassifierNT(nt_projection_module, top_classifier, small_cnn, args.use_projection_module)
+    model = BinaryClassifierBERT(bert, top_classifier, small_cnn)
     
     return model

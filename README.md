@@ -59,8 +59,10 @@ python3 -m pip install --editable .
 cd ..
 pip install -r requirements-dnabert.txt
 conda install munch
-conda install -c conda-forge matplotlib-venn -y
-python -m pip install --no-cache-dir ortools -y
+conda install -c conda-forge biopython=1.79 -y
+pip install datasets
+conda install -c conda-forge matplotlib-venn -y (I still have todo this in bluecheer)
+python -m pip install --no-cache-dir ortools -y  (I still have todo this in bluecheer)
 ```
 
 INTARNA 

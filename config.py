@@ -1,13 +1,17 @@
 import os
 
 MAX_RNA_SIZE = 5970 #other accepted sequence length (without N) are the ones <= 5974, and also 5976, 5977, 5978, 5979, 5982, 5983, 5984, 5988, 5989, 5994
+
+MAX_RNA_SIZE_BERT = 500
+
 EMBEDDING_DIM = 2560 #nucleotide-transformer embedding (number of features for each token)
 N_PCA = 1000 #dimension to reduce nucleotide-transformer embeddings
 
 ROOT_DIR =  '/data01/giorgio/RNARNA-NT/' #/data01/gbini/projects/RNA-RNA/
-original_files_dir = os.path.join(ROOT_DIR, 'dataset', 'original_files')
-rna_rna_files_dir = os.path.join(ROOT_DIR, "dataset", "rna_rna_pairs")
-processed_files_dir = os.path.join(ROOT_DIR, "dataset", "processed_files")
+dataset_files_dir = os.path.join(ROOT_DIR, 'dataset')
+original_files_dir = os.path.join(dataset_files_dir, 'original_files')
+rna_rna_files_dir = os.path.join(dataset_files_dir, "rna_rna_pairs")
+processed_files_dir = os.path.join(dataset_files_dir, "processed_files")
 
 #INTARNA
 intarna_dir = os.path.join(processed_files_dir, "intarna")
@@ -23,5 +27,5 @@ ufold_dir = os.path.join(ROOT_DIR, 'UFold_dependencies')
 ufold_path= os.path.join(ufold_dir, 'models', 'ufold_train_alldata.pt')
 
 #DNABERT
-bert_pretrained_dir = os.path.join(ROOT_DIR, 'dataset', 'pre_trained_DNABERT', '6-new-12w-0')
+bert_pretrained_dir = os.path.join(dataset_files_dir, 'pre_trained_DNABERT', '6-new-12w-0')
 dnabert_dir =  os.path.join(ROOT_DIR, "NT_dependencies")

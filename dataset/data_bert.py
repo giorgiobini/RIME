@@ -12,7 +12,6 @@ from enum import auto
 from itertools import groupby
 from pathlib import Path
 from typing import Any, Collection, Dict, List, Mapping, Sequence, Set, Tuple, Union
-from Bio import SeqIO
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,14 +20,13 @@ from strenum import StrEnum
 from torch.utils.data import Dataset, random_split
 from tqdm import tqdm
 from matplotlib.patches import Rectangle
-from datasets import Dataset as HuggingFaceDataset
 from torch.utils.data import DataLoader
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, MAX_RNA_SIZE, MAX_RNA_SIZE_BERT
 
-MAX_RNA_SIZE = MAX_RNA_SIZE#keep this line like this even if it seems unuseful
+MAX_RNA_SIZE = 500
 
 AugmentSpec = Mapping[str, Any]
 Interaction = Mapping[str, Any]
@@ -1360,83 +1358,6 @@ class FindSplits:
         coords.pop()
         coords.append((increase-min(max_size, length), increase))
         return coords
-    
-class RNADatasetInference(Dataset):
-    def __init__(
-        self,
-        gene_info_path: Path,
-        interactions_path: Path,
-        step_size: int
-    ):
-        self.gene_info_path: Path = gene_info_path
-        self.interactions_path: Path = interactions_path
-        self.step_size = step_size
-        
-        d = {}
-        for i, fasta in enumerate(SeqIO.parse(open(gene_info_path),'fasta')):
-            name = str(fasta.description)
-            seq = str(fasta.seq)
-            d[i] = {'gene_id': name, 
-                   'cdna':seq}
-            
-        self.gene2info: pd.DataFrame = pd.DataFrame.from_dict(d, orient = 'index')
-        
-        self.gene2info['length'] = self.gene2info.cdna.str.len()
-        
-        fs = FindSplits(max_size = MAX_RNA_SIZE)
-        self.gene2info['coords'] = self.gene2info.length.apply(lambda x: fs.get_split_coords(length = x, step_size=self.step_size))
-        
-        self.gene2info: Mapping[str, Mapping[str, Any]] = {
-            item["gene_id"]: item for item in
-            self.gene2info.to_dict(orient="records")
-        }
-        
-        for gene in self.gene2info.keys():
-            c1, c2 = zip(*self.gene2info[gene]['coords'])
-            df_gene = pd.DataFrame([c1, c2]).T.rename({0:'c1', 1:'c2'}, axis = 1)
-            self.gene2info[gene]['df'] = df_gene
-        
-        self.interactions: pd.DataFrame = pd.read_csv(interactions_path, 
-            header = None).rename({0:'pairs'}, axis = 1)
-        
-        new = self.interactions.pairs.str.split('_', expand = True)
-        self.interactions['gene1'],  self.interactions['gene2'] = new[0], new[1]
-        dfs = []
-        for _, row in self.interactions.iterrows():
-            df1 = self.gene2info[row.gene1]['df']
-            df1['pairs'] = row.pairs
-            df1['gene1'] = row.gene1
-            df2 = self.gene2info[row.gene2]['df']
-            df2['pairs'] = row.pairs
-            df1['gene2'] = row.gene2
-            df = df1.merge(df2, on = 'pairs').rename({'c1_x':'x1', 
-                                                     'c2_x':'x2',
-                                                     'c1_y':'y1',
-                                                     'c2_y':'y2'
-                                                     }, axis = 1)
-            dfs.append(df)
-
-        self.interactions = pd.concat(dfs, axis = 0).reset_index(drop = True)
-        del dfs
-        
-        
-    def __getitem__(self, item: int) -> Sample:
-        row = self.interactions.loc[item]
-        return Sample(
-            gene1=row.gene1,
-            gene2=row.gene2,
-            couple_id = row.gene1 + '_' + row.gene2,
-            bbox=BBOX(row.x1, row.x2, row.y1, row.y2),
-            policy='inference',
-            seed_interaction_bbox=BBOX(np.nan,np.nan,np.nan,np.nan), #fake
-            interacting=np.nan, #Fake
-            all_couple_interactions=[], #fake
-            gene1_info=self.gene2info[row.gene1],
-            gene2_info=self.gene2info[row.gene2],
-        )
-    def __len__(self):
-        return self.interactions.shape[0]
-
 #- - - - - - - - - - - - NT DATASET - - - - - - - - - - - -
 
 @dataclasses.dataclass(frozen=True)
@@ -1510,54 +1431,7 @@ def load_sample(file_path, c1, c2, num_groups):
     sample = group_averages(sample[c1:c2, :], num_groups)
     # Return the processed sample
     return sample
-    
-class HFDataset(HuggingFaceDataset):
-    def __init__(self, augment_list):
-        self.augment_list = augment_list
 
-    def __len__(self):
-        return len(self.augment_list)
-
-    def __getitem__(self, index):
-        return self.augment_list[index]
-
-    def get_batch(self, indices):
-        batch_data = []
-        for index in indices:
-            sample = self.augment_list[index]
-            x1, x2, y1, y2 = sample['bbox'].x1, sample['bbox'].x2, sample['bbox'].y1, sample['bbox'].y2,
-            rna1 = load_sample(sample['embedding1_path'], x1, x2, sample['num_groups1'])
-            rna2 = load_sample(sample['embedding2_path'], y1, y2, sample['num_groups2'])
-            sample_data = {
-                'input_rna1': rna1,
-                'input_rna2': rna2,
-                'gene1':sample['gene1'],
-                'gene2':sample['gene2'],
-                'x1': x1,
-                'x2': x2,
-                'y1': y1,
-                'y2': y2,
-                'seed_x1': sample['interaction_bbox'].x1,
-                'seed_x2': sample['interaction_bbox'].x2,
-                'seed_y1': sample['interaction_bbox'].y1,
-                'seed_y2': sample['interaction_bbox'].y2,
-                'num_groups1': sample['num_groups1'],
-                'num_groups2': sample['num_groups2'],
-                'policy': sample['policy'],
-                'interacting': sample['interacting']
-            }
-            batch_data.append(sample_data)
-        return batch_data
-
-class HFDataLoader(DataLoader):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __iter__(self):
-        for indices in self.batch_sampler:
-            batch_dataset = self.dataset.get_batch(indices)  # Access dataset directly
-            yield self.collate_fn(batch_dataset)  # Apply the collate_fn explicitly
-            
 def create_augment_list(dataset, all_couples):
     augment_list = []
 

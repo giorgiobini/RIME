@@ -15,6 +15,7 @@ import torch
 import torch.distributed as dist
 from torch import Tensor
 import numpy as np
+from .encoding_sequences import prepare_sequence_for_DNABERT
 
 # needed due to empty tensor bug in pytorch and torchvision 0.5
 import torchvision
@@ -141,13 +142,24 @@ def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corne
     else:
         return torchvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
     
-def collate_fn(batch): 
+def collate_fn_bert(batch): 
     
     batch_size = len(batch)
     
-    # batch is a list of dicts of lenght == batch_size
-    
     samples = [prepare_rna_branch(batch[i]) for i in range(batch_size)]
+
+    # Calculate the maximum dimensions
+    max_dim1 = max(samples[i][0].shape[0] for i in range(batch_size))
+    max_dim2 = max(samples[i][1].shape[0] for i in range(batch_size))
+
+    # Initialize rna1 and rna2 tensors with zero-padding
+    rna1 = torch.zeros((batch_size, max_dim1), dtype=torch.long)
+    rna2 = torch.zeros((batch_size, max_dim2), dtype=torch.long)
+    
+    # Fill in the tensors with the embeddings
+    for i in range(batch_size):
+        rna1[i, :samples[i][0].shape[0]] = torch.as_tensor(samples[i][0])
+        rna2[i, :samples[i][1].shape[0]] = torch.as_tensor(samples[i][1])
     
     target = [{'interacting': 1 if batch[i].interacting else 0,
               'gene1':batch[i].gene1,
@@ -158,58 +170,18 @@ def collate_fn(batch):
               'couple_id':batch[i].couple_id}
               for i in range(len(batch))]
     
-    rna1_ss, rna1, rna2_ss, rna2 = list(map(list, zip(*samples)))
-    
-    #print(rna1_ss[0].shape) #torch.Size([3, N, 1])
-    #print(rna1[0].shape) # torch.Size([1, N-3, 1])
-    
-    rna1 = nested_tensor_from_tensor_list(rna1)
-    rna2 = nested_tensor_from_tensor_list(rna2)
-    
-    #print(rna1.mask.shape) #torch.Size([b, max(N-3), 1])
-    #print(rna1.tensors.shape) #torch.Size([b, 1, max(N-3), 1])
-    
-    rna1.tensors = rna1.tensors.squeeze()
-    rna2.tensors = rna2.tensors.squeeze()
-    
-    
-    #print(rna1.tensors.shape) #torch.Size([b, max(N-3)])
-    
-    rna1_ss = nested_tensor_from_tensor_list(rna1_ss).tensors.squeeze()
-    rna2_ss = nested_tensor_from_tensor_list(rna2_ss).tensors.squeeze()
-    
-    if batch_size == 1: #add first dimension for batch
-        rna1.tensors = rna1.tensors.unsqueeze(0)
-        rna2.tensors = rna2.tensors.unsqueeze(0)
-        rna1_ss = rna1_ss.unsqueeze(0)
-        rna2_ss = rna2_ss.unsqueeze(0)
-    
-    #print(rna1_ss.shape) # torch.Size([b, 3, max(N)])
-    
-    rna1 = [rna1_ss, rna1]
-    rna2 = [rna2_ss, rna2]
-    
     batch = ([rna1, rna2], target)
     return batch
 
 def prepare_rna_branch(sample):
     x1, x2, y1, y2 = sample.bbox.coords
 
-    dot_br1 =  sample.gene1_info['dot_br'][x1:x2]
     seq1 = sample.gene1_info['cdna'][x1:x2]
-
-    dot_br1 = dot2onehot(dot_br1)
-
-    dot_br2 = sample.gene2_info['dot_br'][y1:y2]
     seq2 = sample.gene2_info['cdna'][y1:y2]
 
-    dot_br2 = dot2onehot(dot_br2)
-    
     seq1 = torch.tensor(prepare_sequence_for_DNABERT(seq1), dtype=torch.long)
     seq2 = torch.tensor(prepare_sequence_for_DNABERT(seq2), dtype=torch.long)
-
-    #I need to unsqueeze and permute for the nested_tensor_from_tensor_list function
-    return dot_br1.permute(1, 0).unsqueeze(-1), seq1.unsqueeze(-1).unsqueeze(0), dot_br2.permute(1, 0).unsqueeze(-1), seq2.unsqueeze(-1).unsqueeze(0)
+    return seq1, seq2
 
 def group_averages(arr, k):
     n = arr.shape[0]

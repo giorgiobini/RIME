@@ -1,0 +1,41 @@
+nohup: ignoring input
+============================================================
+<class 'transformers.tokenization_dna.DNATokenizer'>
+2 genes have N, so will be excluded
+Downloading:   0%|          | 0.00/219 [00:00<?, ?B/s]Downloading: 359B [00:00, 160kB/s]                    
+Traceback (most recent call last):
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 308, in _check_seekable
+    f.seek(f.tell())
+AttributeError: 'NoneType' object has no attribute 'seek'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/data01/giorgio/RNARNA-NT/DNABERT_dependencies/src/transformers/modeling_utils.py", line 651, in from_pretrained
+    state_dict = torch.load(resolved_archive_file, map_location="cpu")
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 594, in load
+    with _open_file_like(f, 'rb') as opened_file:
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 235, in _open_file_like
+    return _open_buffer_reader(name_or_buffer)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 220, in __init__
+    _check_seekable(buffer)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 311, in _check_seekable
+    raise_err_msg(["seek", "tell"], e)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 304, in raise_err_msg
+    raise type(e)(msg)
+AttributeError: 'NoneType' object has no attribute 'seek'. You can only torch.load from a file that is seekable. Please pre-load the data into a buffer like io.BytesIO and try to load from it instead.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl_bert.py", line 324, in <module>
+    main(args)
+  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl_bert.py", line 231, in main
+    model = build_model(args, bert_pretrained_dir)
+  File "/data01/giorgio/RNARNA-NT/src/../models/bert_classifier.py", line 170, in build
+    bert = build_bert(args, bert_pretrained_path)
+  File "/data01/giorgio/RNARNA-NT/src/../models/bert.py", line 23, in build_bert
+    model = BertModel.from_pretrained(bert_path, config=config)  
+  File "/data01/giorgio/RNARNA-NT/DNABERT_dependencies/src/transformers/modeling_utils.py", line 653, in from_pretrained
+    raise OSError(
+OSError: Unable to load weights from pytorch checkpoint file. If you tried to load a PyTorch model from a TF 2.0 checkpoint, please set from_tf=True. 

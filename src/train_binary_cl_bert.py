@@ -11,13 +11,13 @@ import random
 import shutil
 from pathlib import Path
 sys.path.insert(0, '..')
-from util.engine import train_one_epoch_binary_cl as train_one_epoch
-from util.engine import evaluate_binary_cl as evaluate
+from util.engine import train_one_epoch
+from util.engine import evaluate
 import util.contact_matrix as cm
-from models.bert_classifier import build as build_model 
+from models.bert_classifier2 import build as build_model 
 import util.misc as utils
 import json
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data import DataLoader
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, rna_rna_files_dir, dataset_files_dir, ufold_path, bert_pretrained_dir, MAX_RNA_SIZE_BERT
@@ -44,7 +44,7 @@ def load_data_bert_script(dataset_files_dir, MAX_RNA_SIZE_BERT):
     with open(data_bert_file_path, 'w') as file:
         file.writelines(modified_lines)
 
-#load_data_bert_script(dataset_files_dir, MAX_RNA_SIZE_BERT)
+load_data_bert_script(dataset_files_dir, MAX_RNA_SIZE_BERT)
 
 from dataset.data_bert import (
     RNADataset,
@@ -52,6 +52,7 @@ from dataset.data_bert import (
     RegionSpecNegAugment,
     InteractionSelectionPolicy,
     EasyNegAugment,
+    SmartNegAugment,
     HardPosAugment,
     HardNegAugment,
     seed_everything,
@@ -71,7 +72,7 @@ def get_args_parser():
     
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--lr_backbone', default=1e-4, type=float)
-    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=100, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
@@ -80,7 +81,7 @@ def get_args_parser():
 
     
     # Projection module
-    parser.add_argument('--proj_module_N_channels', default=2000, type=int,
+    parser.add_argument('--proj_module_N_channels', default=32, type=int,
                         help="Number of channels of the projection module for bert")
     parser.add_argument('--proj_module_secondary_structure_N_channels', default=4, type=int,
                         help="Number of channels of the projection module for the secondary structure")
@@ -92,17 +93,15 @@ def get_args_parser():
     # * Model
     parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
-    parser.add_argument('--args.mini_batch_size', default=32, type=int,
-                        help="MLP batch size")
-    parser.add_argument('--num_hidden_layers', default=1, type=int,
+    parser.add_argument('--num_hidden_layers', default=0, type=int,
                         help="Number of hidden layers in the MLP. The number of total layers will be num_hidden_layers+1")
     parser.add_argument('--dividing_factor', default=20, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--output_channels_mlp', default=256, type=int,
+    parser.add_argument('--output_channels_mlp', default=100, type=int,
                         help="The number of channels after mlp processing")
-    parser.add_argument('--n_channels1_cnn', default=600, type=int,
+    parser.add_argument('--n_channels1_cnn', default=100, type=int,
                     help="Number of hidden channels (1 layer) in the final cnn")
-    parser.add_argument('--n_channels2_cnn', default=600, type=int,
+    parser.add_argument('--n_channels2_cnn', default=150, type=int,
                     help="Number of hidden channels (2 layer) in the final cnn")
 
     # dataset policies parameters
@@ -121,7 +120,7 @@ def get_args_parser():
 
     # dataset parameters
     parser.add_argument('--dataset_path', default = '')
-    parser.add_argument('--device', default='cpu',
+    parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing') # originally was 'cuda'
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=2, type=int)
@@ -163,29 +162,35 @@ def main(args):
     subset_val = os.path.join(rna_rna_files_dir, f"gene_pairs_val.txt")
     
     #-----------------------------------------------------------------------------------------
-    pos_width_multipliers = {4: 0.05, 10: 0.1, 
+    pos_width_multipliers = {4: 0.1, 10: 0.15, 
                      14: 0.15, 17: 0.1, 
-                     19: 0.3, 21: 0.3}
-    neg_width_windows = {(50, 150): 0.05, (150, 170): 0.12,
+                     19: 0.3, 21: 0.2}
+    neg_width_windows = {(50, 150): 0.05, (150, 170): 0.02,
                         (170, 260): 0.05, (260, 350): 0.15,
                         (350, 450): 0.28, (450, 511): 0.1,
-                        (511, 512): 0.25}
+                        (511, 512): 0.35}
     assert np.round(sum(pos_width_multipliers.values()), 4) == np.round(sum(neg_width_windows.values()), 4) == 1
 
     policies_train = [
             EasyPosAugment(
-                per_sample=8,
+                per_sample=0.5,
+                interaction_selection=InteractionSelectionPolicy.LARGEST,
+                width_multipliers=pos_width_multipliers,
+                height_multipliers=pos_width_multipliers,
+            ),
+            SmartNegAugment(
+                per_sample=0.25,
                 interaction_selection=InteractionSelectionPolicy.LARGEST,
                 width_multipliers=pos_width_multipliers,
                 height_multipliers=pos_width_multipliers,
             ),
             EasyNegAugment(
-                per_sample=2,
+                per_sample=0.05,
                 width_windows=neg_width_windows,
                 height_windows=neg_width_windows,
             ),
             HardPosAugment(
-                per_sample=3,
+                per_sample=0.1,
                 interaction_selection=InteractionSelectionPolicy.RANDOM_ONE,
                 min_width_overlap=0.3,
                 min_height_overlap=0.3,
@@ -193,7 +198,7 @@ def main(args):
                 height_multipliers=pos_width_multipliers,
             ),
             HardNegAugment(
-                per_sample=3,
+                per_sample=0.05,
                 width_windows=neg_width_windows,
                 height_windows=neg_width_windows,
             ),
@@ -207,11 +212,26 @@ def main(args):
     )
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    policies_val = [
+        EasyPosAugment(
+            per_sample=1,
+            interaction_selection=InteractionSelectionPolicy.LARGEST,
+            width_multipliers=pos_width_multipliers,
+            height_multipliers=pos_width_multipliers,
+        ),  
+        SmartNegAugment(
+            per_sample=0.5,
+            interaction_selection=InteractionSelectionPolicy.LARGEST,
+            width_multipliers=pos_width_multipliers,
+            height_multipliers=pos_width_multipliers,
+        ),
+    ]
+    
     dataset_val = RNADataset(
         gene2info=df_genes,
         interactions=df,
         subset_file=subset_val,
-        augment_policies=policies_train,
+        augment_policies=policies_val,
     )
 
    #-----------------------------------------------------------------------------------------
@@ -261,7 +281,7 @@ def main(args):
                                 best_model_epoch = utils.best_model_epoch(output_dir / "log.txt")):
             break
 
-        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch)
+        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = 2)
 
         lr_scheduler.step()
         

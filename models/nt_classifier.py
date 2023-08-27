@@ -1,10 +1,14 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+import sys
+import os
 from util.contact_matrix import create_contact_matrix, create_contact_matrix_for_masks
-from util.misc import NestedTensor
 from .projection_module import build_projection_module_nt
 from .mlp import build as build_top_classifier
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import EMBEDDING_DIM
 
 class SmallCNN(nn.Module):
     def __init__(self, k, n_channels1 = 16, n_channels2 = 32):
@@ -206,7 +210,7 @@ def build(args):
         k = args.output_channels_mlp, n_channels1 = args.n_channels1_cnn, n_channels2 = args.n_channels2_cnn
     )
     
-    top_classifier = build_top_classifier(args)
+    top_classifier = build_top_classifier(args, EMBEDDING_DIM)
     
     model = BinaryClassifierNT(nt_projection_module, top_classifier, small_cnn, args.use_projection_module)
     

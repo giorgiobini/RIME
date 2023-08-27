@@ -3,9 +3,6 @@ import numpy as np
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import EMBEDDING_DIM
-
 
 class MLP(nn.Module):
     def __init__(self, input_size, dividing_factor, num_hidden_layers, dropout_prob, output_channels):
@@ -58,7 +55,7 @@ class MLP(nn.Module):
         return x
 
     
-def build(args):
-    input_size = args.proj_module_N_channels*2 if args.use_projection_module else int(EMBEDDING_DIM*2)
+def build(args, embedding_dim):
+    input_size = args.proj_module_N_channels*2 if args.use_projection_module else int(embedding_dim*2)
     model = MLP(input_size=input_size, dividing_factor=args.dividing_factor, num_hidden_layers=args.num_hidden_layers, dropout_prob=args.dropout_prob, output_channels=args.output_channels_mlp)
     return model

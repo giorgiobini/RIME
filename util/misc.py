@@ -169,6 +169,8 @@ def collate_fn_bert(batch):
               'interaction_bbox':batch[i].seed_interaction_bbox,
               'couple_id':batch[i].couple_id}
               for i in range(len(batch))]
+
+    target = torch.tensor([l['interacting'] for l in target])
     
     batch = ([rna1, rna2], target)
     return batch
@@ -251,40 +253,8 @@ def collate_fn_nt(batch):
                'interaction_bbox': sample.seed_interaction_bbox,
                'couple_id': sample.couple_id}
               for sample in batch]
-
-    # Return the batch with rna1, rna2, and the target.
-    batch = ([rna1, rna2], target)
-    return batch
-
-def collate_fn_hf(batch):
-    batch_size = len(batch)
     
-    # Extract rna1 and rna2 embeddings from the batch
-
-    rna1, rna2 = zip(*[ (
-        torch.transpose(torch.as_tensor(batch[i]['input_rna1'], dtype=torch.float), 0, 1).unsqueeze(-1),
-        torch.transpose(torch.as_tensor(batch[i]['input_rna2'], dtype=torch.float), 0, 1).unsqueeze(-1)
-    ) for i in range(batch_size)])
-    
-    rna1 = nested_tensor_from_tensor_list(rna1)
-    rna2 = nested_tensor_from_tensor_list(rna2)
-    
-    rna1.tensors = rna1.tensors.squeeze()
-    rna2.tensors = rna2.tensors.squeeze()
-    
-    if batch_size == 1: #add first dimension for batch
-        rna1.tensors = rna1.tensors.unsqueeze(0)
-        rna2.tensors = rna2.tensors.unsqueeze(0)
-    
-    #print(rna1.tensors.shape) # torch.Size([b, 2560, max_dim])
-    
-    # Prepare the target dictionary
-    target = [{'interacting': b['interacting'],
-               'gene1': b['gene1'],
-               'gene2': b['gene2'],
-               'policy': b['policy'],
-              }
-              for b in batch]
+    target = torch.tensor([l['interacting'] for l in target])
 
     # Return the batch with rna1, rna2, and the target.
     batch = ([rna1, rna2], target)
@@ -357,6 +327,8 @@ def collate_fn_nt2(batch):
                'interaction_bbox': sample.seed_interaction_bbox,
                'couple_id': sample.couple_id}
               for sample in batch]
+    
+    target = torch.tensor([l['interacting'] for l in target])
 
     # Return the batch with rna1, rna2, and the target
     batch = ([rna1, rna2], target)

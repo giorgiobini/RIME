@@ -4,6 +4,7 @@ MAX_RNA_SIZE = 5970 #other accepted sequence length (without N) are the ones <= 
 
 MAX_RNA_SIZE_BERT = 500
 
+EMBEDDING_DIM_BERT = 768 #bert-transformer embedding (number of features for each token)
 EMBEDDING_DIM = 2560 #nucleotide-transformer embedding (number of features for each token)
 N_PCA = 1000 #dimension to reduce nucleotide-transformer embeddings
 

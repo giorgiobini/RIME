@@ -10,143 +10,78 @@ import torch
 from . import misc as utils
 import numpy as np
 
+def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
+                              data_loader: Iterable, optimizer: torch.optim.Optimizer,
+                              device: torch.device, epoch: int, grad_accumulate:int = 1):
 
-def train_one_epoch_mlp(model: torch.nn.Module, criterion: torch.nn.Module,
-                    data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, frequency_print: int = 500): #frequency_print: int = 1000
+    #if you want batch_size = 32, but you can load only 2 in gpu, then grad_accumulate = 16
     model.train()
     criterion.train()
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    #metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
     
-    for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
-        rna1, rna2 = inputs
-        rna1=rna1.to(device)
-        rna2=rna2.to(device)
-        # Forward pass
+    real = []
+    pred = []
+    losses = []
+
+    for k, (samples, labels) in enumerate(data_loader):
+        rna1, rna2 = samples
+        rna1 = rna1.to(device)
+        rna2 = rna2.to(device)
+
         outputs = model(rna1, rna2)
-        labels = torch.tensor([l['interacting'] for l in labels]).to(device)
+        
+        del rna1, rna2
+        labels = labels.to(device)
         loss = criterion(outputs, labels) #loss = torch.nn.functional.cross_entropy
+        
+        loss.backward() #step di accumulazione
 
-        #se sono in uno step di accumalazione, fai solo loss.backword(). Se sono in uno step finale, fai tutti e 3. Ma l'ordine deve essere loss.backward(), optimizer.step(), optimizer.zero_grad()
-        # Backward pass and optimization
-        optimizer.zero_grad()
-        loss.backward()
+        if k%grad_accumulate == 0:
+            #step completo
+            optimizer.step()
+            optimizer.zero_grad()
+        
+        losses.append(loss.detach().cpu().item())
+        pred.append(outputs.detach().cpu()) 
+        real.append(labels.detach().cpu())
+
+    if k%grad_accumulate!=0:
         optimizer.step()
-        
-        metric_dict = calc_metrics(outputs, labels, beta = 2)
-        metric_dict['loss'] = loss
-        
-        metric_logger.update(**metric_dict)
-        
-    # gather the stats from all processes
-    #metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+        optimizer.zero_grad()
 
-
+        
+    stats = calc_metrics(torch.cat(pred), torch.cat(real))
+    stats['loss'] = torch.mean(torch.tensor(losses)).item()
+    print('Epoch: [{}]'.format(epoch))
+    print("Averaged stats:", stats)
+    return stats
 
 @torch.no_grad()
-def evaluate_mlp(model, criterion, data_loader, device, frequency_print = 1000):
+def evaluate(model, criterion, data_loader, device):
     model.eval()
     criterion.eval()
 
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    header = 'Test:'
+    real = []
+    pred = []
+    losses = []
 
-    for inputs, labels in metric_logger.log_every(data_loader, frequency_print, header):
-        # Forward pass
-        rna1, rna2 = inputs
-        rna1=rna1.to(device)
-        rna2=rna2.to(device)
-        outputs = model(rna1, rna2)
+    for samples, labels in data_loader:
+        rna1, rna2 = samples
+        rna1 = rna1.to(device)
+        rna2 = rna2.to(device)
         
-        labels = torch.tensor([l['interacting'] for l in labels]).to(device)
+        outputs = model(rna1, rna2)
+        del rna1, rna2
+        labels = labels.to(device)
         loss = criterion(outputs, labels)
         
-        metric_dict = calc_metrics(outputs, labels, beta = 2)
-        metric_dict['loss'] = loss
-        
-        metric_logger.update(**metric_dict)       
-
-    # gather the stats from all processes
-    #metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-
-def train_one_epoch_binary_cl(model: torch.nn.Module, criterion: torch.nn.Module,
-                              data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                              device: torch.device, epoch: int, max_norm: float = 0, frequency_print: int = 500): #frequency_print: int = 1000
-    model.train()
-    criterion.train()
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
-    
-    for samples, targets in metric_logger.log_every(data_loader, frequency_print, header):
-        rna1, rna2 = samples
-        rna1.tensors = rna1.tensors.to(device)
-        rna2.tensors = rna2.tensors.to(device)
-        rna1.mask = rna1.mask.to(device)
-        rna2.mask = rna2.mask.to(device)
-        outputs = model(rna1, rna2)
-        loss_dict = criterion(outputs, targets)
-        weight_dict = criterion.weight_dict
-        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
-        
-        loss_value = losses.item()
-        
-        if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
-            print(losses)
-            sys.exit(1)
-
-        optimizer.zero_grad()
-        losses.backward()
-        if max_norm > 0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-        optimizer.step()
-
-        metric_logger.update(**loss_dict)
-        metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-        
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-
-
-@torch.no_grad()
-def evaluate_binary_cl(model, criterion, postprocessors, data_loader, device, output_dir, frequency_print = 1000):
-    model.eval()
-    criterion.eval()
-
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    header = 'Test:'
-
-    for samples, targets in metric_logger.log_every(data_loader, frequency_print, header):
-        rna1, rna2 = samples
-        rna1.tensors = rna1.tensors.to(device)
-        rna2.tensors = rna2.tensors.to(device)
-        rna1.mask = rna1.mask.to(device)
-        rna2.mask = rna2.mask.to(device)
-        
-        outputs = model(rna1, rna2)
-        loss_dict = criterion(outputs, targets)
-        weight_dict = criterion.weight_dict
-
-        metric_logger.update(**loss_dict)        
-
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
+        losses.append(loss.detach().cpu().item())
+        pred.append(outputs.detach().cpu()) 
+        real.append(labels.detach().cpu())
  
-    stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
+    stats = calc_metrics(torch.cat(pred), torch.cat(real))
+    stats['loss'] = float(torch.mean(torch.tensor(losses)))
+    print('Test:')
+    print("Averaged stats:", stats)
     return stats
 
 
@@ -172,5 +107,5 @@ def calc_metrics(predictions, ground_truth, beta = 2):
     TNR = torch.mean(TN / (TN + FP + 1e-12))
     NPV = torch.mean(TN / (TN + FN + 1e-12))
 
-    metrics = {'accuracy': accuracy, 'precision': precision, 'recall':recall, 'F2': F2, 'specificity': TNR, 'NPV': NPV} 
+    metrics = {'accuracy': accuracy.item(), 'precision': precision.item(), 'recall':recall.item(), 'F2': F2.item(), 'specificity': TNR.item(), 'NPV': NPV.item()} 
     return metrics

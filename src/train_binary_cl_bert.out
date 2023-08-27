@@ -2,40 +2,169 @@ nohup: ignoring input
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
 2 genes have N, so will be excluded
-Downloading:   0%|          | 0.00/219 [00:00<?, ?B/s]Downloading: 359B [00:00, 160kB/s]                    
-Traceback (most recent call last):
-  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 308, in _check_seekable
-    f.seek(f.tell())
-AttributeError: 'NoneType' object has no attribute 'seek'
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/data01/giorgio/RNARNA-NT/DNABERT_dependencies/src/transformers/modeling_utils.py", line 651, in from_pretrained
-    state_dict = torch.load(resolved_archive_file, map_location="cpu")
-  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 594, in load
-    with _open_file_like(f, 'rb') as opened_file:
-  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 235, in _open_file_like
-    return _open_buffer_reader(name_or_buffer)
-  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 220, in __init__
-    _check_seekable(buffer)
-  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 311, in _check_seekable
-    raise_err_msg(["seek", "tell"], e)
-  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/serialization.py", line 304, in raise_err_msg
-    raise type(e)(msg)
-AttributeError: 'NoneType' object has no attribute 'seek'. You can only torch.load from a file that is seekable. Please pre-load the data into a buffer like io.BytesIO and try to load from it instead.
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl_bert.py", line 324, in <module>
-    main(args)
-  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl_bert.py", line 231, in main
-    model = build_model(args, bert_pretrained_dir)
-  File "/data01/giorgio/RNARNA-NT/src/../models/bert_classifier.py", line 170, in build
-    bert = build_bert(args, bert_pretrained_path)
-  File "/data01/giorgio/RNARNA-NT/src/../models/bert.py", line 23, in build_bert
-    model = BertModel.from_pretrained(bert_path, config=config)  
-  File "/data01/giorgio/RNARNA-NT/DNABERT_dependencies/src/transformers/modeling_utils.py", line 653, in from_pretrained
-    raise OSError(
-OSError: Unable to load weights from pytorch checkpoint file. If you tried to load a PyTorch model from a TF 2.0 checkpoint, please set from_tf=True. 
+number of params: 241946
+Start training
+Epoch: [0]
+Averaged stats: {'accuracy': 0.5447343587875366, 'precision': 0.5529641509056091, 'recall': 0.29274946451187134, 'F2': 0.32316452264785767, 'specificity': 0.7795018553733826, 'NPV': 0.541912317276001, 'loss': 0.6857138872146606}
+Test:
+Averaged stats: {'accuracy': 0.5300452709197998, 'precision': 0.5707686543464661, 'recall': 0.276990681886673, 'F2': 0.30877649784088135, 'specificity': 0.7878151535987854, 'NPV': 0.5168384313583374, 'loss': 0.694560170173645}
+Epoch: [1]
+Averaged stats: {'accuracy': 0.5570051670074463, 'precision': 0.5743388533592224, 'recall': 0.3149174451828003, 'F2': 0.34619149565696716, 'specificity': 0.7825517058372498, 'NPV': 0.5507729649543762, 'loss': 0.6814225316047668}
+Test:
+Averaged stats: {'accuracy': 0.5312217473983765, 'precision': 0.5575916171073914, 'recall': 0.3437948226928711, 'F2': 0.37234869599342346, 'specificity': 0.7221410274505615, 'NPV': 0.5193116068840027, 'loss': 0.6892353296279907}
+Epoch: [2]
+Averaged stats: {'accuracy': 0.5614231824874878, 'precision': 0.581375002861023, 'recall': 0.3239339590072632, 'F2': 0.35541006922721863, 'specificity': 0.7826854586601257, 'NPV': 0.5540909171104431, 'loss': 0.679358184337616}
+Test:
+Averaged stats: {'accuracy': 0.53932124376297, 'precision': 0.6023613810539246, 'recall': 0.25618723034858704, 'F2': 0.28945717215538025, 'specificity': 0.8277310729026794, 'NPV': 0.5220948457717896, 'loss': 0.6865909695625305}
+Epoch: [3]
+Averaged stats: {'accuracy': 0.5636252760887146, 'precision': 0.5823853611946106, 'recall': 0.3366546928882599, 'F2': 0.367682546377182, 'specificity': 0.7750875949859619, 'NPV': 0.5563727617263794, 'loss': 0.6783591508865356}
+Test:
+Averaged stats: {'accuracy': 0.5382353067398071, 'precision': 0.5872811079025269, 'recall': 0.2856886684894562, 'F2': 0.318389892578125, 'specificity': 0.7954877614974976, 'NPV': 0.5222788453102112, 'loss': 0.6845512986183167}
+Epoch: [4]
+Averaged stats: {'accuracy': 0.5629050731658936, 'precision': 0.578838050365448, 'recall': 0.3441780209541321, 'F2': 0.3745461106300354, 'specificity': 0.7666871547698975, 'NPV': 0.5564984083175659, 'loss': 0.678005039691925}
+Test:
+Averaged stats: {'accuracy': 0.5398642420768738, 'precision': 0.5825079679489136, 'recall': 0.31115496158599854, 'F2': 0.3431227505207062, 'specificity': 0.7728351950645447, 'NPV': 0.5241280794143677, 'loss': 0.6839777827262878}
+Epoch: [5]
+Averaged stats: {'accuracy': 0.5657581090927124, 'precision': 0.5816360116004944, 'recall': 0.35506102442741394, 'F2': 0.3850609064102173, 'specificity': 0.7620589137077332, 'NPV': 0.5591323971748352, 'loss': 0.6767088174819946}
+Test:
+Averaged stats: {'accuracy': 0.5418552160263062, 'precision': 0.5841941237449646, 'recall': 0.31949424743652344, 'F2': 0.3513321578502655, 'specificity': 0.7683595418930054, 'NPV': 0.5257171392440796, 'loss': 0.6857004165649414}
+Epoch: [6]
+Averaged stats: {'accuracy': 0.569054365158081, 'precision': 0.5892316102981567, 'recall': 0.3516439199447632, 'F2': 0.38248905539512634, 'specificity': 0.7716097235679626, 'NPV': 0.5608992576599121, 'loss': 0.6760400533676147}
+Test:
+Averaged stats: {'accuracy': 0.5442081689834595, 'precision': 0.5640203952789307, 'recall': 0.42620158195495605, 'F2': 0.44810032844543457, 'specificity': 0.664413571357727, 'NPV': 0.5319973826408386, 'loss': 0.682989776134491}
+Epoch: [7]
+Averaged stats: {'accuracy': 0.5690404772758484, 'precision': 0.5861844420433044, 'recall': 0.3620961904525757, 'F2': 0.39207276701927185, 'specificity': 0.7618448734283447, 'NPV': 0.561765193939209, 'loss': 0.6756293177604675}
+Test:
+Averaged stats: {'accuracy': 0.5419004559516907, 'precision': 0.6047696471214294, 'recall': 0.26605093479156494, 'F2': 0.29961222410202026, 'specificity': 0.822890043258667, 'NPV': 0.5239618420600891, 'loss': 0.6836780905723572}
+Epoch: [8]
+Averaged stats: {'accuracy': 0.5705224275588989, 'precision': 0.5883879065513611, 'recall': 0.36462312936782837, 'F2': 0.3946395218372345, 'specificity': 0.7623531818389893, 'NPV': 0.5629062056541443, 'loss': 0.6750879883766174}
+Test:
+Averaged stats: {'accuracy': 0.5437556505203247, 'precision': 0.5910407304763794, 'recall': 0.31115496158599854, 'F2': 0.34370729327201843, 'specificity': 0.7806905508041382, 'NPV': 0.5266498327255249, 'loss': 0.6843114495277405}
+Epoch: [9]
+Averaged stats: {'accuracy': 0.5715057253837585, 'precision': 0.5901289582252502, 'recall': 0.36531227827072144, 'F2': 0.3954419195652008, 'specificity': 0.7636106014251709, 'NPV': 0.5635785460472107, 'loss': 0.6748925447463989}
+Test:
+Averaged stats: {'accuracy': 0.5471945405006409, 'precision': 0.5871252417564392, 'recall': 0.34594690799713135, 'F2': 0.3769124150276184, 'specificity': 0.7521921992301941, 'NPV': 0.5302981734275818, 'loss': 0.6825904250144958}
+Epoch: [10]
+Averaged stats: {'accuracy': 0.5729737877845764, 'precision': 0.5888770222663879, 'recall': 0.3797559142112732, 'F2': 0.40878963470458984, 'specificity': 0.752989649772644, 'NPV': 0.5657942295074463, 'loss': 0.6742780804634094}
+Test:
+Averaged stats: {'accuracy': 0.5433484315872192, 'precision': 0.5936064720153809, 'recall': 0.3013809323310852, 'F2': 0.3342948257923126, 'specificity': 0.7898246049880981, 'NPV': 0.5260372161865234, 'loss': 0.6885956525802612}
+Epoch: [11]
+Averaged stats: {'accuracy': 0.5717965960502625, 'precision': 0.5891398787498474, 'recall': 0.3707394003868103, 'F2': 0.4004279673099518, 'specificity': 0.7591160535812378, 'NPV': 0.5642387270927429, 'loss': 0.6741957664489746}
+Test:
+Averaged stats: {'accuracy': 0.5427149534225464, 'precision': 0.6085963249206543, 'recall': 0.26282280683517456, 'F2': 0.2965158522129059, 'specificity': 0.8278224468231201, 'NPV': 0.524357795715332, 'loss': 0.6869308948516846}
+Epoch: [12]
+Averaged stats: {'accuracy': 0.573444664478302, 'precision': 0.588811457157135, 'recall': 0.38323044776916504, 'F2': 0.41200006008148193, 'specificity': 0.7506621479988098, 'NPV': 0.5664136409759521, 'loss': 0.6734293103218079}
+Test:
+Averaged stats: {'accuracy': 0.5440271496772766, 'precision': 0.6051653027534485, 'recall': 0.2773493528366089, 'F2': 0.31104809045791626, 'specificity': 0.8156740665435791, 'NPV': 0.525634229183197, 'loss': 0.6872992515563965}
+Epoch: [13]
+Averaged stats: {'accuracy': 0.5708686709403992, 'precision': 0.5880572199821472, 'recall': 0.36818376183509827, 'F2': 0.3979417085647583, 'specificity': 0.7597046494483948, 'NPV': 0.563432514667511, 'loss': 0.6735816597938538}
+Test:
+Averaged stats: {'accuracy': 0.5440271496772766, 'precision': 0.6292377710342407, 'recall': 0.23466642200946808, 'F2': 0.26831668615341187, 'specificity': 0.8591523766517639, 'NPV': 0.5242739915847778, 'loss': 0.6897364854812622}
+Epoch: [14]
+Averaged stats: {'accuracy': 0.5739848017692566, 'precision': 0.5878462791442871, 'recall': 0.3905527591705322, 'F2': 0.41865459084510803, 'specificity': 0.7448834776878357, 'NPV': 0.567448616027832, 'loss': 0.6729409098625183}
+Test:
+Averaged stats: {'accuracy': 0.5435293912887573, 'precision': 0.5797123312950134, 'recall': 0.3469332754611969, 'F2': 0.3772278428077698, 'specificity': 0.7437888383865356, 'NPV': 0.5278750061988831, 'loss': 0.6847221255302429}
+Epoch: [15]
+Averaged stats: {'accuracy': 0.5740540623664856, 'precision': 0.5873990654945374, 'recall': 0.392735093832016, 'F2': 0.4206133484840393, 'specificity': 0.7429840564727783, 'NPV': 0.5677023530006409, 'loss': 0.6732701063156128}
+Test:
+Averaged stats: {'accuracy': 0.5432126522064209, 'precision': 0.5796773433685303, 'recall': 0.34478121995925903, 'F2': 0.37518784403800964, 'specificity': 0.7453415989875793, 'NPV': 0.5275748372077942, 'loss': 0.688232421875}
+Epoch: [16]
+Averaged stats: {'accuracy': 0.5739432573318481, 'precision': 0.5884119868278503, 'recall': 0.3881407082080841, 'F2': 0.4164920747280121, 'specificity': 0.7470504641532898, 'NPV': 0.5671920776367188, 'loss': 0.672761082649231}
+Test:
+Averaged stats: {'accuracy': 0.5458823442459106, 'precision': 0.6017505526542664, 'recall': 0.29591104388237, 'F2': 0.3293938934803009, 'specificity': 0.8005114793777466, 'NPV': 0.5274434089660645, 'loss': 0.6881871819496155}
+Epoch: [17]
+Averaged stats: {'accuracy': 0.575480580329895, 'precision': 0.585564911365509, 'recall': 0.4100215435028076, 'F2': 0.43617314100265503, 'specificity': 0.7296342849731445, 'NPV': 0.5703381299972534, 'loss': 0.6719984412193298}
+Test:
+Averaged stats: {'accuracy': 0.5422171950340271, 'precision': 0.564566433429718, 'recall': 0.40575680136680603, 'F2': 0.42994508147239685, 'specificity': 0.681220293045044, 'NPV': 0.5294994711875916, 'loss': 0.6844180226325989}
+Epoch: [18]
+Averaged stats: {'accuracy': 0.576214611530304, 'precision': 0.5886251330375671, 'recall': 0.4029863476753235, 'F2': 0.43011608719825745, 'specificity': 0.7376067042350769, 'NPV': 0.5700963735580444, 'loss': 0.6712305545806885}
+Test:
+Averaged stats: {'accuracy': 0.5436651706695557, 'precision': 0.5807965993881226, 'recall': 0.34388449788093567, 'F2': 0.3744312822818756, 'specificity': 0.7471684217453003, 'NPV': 0.5278440713882446, 'loss': 0.6860982179641724}
+Epoch: [19]
+Averaged stats: {'accuracy': 0.5764915943145752, 'precision': 0.5898510217666626, 'recall': 0.4002009928226471, 'F2': 0.42770421504974365, 'specificity': 0.7407367825508118, 'NPV': 0.5699934363365173, 'loss': 0.6708701848983765}
+Test:
+Averaged stats: {'accuracy': 0.5471040606498718, 'precision': 0.5936117768287659, 'recall': 0.32496413588523865, 'F2': 0.3573048412799835, 'specificity': 0.7733832597732544, 'NPV': 0.5293529033660889, 'loss': 0.6864140629768372}
+Epoch: [20]
+Averaged stats: {'accuracy': 0.5763392448425293, 'precision': 0.5883948802947998, 'recall': 0.4047379791736603, 'F2': 0.4316866397857666, 'specificity': 0.7362155318260193, 'NPV': 0.5703538060188293, 'loss': 0.6713391542434692}
+Test:
+Averaged stats: {'accuracy': 0.5446606278419495, 'precision': 0.6241167187690735, 'recall': 0.24551649391651154, 'F2': 0.2794162333011627, 'specificity': 0.8493788838386536, 'NPV': 0.524981677532196, 'loss': 0.6897522211074829}
+Epoch: [21]
+Averaged stats: {'accuracy': 0.5757437348365784, 'precision': 0.5888888835906982, 'recall': 0.39873653650283813, 'F2': 0.42626476287841797, 'specificity': 0.7406564950942993, 'NPV': 0.5693690180778503, 'loss': 0.6714581251144409}
+Test:
+Averaged stats: {'accuracy': 0.5447511076927185, 'precision': 0.5641991496086121, 'recall': 0.4298780560493469, 'F2': 0.4513699412345886, 'specificity': 0.6617646813392639, 'NPV': 0.5326030850410461, 'loss': 0.6845820546150208}
+Epoch: [22]
+Averaged stats: {'accuracy': 0.5758406519889832, 'precision': 0.5843477845191956, 'recall': 0.417659729719162, 'F2': 0.4429292678833008, 'specificity': 0.7232135534286499, 'NPV': 0.5713651776313782, 'loss': 0.670922577381134}
+Test:
+Averaged stats: {'accuracy': 0.5471040606498718, 'precision': 0.5925806164741516, 'recall': 0.3280129134654999, 'F2': 0.3601740896701813, 'specificity': 0.7702776789665222, 'NPV': 0.5294782519340515, 'loss': 0.6855671405792236}
+Epoch: [23]
+Averaged stats: {'accuracy': 0.576865553855896, 'precision': 0.587486207485199, 'recall': 0.411974161863327, 'F2': 0.4381539523601532, 'specificity': 0.7304903864860535, 'NPV': 0.5714375376701355, 'loss': 0.6701897978782654}
+Test:
+Averaged stats: {'accuracy': 0.5457013845443726, 'precision': 0.6260771155357361, 'recall': 0.24757890403270721, 'F2': 0.2816312313079834, 'specificity': 0.8493788838386536, 'NPV': 0.525664210319519, 'loss': 0.690827488899231}
+Epoch: [24]
+Averaged stats: {'accuracy': 0.575619101524353, 'precision': 0.5864863991737366, 'recall': 0.4072648882865906, 'F2': 0.43377596139907837, 'specificity': 0.7324700951576233, 'NPV': 0.570146381855011, 'loss': 0.6706297397613525}
+Test:
+Averaged stats: {'accuracy': 0.5426244139671326, 'precision': 0.6112058162689209, 'recall': 0.25726327300071716, 'F2': 0.2909618318080902, 'specificity': 0.833302915096283, 'NPV': 0.5241296291351318, 'loss': 0.6917598247528076}
+Epoch: [25]
+Averaged stats: {'accuracy': 0.5772810578346252, 'precision': 0.5853193998336792, 'recall': 0.4238334596157074, 'F2': 0.4485858976840973, 'specificity': 0.7202439904212952, 'NPV': 0.572966992855072, 'loss': 0.6692880988121033}
+Test:
+Averaged stats: {'accuracy': 0.5472850799560547, 'precision': 0.6128270626068115, 'recall': 0.27932208776474, 'F2': 0.31343701481819153, 'specificity': 0.8202411532402039, 'NPV': 0.527707576751709, 'loss': 0.6895787119865417}
+Epoch: [26]
+Averaged stats: {'accuracy': 0.5759514570236206, 'precision': 0.5849315524101257, 'recall': 0.415994256734848, 'F2': 0.44149646162986755, 'specificity': 0.7249792814254761, 'NPV': 0.5712629556655884, 'loss': 0.6708633899688721}
+Test:
+Averaged stats: {'accuracy': 0.5516741871833801, 'precision': 0.584464967250824, 'recall': 0.38593974709510803, 'F2': 0.41406911611557007, 'specificity': 0.7204968929290771, 'NPV': 0.5352877378463745, 'loss': 0.6841028332710266}
+Epoch: [27]
+Averaged stats: {'accuracy': 0.5778903961181641, 'precision': 0.5873839259147644, 'recall': 0.41952618956565857, 'F2': 0.444957435131073, 'specificity': 0.7254340648651123, 'NPV': 0.5729014873504639, 'loss': 0.6695778965950012}
+Test:
+Averaged stats: {'accuracy': 0.5483710169792175, 'precision': 0.595187783241272, 'recall': 0.3282819092273712, 'F2': 0.360625684261322, 'specificity': 0.7725611925125122, 'NPV': 0.5303153991699219, 'loss': 0.686104416847229}
+Epoch: [28]
+Averaged stats: {'accuracy': 0.5787352323532104, 'precision': 0.5890073776245117, 'recall': 0.41880834102630615, 'F2': 0.44449660181999207, 'specificity': 0.7277348041534424, 'NPV': 0.5733737945556641, 'loss': 0.6697115302085876}
+Test:
+Averaged stats: {'accuracy': 0.5510407090187073, 'precision': 0.601184606552124, 'recall': 0.32765424251556396, 'F2': 0.3604545593261719, 'specificity': 0.7785897254943848, 'NPV': 0.5320184826850891, 'loss': 0.6817587018013}
+Epoch: [29]
+Averaged stats: {'accuracy': 0.5765885710716248, 'precision': 0.5851656198501587, 'recall': 0.4195549190044403, 'F2': 0.4447278380393982, 'specificity': 0.7228925228118896, 'NPV': 0.5720546245574951, 'loss': 0.6697182655334473}
+Test:
+Averaged stats: {'accuracy': 0.550000011920929, 'precision': 0.6163037419319153, 'recall': 0.2867647111415863, 'F2': 0.32110369205474854, 'specificity': 0.8181403279304504, 'NPV': 0.5296552777290344, 'loss': 0.6827114224433899}
+Epoch: [30]
+Averaged stats: {'accuracy': 0.57883220911026, 'precision': 0.5869882106781006, 'recall': 0.4277386963367462, 'F2': 0.45227932929992676, 'specificity': 0.7196019291877747, 'NPV': 0.5744122266769409, 'loss': 0.6689212918281555}
+Test:
+Averaged stats: {'accuracy': 0.5476922988891602, 'precision': 0.6181520819664001, 'recall': 0.27116212248802185, 'F2': 0.3054545521736145, 'specificity': 0.8293752074241638, 'NPV': 0.5276615619659424, 'loss': 0.687542736530304}
+Epoch: [31]
+Averaged stats: {'accuracy': 0.5783751606941223, 'precision': 0.5879919528961182, 'recall': 0.42041635513305664, 'F2': 0.44582825899124146, 'specificity': 0.7255410552024841, 'NPV': 0.5733130574226379, 'loss': 0.6688768267631531}
+Test:
+Averaged stats: {'accuracy': 0.550452470779419, 'precision': 0.582598090171814, 'recall': 0.3848637044429779, 'F2': 0.41289085149765015, 'specificity': 0.7191267609596252, 'NPV': 0.5343785881996155, 'loss': 0.6866222620010376}
+Epoch: [32]
+Averaged stats: {'accuracy': 0.5794277191162109, 'precision': 0.5887340903282166, 'recall': 0.4246661961078644, 'F2': 0.4497324228286743, 'specificity': 0.7236148715019226, 'NPV': 0.5744626522064209, 'loss': 0.6690187454223633}
+Test:
+Averaged stats: {'accuracy': 0.5531221628189087, 'precision': 0.5885618925094604, 'recall': 0.3802008628845215, 'F2': 0.40917161107063293, 'specificity': 0.7292656302452087, 'NPV': 0.5359827876091003, 'loss': 0.6830289959907532}
+Epoch: [33]
+Averaged stats: {'accuracy': 0.5827378034591675, 'precision': 0.5911790728569031, 'recall': 0.43724337220191956, 'F2': 0.46126487851142883, 'specificity': 0.7182910442352295, 'NPV': 0.5780566930770874, 'loss': 0.6687138676643372}
+Test:
+Averaged stats: {'accuracy': 0.5488235354423523, 'precision': 0.5922800302505493, 'recall': 0.3398493528366089, 'F2': 0.3715175986289978, 'specificity': 0.7616916298866272, 'NPV': 0.5311126708984375, 'loss': 0.6865614056587219}
+Epoch: [34]
+Averaged stats: {'accuracy': 0.5803002715110779, 'precision': 0.5896134972572327, 'recall': 0.4270782470703125, 'F2': 0.45199817419052124, 'specificity': 0.7230530381202698, 'NPV': 0.5752996206283569, 'loss': 0.6685945391654968}
+Test:
+Averaged stats: {'accuracy': 0.550000011920929, 'precision': 0.5742769241333008, 'recall': 0.41840028762817383, 'F2': 0.4424174427986145, 'specificity': 0.6840518712997437, 'NPV': 0.5358855128288269, 'loss': 0.6835119724273682}
+Epoch: [35]
+Averaged stats: {'accuracy': 0.581532895565033, 'precision': 0.5910922884941101, 'recall': 0.4294902980327606, 'F2': 0.4543328285217285, 'specificity': 0.7231867909431458, 'NPV': 0.5763752460479736, 'loss': 0.6680810451507568}
+Test:
+Averaged stats: {'accuracy': 0.5481900572776794, 'precision': 0.584162712097168, 'recall': 0.363163560628891, 'F2': 0.3928911089897156, 'specificity': 0.7366642355918884, 'NPV': 0.5317465662956238, 'loss': 0.6835727095603943}
+Epoch: [36]
+Averaged stats: {'accuracy': 0.5819622278213501, 'precision': 0.5897297263145447, 'recall': 0.4379325211048126, 'F2': 0.46170100569725037, 'specificity': 0.7161507606506348, 'NPV': 0.5776277184486389, 'loss': 0.6678076386451721}
+Test:
+Averaged stats: {'accuracy': 0.5484615564346313, 'precision': 0.5931100249290466, 'recall': 0.3350071609020233, 'F2': 0.3669436275959015, 'specificity': 0.7658933401107788, 'NPV': 0.5306625962257385, 'loss': 0.6896602511405945}
+Epoch: [37]
+Averaged stats: {'accuracy': 0.5806326270103455, 'precision': 0.5899821519851685, 'recall': 0.4278535544872284, 'F2': 0.45273613929748535, 'specificity': 0.7229728102684021, 'NPV': 0.5756033062934875, 'loss': 0.6681557297706604}
+Test:
+Averaged stats: {'accuracy': 0.5520814657211304, 'precision': 0.5711365938186646, 'recall': 0.4510401785373688, 'F2': 0.4708414673805237, 'specificity': 0.6550054550170898, 'NPV': 0.539456844329834, 'loss': 0.6815854907035828}
+Epoch: [38]
+Averaged stats: {'accuracy': 0.5834718346595764, 'precision': 0.5917484164237976, 'recall': 0.4398564398288727, 'F2': 0.4636591374874115, 'specificity': 0.7172744274139404, 'NPV': 0.5788462162017822, 'loss': 0.6675322651863098}
+Test:
+Averaged stats: {'accuracy': 0.5485520362854004, 'precision': 0.5893264412879944, 'recall': 0.34756097197532654, 'F2': 0.3786265254020691, 'specificity': 0.7532882690429688, 'NPV': 0.5312761664390564, 'loss': 0.6854283809661865}
+Epoch: [39]
+Averaged stats: {'accuracy': 0.5808819532394409, 'precision': 0.590532124042511, 'recall': 0.4273366928100586, 'F2': 0.4523376524448395, 'specificity': 0.7239359021186829, 'NPV': 0.5757079124450684, 'loss': 0.6678214073181152}
+Test:
+Averaged stats: {'accuracy': 0.5471493005752563, 'precision': 0.5813424587249756, 'recall': 0.36657100915908813, 'F2': 0.39581719040870667, 'specificity': 0.7310924530029297, 'NPV': 0.5311919450759888, 'loss': 0.6845211386680603}
+Epoch: [40]
+Averaged stats: {'accuracy': 0.5785413384437561, 'precision': 0.5882754921913147, 'recall': 0.42041635513305664, 'F2': 0.4458608031272888, 'specificity': 0.7258620858192444, 'NPV': 0.5734212398529053, 'loss': 0.667283296585083}
+Test:
+Averaged stats: {'accuracy': 0.5498642325401306, 'precision': 0.597695529460907, 'recall': 0.3302546739578247, 'F2': 0.3627142012119293, 'specificity': 0.773565948009491, 'NPV': 0.5313715934753418, 'loss': 0.6835736632347107}

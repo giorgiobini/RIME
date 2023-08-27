@@ -11,8 +11,8 @@ import pickle
 from pathlib import Path
 from torch.utils.data import DataLoader
 sys.path.insert(0, '..')
-from util.engine import train_one_epoch_mlp as train_one_epoch
-from util.engine import evaluate_mlp as evaluate
+from util.engine import train_one_epoch
+from util.engine import evaluate
 from models.nt_classifier import build as build_model 
 import util.misc as utils
 import json
@@ -265,7 +265,7 @@ def main(args):
                                 best_model_epoch = utils.best_model_epoch(output_dir / "log.txt")):
             break
 
-        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch)
+        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = 1)
 
         lr_scheduler.step()
         

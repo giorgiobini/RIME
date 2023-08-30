@@ -141,8 +141,8 @@ def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corne
         return _new_empty_tensor(input, output_shape)
     else:
         return torchvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
-    
-def collate_fn_bert(batch): 
+
+def collate_fn_bert_info_target(batch): 
     
     batch_size = len(batch)
     
@@ -169,10 +169,18 @@ def collate_fn_bert(batch):
               'interaction_bbox':batch[i].seed_interaction_bbox,
               'couple_id':batch[i].couple_id}
               for i in range(len(batch))]
-
-    target = torch.tensor([l['interacting'] for l in target])
     
     batch = ([rna1, rna2], target)
+    return batch
+
+def collate_fn_bert(batch): 
+    
+    ([rna1, rna2], target) = collate_fn_bert_info_target(batch)
+
+    target = torch.tensor([l['interacting'] for l in target])
+
+    batch = ([rna1, rna2], target)
+
     return batch
 
 def prepare_rna_branch(sample):

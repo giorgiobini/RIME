@@ -4,6 +4,8 @@ Train and eval functions used in main.py
 """
 import math
 import os
+import datetime
+import time
 import sys
 from typing import Iterable
 import torch
@@ -21,6 +23,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     real = []
     pred = []
     losses = []
+
+    start_time = time.time()
 
     for k, (samples, labels) in enumerate(data_loader):
         rna1, rna2 = samples
@@ -48,10 +52,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         optimizer.step()
         optimizer.zero_grad()
 
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         
     stats = calc_metrics(torch.cat(pred), torch.cat(real))
     stats['loss'] = torch.mean(torch.tensor(losses)).item()
-    print('Epoch: [{}]'.format(epoch))
+    print('Epoch: [{}], (Time: {})'.format(epoch, total_time_str))
     print("Averaged stats:", stats)
     return stats
 
@@ -63,6 +69,8 @@ def evaluate(model, criterion, data_loader, device):
     real = []
     pred = []
     losses = []
+
+    start_time = time.time()
 
     for samples, labels in data_loader:
         rna1, rna2 = samples
@@ -77,10 +85,13 @@ def evaluate(model, criterion, data_loader, device):
         losses.append(loss.detach().cpu().item())
         pred.append(outputs.detach().cpu()) 
         real.append(labels.detach().cpu())
+
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
  
     stats = calc_metrics(torch.cat(pred), torch.cat(real))
     stats['loss'] = float(torch.mean(torch.tensor(losses)))
-    print('Test:')
+    print('Test (Time: {})'.format(total_time_str))
     print("Averaged stats:", stats)
     return stats
 

@@ -1,0 +1,7 @@
+nohup: ignoring input
+/data01/giorgio/RNARNA-NT/src/../util/xai.py:369: RuntimeWarning: Mean of empty slice.
+  intensity = matrix[(x1-m_w):(x2+m_w), (y1-m_h):(y2+m_h)].mean()
+/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in true_divide
+  ret = ret.dtype.type(ret / rcount)
+/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in double_scalars
+  ret = ret.dtype.type(ret / rcount)

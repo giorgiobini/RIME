@@ -51,7 +51,7 @@ def get_args_parser():
 
     
     # Projection module
-    parser.add_argument('--proj_module_N_channels', default=2000, type=int,
+    parser.add_argument('--proj_module_N_channels', default=0, type=int,
                         help="Number of channels of the projection module for bert")
     parser.add_argument('--proj_module_secondary_structure_N_channels', default=4, type=int,
                         help="Number of channels of the projection module for the secondary structure")
@@ -65,13 +65,13 @@ def get_args_parser():
                          help="Dropout in the MLP model")
     parser.add_argument('--args.mini_batch_size', default=32, type=int,
                         help="MLP batch size")
-    parser.add_argument('--num_hidden_layers', default=1, type=int,
+    parser.add_argument('--num_hidden_layers', default=0, type=int,
                         help="Number of hidden layers in the MLP. The number of total layers will be num_hidden_layers+1")
-    parser.add_argument('--dividing_factor', default=20, type=int,
+    parser.add_argument('--dividing_factor', default=10, type=int,
                         help="If the input is 5120, the first layer of the MLP is 5120/dividing_factor")
-    parser.add_argument('--output_channels_mlp', default=256, type=int,
+    parser.add_argument('--output_channels_mlp', default=800, type=int,
                         help="The number of channels after mlp processing")
-    parser.add_argument('--n_channels1_cnn', default=600, type=int,
+    parser.add_argument('--n_channels1_cnn', default=400, type=int,
                     help="Number of hidden channels (1 layer) in the final cnn")
     parser.add_argument('--n_channels2_cnn', default=600, type=int,
                     help="Number of hidden channels (2 layer) in the final cnn")
@@ -126,7 +126,7 @@ def main(args):
     df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
     
     #-----------------------------------------------------------------------------------------
-    subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
+    subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt_HQ.txt")
 
     with open(subset_train_nt, "rb") as fp:  # Unpickling
         list_train = pickle.load(fp)
@@ -170,8 +170,7 @@ def main(args):
     )
     
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt.txt")
-    # subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt.txt")
+    subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt_HQ.txt") #gene_pairs_val_sampled_nt_HQ
         
     with open(subset_val_nt, "rb") as fp:  # Unpickling
         list_val = pickle.load(fp)

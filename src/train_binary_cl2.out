@@ -3,15 +3,5 @@ nohup: ignoring input
   warnings.warn("Initializing zero-element tensors is a no-op")
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
-number of params: 2795322
+number of params: 4930514
 Start training
-torch.Size([32, 2560, 45])
-torch.Size([32, 2560, 33])
-Traceback (most recent call last):
-  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl2.py", line 330, in <module>
-    main(args)
-  File "/data01/giorgio/RNARNA-NT/src/train_binary_cl2.py", line 268, in main
-    train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch)
-  File "/data01/giorgio/RNARNA-NT/src/../util/engine.py", line 27, in train_one_epoch_mlp
-    assert False
-AssertionError

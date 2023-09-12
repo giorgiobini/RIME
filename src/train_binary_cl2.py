@@ -44,7 +44,7 @@ def get_args_parser():
     parser.add_argument('--lr_backbone', default=1e-4, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
-    parser.add_argument('--epochs', default=100, type=int)
+    parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
@@ -104,7 +104,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--n_epochs_early_stopping', default=50)
+    parser.add_argument('--n_epochs_early_stopping', default=100)
     return parser
 
 def seed_worker(worker_id):
@@ -126,7 +126,7 @@ def main(args):
     df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
     
     #-----------------------------------------------------------------------------------------
-    subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt_HQ.txt")
+    subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
     with open(subset_train_nt, "rb") as fp:  # Unpickling
         list_train = pickle.load(fp)

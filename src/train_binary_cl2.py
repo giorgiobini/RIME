@@ -28,6 +28,8 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
+RANDOM = True
+
 def str_to_bool(value):
     if isinstance(value, bool):
         return value
@@ -121,12 +123,18 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    
-    df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
-    df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
+    if RANDOM: 
+        df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
+    else:
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
     
     #-----------------------------------------------------------------------------------------
-    subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
+    if RANDOM:
+        subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
+    else:
+        subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
     with open(subset_train_nt, "rb") as fp:  # Unpickling
         list_train = pickle.load(fp)
@@ -170,7 +178,11 @@ def main(args):
     )
     
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt_HQ.txt") #gene_pairs_val_sampled_nt_HQ
+
+    if RANDOM:
+        subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
+    else:
+        subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt_HQ.txt") #gene_pairs_val_sampled_nt_HQ
         
     with open(subset_val_nt, "rb") as fp:  # Unpickling
         list_val = pickle.load(fp)

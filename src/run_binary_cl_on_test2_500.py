@@ -20,6 +20,8 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
+RANDOM = True
+
 def str_to_bool(value):
     if isinstance(value, bool):
         return value
@@ -41,9 +43,14 @@ def main(args):
     
     start_time = time.time() 
 
-    df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
-    df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt.csv'))
-    df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
+    if RANDOM:
+        df = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'{HOW}500.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', 'df_nt.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
+    else:
+        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
 
     
     device = torch.device(args.device)
@@ -131,7 +138,10 @@ def main(args):
     res['prediction'] = (res['probability'] > 0.5).astype(int)
     res['sampled_area'] = res['len_g1']*res['len_g2']
     
-    df = pd.read_csv(os.path.join(processed_files_dir,"final_df.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
+    if RANDOM:
+        df = pd.read_csv(os.path.join(processed_files_dir, "final_df_RANDOM.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
+    else:
+        df = pd.read_csv(os.path.join(processed_files_dir, "final_df.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
     assert df.merge(res, on = 'couples').shape[0] >= res.shape[0]
     if df.merge(res, on = 'couples').shape[0] > res.shape[0]:
         print(f"Be careful, some prediction will be counted more than one time. The number of duplicated sequences is {(df.merge(res, on = 'couples').drop_duplicates().shape[0]-res.shape[0])}")
@@ -140,7 +150,8 @@ def main(args):
     res=res.rename({'protein_coding_1': 'gene1_pc'}, axis = 1)
     res=res.rename({'protein_coding_2': 'gene2_pc'}, axis = 1)
 
-    df_genes_original = pd.read_csv(os.path.join(processed_files_dir,"df_genes.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
+    df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
+
     df_genes = df_genes_nt[['gene_id', 'original_gene_id']].merge(df_genes_original, on = 'original_gene_id')
 
     res = res.merge(df_genes, left_on = 'g1', right_on = 'gene_id').drop('gene_id', axis = 1).rename({'species_set':'specie'}, axis = 1)

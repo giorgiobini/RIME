@@ -35,22 +35,38 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     parser.add_argument('--how', default='test',
                         help='Can be test or val')
+    parser.add_argument('--dataset', default='paris',
+                        help='Can be paris, mario, ricseq')
     parser.add_argument('--run_finetuning', type=str_to_bool, nargs='?', const=True, default=False,
                         help="If True, I run the finetuned model")
     return parser
 
 def main(args):
+
+    dataset = args.dataset
+    assert dataset in ['paris', 'mario', 'ricseq']
+    if dataset == 'paris':
+        paris = True
+    else:
+        paris = False
     
     start_time = time.time() 
 
-    if RANDOM:
-        df = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'{HOW}500.csv'))
-        df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', 'df_nt.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
+    if paris:
+        if RANDOM:
+            df = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'{HOW}500.csv'))
+            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', 'df_nt.csv'))
+            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
+        else:
+            df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
+            df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt.csv'))
+            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
+
     else:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
-        df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'{dataset}500.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt_{dataset}.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt_{dataset}.csv'))
+
 
     
     device = torch.device(args.device)
@@ -138,10 +154,14 @@ def main(args):
     res['prediction'] = (res['probability'] > 0.5).astype(int)
     res['sampled_area'] = res['len_g1']*res['len_g2']
     
-    if RANDOM:
-        df = pd.read_csv(os.path.join(processed_files_dir, "final_df_RANDOM.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
+    if paris:
+        if RANDOM:
+            df = pd.read_csv(os.path.join(processed_files_dir, "final_df_RANDOM.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
+        else:
+            df = pd.read_csv(os.path.join(processed_files_dir, "final_df.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
     else:
-        df = pd.read_csv(os.path.join(processed_files_dir, "final_df.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
+        df = pd.read_csv(os.path.join(processed_files_dir, f"final_{dataset}_RANDOM.csv"), sep = ',')[['couples', 'protein_coding_1', 'protein_coding_2', 'length_1', 'length_2']].rename({'length_1':'original_length1', 'length_2':'original_length2'}, axis = 1)
+    
     assert df.merge(res, on = 'couples').shape[0] >= res.shape[0]
     if df.merge(res, on = 'couples').shape[0] > res.shape[0]:
         print(f"Be careful, some prediction will be counted more than one time. The number of duplicated sequences is {(df.merge(res, on = 'couples').drop_duplicates().shape[0]-res.shape[0])}")
@@ -150,8 +170,10 @@ def main(args):
     res=res.rename({'protein_coding_1': 'gene1_pc'}, axis = 1)
     res=res.rename({'protein_coding_2': 'gene2_pc'}, axis = 1)
 
-    df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
-
+    if paris:
+        df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
+    else:
+        df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes_mario_ricseq.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
     df_genes = df_genes_nt[['gene_id', 'original_gene_id']].merge(df_genes_original, on = 'original_gene_id')
 
     res = res.merge(df_genes, left_on = 'g1', right_on = 'gene_id').drop('gene_id', axis = 1).rename({'species_set':'specie'}, axis = 1)
@@ -161,12 +183,20 @@ def main(args):
     g12 = res.couples.str.extractall('(.*)_(.*)').reset_index(drop = True)
     res['gene1_original'], res['gene2_original'] = g12[0], g12[1]
 
-    if RUN_FINETUNING:
-        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500_finetuning.csv'))
-        gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results500_finetuning.csv'))
+    if paris:
+        if RUN_FINETUNING:
+            res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500_finetuning.csv'))
+            gradcam_results.to_csv(os.path.join(checkpoint_dir, f'gradcam_results_{HOW}500_finetuning.csv'))
+        else:
+            res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500.csv'))
+            gradcam_results.to_csv(os.path.join(checkpoint_dir, f'gradcam_results_{HOW}500.csv'))
     else:
-        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500.csv'))
-        gradcam_results.to_csv(os.path.join(checkpoint_dir, 'gradcam_results500.csv'))
+        if RUN_FINETUNING:
+            res.to_csv(os.path.join(checkpoint_dir, f'{dataset}_results500_finetuning.csv'))
+            gradcam_results.to_csv(os.path.join(checkpoint_dir, f'gradcam_results_{dataset}500_finetuning.csv'))
+        else:
+            res.to_csv(os.path.join(checkpoint_dir, f'{dataset}_results500.csv'))
+            gradcam_results.to_csv(os.path.join(checkpoint_dir, f'gradcam_results_{dataset}500.csv'))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -176,6 +206,7 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_binary_cl_on_test2_500.py &> run_binary_cl_on_test2_500.out &
+    #nohup python run_binary_cl_on_test2_500.py --dataset=mario &> run_binary_cl_on_test2_mario500.out &
     #nohup python run_binary_cl_on_test2_500.py --how=val &> run_binary_cl_on_test2_500.out &
      
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
@@ -184,6 +215,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     HOW = args.how 
     RUN_FINETUNING = args.run_finetuning 
+    DATASET = args.dataset
 
     # Define the path to the file containing the args namespace
     args_path = os.path.join(checkpoint_dir, 'args.pkl')
@@ -193,6 +225,8 @@ if __name__ == '__main__':
         args_dict = pickle.load(f)
     # Convert the dictionary to an argparse.Namespace object
     args = argparse.Namespace(**args_dict)
+
+    args.dataset = DATASET
 
     if RUN_FINETUNING:
         args.resume = os.path.join(args.output_dir, 'best_model_fine_tuning.pth') 

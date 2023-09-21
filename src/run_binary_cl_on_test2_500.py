@@ -207,8 +207,10 @@ if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_binary_cl_on_test2_500.py &> run_binary_cl_on_test2_500.out &
     #nohup python run_binary_cl_on_test2_500.py --dataset=mario &> run_binary_cl_on_test2_mario500.out &
+    #nohup python run_binary_cl_on_test2_500.py --dataset=ricseq &> run_binary_cl_on_test2_ricseq500.out &
     #nohup python run_binary_cl_on_test2_500.py --how=val &> run_binary_cl_on_test2_500.out &
      
+
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
 
     parser = argparse.ArgumentParser('Test500', parents=[get_args_parser()])

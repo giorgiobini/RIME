@@ -104,7 +104,7 @@ def plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s,
     plt.legend()
     plt.show()
     
-def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10, excluding_treshold = 0.01):
+def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10, excluding_treshold = 0.01, plot_perc = False):
     confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs = obtain_list_of_metrics(df_res, n_conf, excluding_treshold)
 
     perc = np.round(df_res.shape[0]/n_original_df*100, 2)
@@ -113,8 +113,10 @@ def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10, 
     count0 = vc.loc[0] if 0 in vc.index else 0
     count1 = vc.loc[1] if 1 in vc.index else 0
     perc_0, perc_1 = np.round(count0/df_res.shape[0], 2), np.round(count1/df_res.shape[0], 2)
-    plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, title = title + f'({perc}% of the data)', suptitle = f'0% :{perc_0}, 1% :{perc_1}')
-    
+    if plot_perc:
+        plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, title = title + f'({perc}% of the data)', suptitle = f'0% :{perc_0}, 1% :{perc_1}')
+    else:
+        plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs, title = title, suptitle = '')
     
 '''
 ------------------------------------------------------------------------------------------
@@ -138,7 +140,22 @@ def plot_logs(log, metric, best_model):
 ------------------------------------------------------------------------------------------
 '''
 
-def collect_results_based_on_confidence_level(df, how = 'intarna', n_values = 15):
+def balance_df(df, n_iter = 25):
+    toappend = []
+    if df[df.ground_truth == 0].shape[0] > df[df.ground_truth == 1].shape[0]:
+        for i in range(n_iter):
+            negs = df[df.ground_truth == 0]
+            poss = df[df.ground_truth == 1]
+            toappend.append(pd.concat([negs.sample(len(poss)), poss], axis = 0))
+    else:
+        for i in range(n_iter):
+            negs = df[df.ground_truth == 0]
+            poss = df[df.ground_truth == 1]
+            toappend.append(pd.concat([poss.sample(len(negs)), negs], axis = 0))
+    balanced = pd.concat(toappend, axis = 0)
+    return balanced
+
+def collect_results_based_on_confidence_level(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 0.05):
     auc_nt = []
     auc_intarna = []
     merged_x_axis = []
@@ -163,7 +180,11 @@ def collect_results_based_on_confidence_level(df, how = 'intarna', n_values = 15
         else:
             raise NotImplementedError
         
-        if subset.shape[0]>0:
+        n_subset = subset.shape[0]
+        if balance:
+            subset = balance_df(subset)
+        
+        if n_subset/n_total > MIN_PERC:
             fpr, tpr, _ = roc_curve(subset.ground_truth, subset.probability)
             roc_auc = auc(fpr, tpr)
             auc_nt.append(roc_auc)

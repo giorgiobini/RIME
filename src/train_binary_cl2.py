@@ -29,6 +29,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
 RANDOM = True
+EASY_PRETRAINING = False
 
 def str_to_bool(value):
     if isinstance(value, bool):
@@ -124,15 +125,22 @@ def main(args):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
     if RANDOM: 
-        df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
+        if EASY_PRETRAINING:
+            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt_easy.csv'))
+            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt_easy.csv'))
+        else:
+            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt.csv'))
+            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
     else:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
     
     #-----------------------------------------------------------------------------------------
     if RANDOM:
-        subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
+        if EASY_PRETRAINING:
+            subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt_easy.txt")
+        else:
+            subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
     else:
         subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
@@ -143,12 +151,45 @@ def main(args):
     assert vc_train[False]>vc_train[True]
     unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
 
-    pos_multipliers = {15:0.2, 
+    if EASY_PRETRAINING:
+        pos_multipliers = {15:0.2, 
                    25:0.3,
                    50:0.2, 
-                   100:0.23,
-                   100_000_000:0.07}
-    neg_multipliers = pos_multipliers
+                   100:0.23, 
+                   10_000_000: 0.07}
+
+        neg_multipliers = {15:0.05, 
+                           28:0.2,
+
+                           40:0.08,
+                           50:0.05,
+                           60:0.1,
+
+                           80:0.03,
+                           90:0.03,
+                           100:0.03,
+
+                           110:0.03,
+
+                           120:0.1,
+
+                           140:0.05,
+                           160:0.03,
+                           180:0.03,
+                           200:0.02,
+                           220:0.02,
+                           240:0.01,
+                           260:0.01,
+
+                           10_000_000: 0.1}
+        
+    else:
+        pos_multipliers = {15:0.2, 
+                       25:0.3,
+                       50:0.2, 
+                       100:0.23,
+                       100_000_000:0.07}
+        neg_multipliers = pos_multipliers
     scaling_factor = 5
 
     policies_train = [
@@ -180,7 +221,10 @@ def main(args):
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     if RANDOM:
-        subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
+        if EASY_PRETRAINING:
+            subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt_easy.txt")
+        else:
+            subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
     else:
         subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt_HQ.txt") #gene_pairs_val_sampled_nt_HQ
         
@@ -194,10 +238,28 @@ def main(args):
     # assert vc_val[True]>vc_val[False]
     # unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
 
-    pos_multipliers = {25:0.7,
-                   50:0.2, 
-                   100:0.1}
-    neg_multipliers = pos_multipliers
+    if EASY_PRETRAINING:
+        pos_multipliers = {25:0.7, 50:0.2, 100:0.1}
+        neg_multipliers = {40:0.1,
+                           50:0.3,
+                           60:0.1,
+                           80:0.05,
+                           90:0.15,
+                           100:0.05,
+                           120:0.05,
+                           150:0.02,
+                           160:0.02,
+                           170:0.02,
+                           180:0.02,
+                           190:0.02,
+                           200:0.02,
+                           210:0.02,
+                           220:0.02}
+    else:
+        pos_multipliers = {25:0.7,
+                       50:0.2, 
+                       100:0.1}
+        neg_multipliers = pos_multipliers
     
     policies_val = [
         EasyPosAugment(

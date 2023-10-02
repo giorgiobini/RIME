@@ -130,6 +130,20 @@ def create_or_load_train_test_val(df, save_path):
             gene_pairs_test += list(set(df[df.positive.isin(gp_test)].negative))
             gene_pairs_val += list(set(df[df.positive.isin(gp_val)].negative))
         
+        
+        gene_pairs_training = set(gene_pairs_training)
+        gene_pairs_val = set(gene_pairs_val)
+        gene_pairs_test = set(gene_pairs_test)
+        
+        valtrain = gene_pairs_training.intersection(gene_pairs_val)
+        testtrain = gene_pairs_training.intersection(gene_pairs_test)
+        gene_pairs_val = gene_pairs_val - valtrain
+        gene_pairs_test = gene_pairs_test - testtrain
+
+        gene_pairs_training = list(gene_pairs_training)
+        gene_pairs_val = list(gene_pairs_val)
+        gene_pairs_test = list(gene_pairs_test)
+        
         with open(file_training, "wb") as fp:   #Pickling
             pickle.dump(gene_pairs_training, fp)
 

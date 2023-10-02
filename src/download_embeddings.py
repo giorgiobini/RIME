@@ -47,7 +47,7 @@ def create_masked_embeddings(outs, layer, tokens, tokenizer):
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set args', add_help=False)
-    parser.add_argument('--batch_size', default=19, type=int,
+    parser.add_argument('--batch_size', default=22, type=int,
                         help="Batch size for the NT model")
     parser.add_argument('--embedding_layer', default='32',
                         help="Which is the embedding layer you cutted the NT model")

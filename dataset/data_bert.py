@@ -657,6 +657,7 @@ class EasyNegAugment(AugmentPolicy):
         dataset: "RNADataset",
     ) -> AugmentResult:
         interaction: Interaction = couple_interactions[target_interaction]
+        
         assert len(couple_interactions) <= 1 and not interaction["interacting"]
 
         gene1_info: Mapping[str, Any] = dataset.gene2info[gene1]

@@ -157,6 +157,7 @@ def create_fake_coord_neg(x, df_coord, df_pairs_full, df_int, max_num_tries = 10
         y1, h = interaction_coords.y1, interaction_coords.h
         
     else:
+        print(g1, g2, p1, p2)
         raise NotImplementedError
     
     return x1, y1, w, h

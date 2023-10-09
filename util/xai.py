@@ -342,17 +342,29 @@ def collect_metrics_and_prediction(matrix, x1, x2, y1, y2, desired_dim = 300, fa
                                2))
     
     w, h = matrix.shape
-    
     x1_max, y1_max = np.where(matrix == matrix.max())
-    if len(x1_max)>0: #take the first one
-        x1_max = x1_max[0]
-    if len(y1_max)>0: #take the first one
-        y1_max = y1_max[0]
-    relative_predicted_centroid = np.array([float(x1_max)/w, float(y1_max)/h])
-    relative_real_centroid = np.array([
-        ((x1 + x2)/2)/w,
-        ((y1 + y2)/2)/h
-    ])
+    try:
+        if len(x1_max)>0: #take the first one
+            x1_max = x1_max[0]
+        if len(y1_max)>0: #take the first one
+            y1_max = y1_max[0]
+        relative_predicted_centroid = np.array([float(x1_max)/w, float(y1_max)/h])
+        relative_real_centroid = np.array([
+            ((x1 + x2)/2)/w,
+            ((y1 + y2)/2)/h
+        ])
+    except:
+        print(matrix.max())
+        print(np.where(matrix == matrix.max()))
+        print(w, h)
+        y1_max = 0
+        x1_max = 0
+        relative_predicted_centroid = np.array([float(x1_max)/w, float(y1_max)/h])
+        relative_real_centroid = np.array([
+            ((x1 + x2)/2)/w,
+            ((y1 + y2)/2)/h
+        ])
+
     
     euclidean = np.linalg.norm(relative_predicted_centroid - relative_real_centroid)
     

@@ -29,7 +29,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
 RANDOM = True
-EASY_PRETRAINING = False
+EASY_PRETRAINING = True
+FINETUNING = True
 
 def str_to_bool(value):
     if isinstance(value, bool):
@@ -118,6 +119,11 @@ def seed_worker(worker_id):
 
 def main(args):
 
+    if EASY_PRETRAINING:
+        args.lr = 1e-3
+        args.lr_backbone = 1e-3
+        args.dropout_prob = 0.2
+
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     output_dir = Path(args.output_dir)
 
@@ -140,7 +146,10 @@ def main(args):
         if EASY_PRETRAINING:
             subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt_easy.txt")
         else:
-            subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
+            if FINETUNING:
+                subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_train_val_fine_tuning_nt.txt")
+            else:
+                subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
     else:
         subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
@@ -224,7 +233,10 @@ def main(args):
         if EASY_PRETRAINING:
             subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt_easy.txt")
         else:
-            subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
+            if FINETUNING:
+                subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_test_sampled_nt.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
+            else:
+                subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
     else:
         subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt_HQ.txt") #gene_pairs_val_sampled_nt_HQ
         

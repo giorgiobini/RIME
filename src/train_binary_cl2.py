@@ -119,11 +119,6 @@ def seed_worker(worker_id):
 
 def main(args):
 
-    if EASY_PRETRAINING:
-        args.lr = 1e-3
-        args.lr_backbone = 1e-3
-        args.dropout_prob = 0.2
-
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     output_dir = Path(args.output_dir)
 

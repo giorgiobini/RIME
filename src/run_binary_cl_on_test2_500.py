@@ -36,7 +36,7 @@ def get_args_parser():
     parser.add_argument('--how', default='test',
                         help='Can be test or val')
     parser.add_argument('--dataset', default='paris',
-                        help='Can be paris, mario, ricseq')
+                        help='Can be paris, mario, ricseq, splash')
     parser.add_argument('--run_finetuning', type=str_to_bool, nargs='?', const=True, default=False,
                         help="If True, I run the finetuned model")
     return parser
@@ -44,7 +44,7 @@ def get_args_parser():
 def main(args):
 
     dataset = args.dataset
-    assert dataset in ['paris', 'mario', 'ricseq']
+    assert dataset in ['paris', 'mario', 'ricseq', 'splash']
     if dataset == 'paris':
         paris = True
     else:
@@ -208,6 +208,7 @@ if __name__ == '__main__':
     #nohup python run_binary_cl_on_test2_500.py &> run_binary_cl_on_test2_500.out &
     #nohup python run_binary_cl_on_test2_500.py --dataset=mario &> run_binary_cl_on_test2_mario500.out &
     #nohup python run_binary_cl_on_test2_500.py --dataset=ricseq &> run_binary_cl_on_test2_ricseq500.out &
+    #nohup python run_binary_cl_on_test2_500.py --dataset=splash &> run_binary_cl_on_test2_splash500.out &
     #nohup python run_binary_cl_on_test2_500.py --how=val &> run_binary_cl_on_test2_500.out &
      
 

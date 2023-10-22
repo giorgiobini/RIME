@@ -173,7 +173,11 @@ def main(args):
     if paris:
         df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
     else:
-        df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes_mario_ricseq.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
+        if dataset == 'splash':
+            df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes_splash.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
+        elif dataset in ['mario', 'ricseq']:
+            df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes_mario_ricseq.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
+
     df_genes = df_genes_nt[['gene_id', 'original_gene_id']].merge(df_genes_original, on = 'original_gene_id')
 
     res = res.merge(df_genes, left_on = 'g1', right_on = 'gene_id').drop('gene_id', axis = 1).rename({'species_set':'specie'}, axis = 1)

@@ -7,11 +7,11 @@ nohup: ignoring input
   ret = ret.dtype.type(ret / rcount)
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in double_scalars
   ret = ret.dtype.type(ret / rcount)
-/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test2_500.py:180: FutureWarning: The default value of regex will change from True to False in a future version.
+/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test2_500.py:184: FutureWarning: The default value of regex will change from True to False in a future version.
   res['specie'] = res.specie.str.replace("{'hs'}", "human")
-/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test2_500.py:181: FutureWarning: The default value of regex will change from True to False in a future version.
+/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test2_500.py:185: FutureWarning: The default value of regex will change from True to False in a future version.
   res['specie'] = res.specie.str.replace("{'mm'}", "mouse")
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
 Be careful, some prediction will be counted more than one time. The number of duplicated sequences is 0
-Testing time 0:01:49
+Testing time 0:04:32

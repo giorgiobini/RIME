@@ -19,6 +19,7 @@ import json
 from dataset.data import (
     RNADataset,
     RNADatasetNT,
+    RNADatasetNT500,
     EasyPosAugment,
     InteractionSelectionPolicy,
     SmartNegAugment,
@@ -29,7 +30,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
 RANDOM = True
-EASY_PRETRAINING = True
+EASY_PRETRAINING = False
 FINETUNING = True
 
 def str_to_bool(value):
@@ -41,11 +42,21 @@ def str_to_bool(value):
         return True
     raise ValueError(f'{value} is not a valid boolean value')
 
+def undersample_df(df):
+    neg = df500[df500.interacting == False]
+    pos = df500[df500.interacting == True]
+    if (pos.shape[0] > neg.shape[0]):
+        return pd.concat([pos.sample(neg.shape[0]), neg], axis = 0)
+    elif (neg.shape[0] > pos.shape[0]):
+        return pd.concat([neg.sample(pos.shape[0]), pos], axis = 0)
+    else:
+        return df
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
-    parser.add_argument('--lr', default=1e-4, type=float)
-    parser.add_argument('--lr_backbone', default=1e-4, type=float)
+    parser.add_argument('--lr', default=5e-5, type=float)
+    parser.add_argument('--lr_backbone', default=5e-5, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=300, type=int)
@@ -226,76 +237,38 @@ def main(args):
 
     if RANDOM:
         if EASY_PRETRAINING:
-            subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt_easy.txt")
+            df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'val500.csv'))
+            df500 = df500[df500.policy.isin(['easypos', 'hardneg', 'easyneg'])]
+            df500 = undersample_df(df500).policy.value_counts()
         else:
             if FINETUNING:
                 subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_test_sampled_nt.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
+                df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'test500.csv'))
             else:
                 subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
+                df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'val500.csv'))
+
+            with open(subset_val_nt, "rb") as fp:  # Unpickling
+                list_val = pickle.load(fp)
+
+            assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+            df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
+            df500 = df500[df500.couples.isin(list_val)]
+
     else:
-        subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_nt_HQ.txt") #gene_pairs_val_sampled_nt_HQ
-        
-    with open(subset_val_nt, "rb") as fp:  # Unpickling
-        list_val = pickle.load(fp)
+        raise NotImplementedError
 
-    # try:
-    #     vc_val = df_nt[df_nt.couples.isin(list_val)].interacting.value_counts()
-    # except:
-    #     vc_val = df_nt[df_nt.couple.isin(list_val)].interacting.value_counts() #I don t know the reason of this bug
-    # assert vc_val[True]>vc_val[False]
-    # unbalance_factor = 1 - (vc_val[True] - vc_val[False]) / vc_val[True]
+    df500 = df500.sample(frac=1, random_state=23).reset_index(drop = True)
+    assert df500.shape[0]>0
 
-    if EASY_PRETRAINING:
-        pos_multipliers = {25:0.7, 50:0.2, 100:0.1}
-        neg_multipliers = {40:0.1,
-                           50:0.3,
-                           60:0.1,
-                           80:0.05,
-                           90:0.15,
-                           100:0.05,
-                           120:0.05,
-                           150:0.02,
-                           160:0.02,
-                           170:0.02,
-                           180:0.02,
-                           190:0.02,
-                           200:0.02,
-                           210:0.02,
-                           220:0.02}
-    else:
-        pos_multipliers = {25:0.7,
-                       50:0.2, 
-                       100:0.1}
-        neg_multipliers = pos_multipliers
-    
-    policies_val = [
-        EasyPosAugment(
-            per_sample=1,
-            interaction_selection=InteractionSelectionPolicy.LARGEST,
-            width_multipliers=pos_multipliers,
-            height_multipliers=pos_multipliers,
-        ),  
-        SmartNegAugment(
-            per_sample=1, # unbalance_factor
-            interaction_selection=InteractionSelectionPolicy.LARGEST,
-            width_multipliers=neg_multipliers,
-            height_multipliers=neg_multipliers,
-        ),
-    ]
-
-    dataset_val = RNADatasetNT(
-        gene2info=df_genes_nt,
-        interactions=df_nt,
-        subset_file=subset_val_nt,
-        augment_policies=policies_val,
+    dataset_val = RNADatasetNT500(
+        df = df500,
         data_dir = os.path.join(embedding_dir, '32'),
         scaling_factor = scaling_factor,
         min_n_groups = args.min_n_groups_val,
         max_n_groups = args.max_n_groups_val,
     )
-    sampler_val = torch.utils.data.SequentialSampler(dataset_val)
-
-    args.policies_val = policies_val
+    args.policies_val = 'dataset500'
     args.policies_train = policies_train
 
    #-----------------------------------------------------------------------------------------
@@ -346,12 +319,11 @@ def main(args):
             break
 
         train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = 1)
-
         lr_scheduler.step()
         
         #manually difine data_loader_val at each epoch such that the validation set is fixed
         g = torch.Generator()
-        g.manual_seed(0)
+        g.manual_seed(23)
         data_loader_val = DataLoader(dataset_val, args.batch_size,
                                      sampler=sampler_val, drop_last=False,
                                      collate_fn=utils.collate_fn_nt2,

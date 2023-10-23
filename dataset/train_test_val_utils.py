@@ -105,10 +105,10 @@ def create_or_load_train_test_val(df, save_path):
             gene_pairs_training = pickle.load(fp)
 
         with open(file_test, "rb") as fp:   # Unpickling
-            gene_pairs_test= pickle.load(fp)
+            gene_pairs_test = pickle.load(fp)
 
         with open(file_val, "rb") as fp:   # Unpickling
-            gene_pairs_val= pickle.load(fp)
+            gene_pairs_val = pickle.load(fp)
     else:
         
         df_human, df_mouse = df[df.species_set == "{'hs'}"].reset_index(drop = True), df[df.species_set == "{'mm'}"].reset_index(drop = True)

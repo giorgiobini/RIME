@@ -36,7 +36,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         del rna1, rna2
         labels = labels.to(device)
         loss = criterion(outputs, labels) #loss = torch.nn.functional.cross_entropy
-        
+
         loss.backward() #step di accumulazione
 
         if k%grad_accumulate == 0:

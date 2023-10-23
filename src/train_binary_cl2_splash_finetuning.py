@@ -29,18 +29,20 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
-RANDOM = True
-EASY_PRETRAINING = False
-FINETUNING = True
+DATASET = 'splash'
 
-def str_to_bool(value):
-    if isinstance(value, bool):
-        return value
-    if value.lower() in {'false', 'f', '0', 'no', 'n'}:
-        return False
-    elif value.lower() in {'true', 't', '1', 'yes', 'y'}:
-        return True
-    raise ValueError(f'{value} is not a valid boolean value')
+# def obtain_train_test_lists(df_pairs_full, perc_train):
+#     df_pairs_full = df_pairs_full.sample(frac = 1, random_state = 23)
+#     n_train_pairs = int(df_pairs_full.shape[0]*PERC_TRAIN)
+#     n_test_pairs = df_pairs_full.shape[0] - n_train_pairs
+#     df_pairs_full_train, df_pairs_full_test = df_pairs_full.head(n_train_pairs), df_pairs_full.tail(n_test_pairs)
+#     assert (pd.concat([df_pairs_full_train, df_pairs_full_test], axis = 0) == df_pairs_full).all().all()
+#     train_couples = set(df_pairs_full_train.positive).union(df_pairs_full_train.negative)
+#     test_couples = set(df_pairs_full_test.positive).union(df_pairs_full_test.negative)
+#     print(f'The number of equal couples between train and test is {len(train_couples.intersection(test_couples))}, \
+#     which is the {np.round(len(train_couples.intersection(test_couples))/len(train_couples.union(test_couples)) * 100, 2)}%')
+#     assert test_couples.union(train_couples) == set(df_pairs_full.positive).union(df_pairs_full.negative)
+#     return list(train_couples), list(test_couples)
 
 def undersample_df(df, random_state = 23):
     neg = df[df.interacting == False]
@@ -51,13 +53,22 @@ def undersample_df(df, random_state = 23):
         return pd.concat([neg.sample(pos.shape[0], random_state = random_state), pos], axis = 0)
     else:
         return df
-        
+
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value.lower() in {'false', 'f', '0', 'no', 'n'}:
+        return False
+    elif value.lower() in {'true', 't', '1', 'yes', 'y'}:
+        return True
+    raise ValueError(f'{value} is not a valid boolean value')
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
-    parser.add_argument('--lr', default=5e-5, type=float)
-    parser.add_argument('--lr_backbone', default=5e-5, type=float)
-    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--lr', default=1e-6, type=float)
+    parser.add_argument('--lr_backbone', default=1e-6, type=float)
+    parser.add_argument('--batch_size', default=25, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
@@ -136,75 +147,42 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    if RANDOM: 
-        if EASY_PRETRAINING:
-            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt_easy.csv'))
-            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt_easy.csv'))
-        else:
-            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt.csv'))
-            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
-    else:
-        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
+    if DATASET == 'splash':
+        df_pairs_full = pd.read_csv(os.path.join(processed_files_dir, 'df_pairs_full_RANDOM_SPLASH.csv'))
+    elif DATASET == 'ricseq':
+        df_pairs_full = pd.read_csv(os.path.join(processed_files_dir, 'df_pairs_full_RANDOM_RICSEQ.csv'))
+    elif DATASET == 'mario':
+        df_pairs_full = pd.read_csv(os.path.join(processed_files_dir, 'df_pairs_full_RANDOM_MARIO.csv'))
+
+    df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt_{DATASET}.csv'))
+    df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt_{DATASET}.csv'))
+
+    splash_dir = '/data01/giorgio/RNARNA-NT/dataset/rna_rna_pairs/SPLASH'
+    file_training = os.path.join(splash_dir, 'training.txt')
+    file_test = os.path.join(splash_dir, 'test.txt')
+    with open(file_training, "rb") as fp:   # Unpickling
+        train_couples = pickle.load(fp)
+    with open(file_test, "rb") as fp:   # Unpickling
+        test_couples = pickle.load(fp)
+
+    train_nt = df_nt[df_nt.couples_id.isin(train_couples)]
     
     #-----------------------------------------------------------------------------------------
-    if RANDOM:
-        if EASY_PRETRAINING:
-            subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt_easy.txt")
-        else:
-            if FINETUNING:
-                subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_train_val_fine_tuning_nt.txt")
-            else:
-                subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
-    else:
-        subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
-    with open(subset_train_nt, "rb") as fp:  # Unpickling
-        list_train = pickle.load(fp)
-
-    vc_train = df_nt[df_nt.couples.isin(list_train)].interacting.value_counts()
+    vc_train = train_nt.interacting.value_counts()
     assert vc_train[False]>vc_train[True]
     unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
 
-    if EASY_PRETRAINING:
-        pos_multipliers = {15:0.2, 
-                   25:0.3,
-                   50:0.2, 
-                   100:0.23, 
-                   10_000_000: 0.07}
-
-        neg_multipliers = {15:0.05, 
-                           28:0.2,
-
-                           40:0.08,
-                           50:0.05,
-                           60:0.1,
-
-                           80:0.03,
-                           90:0.03,
-                           100:0.03,
-
-                           110:0.03,
-
-                           120:0.1,
-
-                           140:0.05,
-                           160:0.03,
-                           180:0.03,
-                           200:0.02,
-                           220:0.02,
-                           240:0.01,
-                           260:0.01,
-
-                           10_000_000: 0.1}
+    if DATASET == 'splash':
+        pos_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
+        neg_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
         
-    else:
-        pos_multipliers = {15:0.2, 
-                       25:0.3,
-                       50:0.2, 
-                       100:0.23,
-                       100_000_000:0.07}
-        neg_multipliers = pos_multipliers
+    elif DATASET == 'mario':
+        raise NotImplementedError
+
+    elif DATASET == 'ricseq':
+        raise NotImplementedError
+
     scaling_factor = 5
 
     policies_train = [
@@ -224,8 +202,8 @@ def main(args):
         
     dataset_train = RNADatasetNT(
             gene2info=df_genes_nt,
-            interactions=df_nt,
-            subset_file=subset_train_nt,
+            interactions=train_nt,
+            subset_file='',
             augment_policies=policies_train,
             data_dir = os.path.join(embedding_dir, '32'),
             scaling_factor = scaling_factor,
@@ -235,30 +213,12 @@ def main(args):
     
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    if RANDOM:
-        if EASY_PRETRAINING:
-            df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'val500.csv'))
-            assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
-            df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
-            df500 = df500[df500.policy.isin(['easypos', 'hardneg', 'easyneg'])]
-            df500 = undersample_df(df500)
-        else:
-            if FINETUNING:
-                subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_test_sampled_nt.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
-                df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'test500.csv'))
-            else:
-                subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
-                df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'val500.csv'))
-
-            with open(subset_val_nt, "rb") as fp:  # Unpickling
-                list_val = pickle.load(fp)
-
-            assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
-            df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
-            df500 = df500[df500.couples.isin(list_val)]
-
-    else:
-        raise NotImplementedError
+    df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'{DATASET}500.csv'))
+    assert df500.shape[0] == df_nt[['couples', 'couples_id', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+    df500 = df_nt[['couples', 'interacting', 'policy', 'couples_id']].merge(df500, on = 'couples')
+    df500 = df500[df500.couples_id.isin(test_couples)]
+    df500 = df500[df500.policy.isin(['easypos', 'smartneg'])]
+    df500 = undersample_df(df500)
 
     df500 = df500.sample(frac=1, random_state=23).reset_index(drop = True)
     assert df500.shape[0]>0
@@ -321,11 +281,12 @@ def main(args):
             break
 
         train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = 1)
+
         lr_scheduler.step()
         
         #manually difine data_loader_val at each epoch such that the validation set is fixed
         g = torch.Generator()
-        g.manual_seed(23)
+        g.manual_seed(0)
         data_loader_val = DataLoader(dataset_val, args.batch_size,
                                      sampler=sampler_val, drop_last=False,
                                      collate_fn=utils.collate_fn_nt2,
@@ -334,7 +295,6 @@ def main(args):
                                      generator=g,)
         
         test_stats = evaluate(model, criterion, data_loader_val, device)   
-            
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'test_{k}': v for k, v in test_stats.items()},
@@ -371,7 +331,7 @@ def main(args):
     
 if __name__ == '__main__':
     #run me with: -> 
-    #nohup python train_binary_cl2.py &> train_binary_cl2.out &
+    #nohup python train_binary_cl2_splash_finetuning.py &> train_binary_cl2_splash_finetuning.out &
 
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()

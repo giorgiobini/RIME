@@ -1484,6 +1484,44 @@ class RNADatasetNT(RNADataset):
             max_n_groups = self.max_n_groups,
         )
         return s_nt
+
+class RNADatasetNT500():
+    def __init__(self, df, data_dir, scaling_factor, min_n_groups, max_n_groups):
+        self.df = df
+        self.data_dir = data_dir
+        self.scaling_factor = scaling_factor
+        self.min_n_groups = min_n_groups
+        self.max_n_groups = max_n_groups
+
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, index):
+        # Retrieve the item from the base RNADataset
+        if index < 0 or index >= len(self.df):
+            raise IndexError("Index out of range")
+
+        # Retrieve a row by index as a Pandas Series
+        row = self.df.iloc[index]
+        s_nt = SampleNT(
+            gene1 = row.gene1,
+            gene2 = row.gene2,
+            bbox = BBOX(row.x1, row.x2, row.y1, row.y2),
+            couple_id = row.couples,
+            policy = row.policy,
+            interacting= row.interacting,
+            seed_interaction_bbox= BBOX(row.seed_x1, row.seed_x2, row.seed_y1, row.seed_y2),
+            all_couple_interactions=[],
+            gene1_info = {},
+            gene2_info = {},
+            embedding1_path = os.path.join(self.data_dir, f'{row.gene1}.npy'),
+            embedding2_path = os.path.join(self.data_dir, f'{row.gene2}.npy'),
+            scaling_factor = self.scaling_factor,
+            min_n_groups = self.min_n_groups,
+            max_n_groups = self.max_n_groups,
+        )
+        return s_nt
     
 #- - - - - - - - - - - - HUGGINGFACE DATASET - - - - - - - - - - - -
 

@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, '..')
 from util.engine import train_one_epoch
 from util.engine import evaluate
-from models.nt_classifier import build as build_model 
 import util.misc as utils
 import json
 from dataset.data import (
@@ -28,6 +27,13 @@ from dataset.data import (
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
+
+from train_binary_cl import MODELARCH
+
+if MODELARCH==1:
+    from models.nt_classifier import build as build_model
+elif MODELARCH==2:
+    from models.nt_classifier2 import build as build_model
 
 DATASET = 'splash'
 
@@ -68,7 +74,7 @@ def get_args_parser():
     
     parser.add_argument('--lr', default=1e-6, type=float)
     parser.add_argument('--lr_backbone', default=1e-6, type=float)
-    parser.add_argument('--batch_size', default=25, type=int)
+    parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
@@ -77,8 +83,8 @@ def get_args_parser():
 
     
     # Projection module
-    parser.add_argument('--proj_module_N_channels', default=0, type=int,
-                        help="Number of channels of the projection module for bert")
+    parser.add_argument('--proj_module_N_channels', default=256, type=int,
+                        help="Number of channels of the projection module for nt")
     parser.add_argument('--proj_module_secondary_structure_N_channels', default=4, type=int,
                         help="Number of channels of the projection module for the secondary structure")
     parser.add_argument('--drop_secondary_structure', type=str_to_bool, nargs='?', const=True, default=False,
@@ -187,13 +193,13 @@ def main(args):
 
     policies_train = [
         EasyPosAugment(
-            per_sample=0.5,
+            per_sample=0.25,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=pos_multipliers,
             height_multipliers=pos_multipliers,
         ),  
         SmartNegAugment(
-            per_sample=unbalance_factor * 0.5,
+            per_sample=unbalance_factor * 0.25,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=neg_multipliers,
             height_multipliers=neg_multipliers,
@@ -337,6 +343,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
     args.dataset_path = os.path.join(ROOT_DIR, 'dataset')
+    
+    if MODELARCH == 1:
+        args.use_projection_module = True
+
     if args.use_projection_module == False:
         args.proj_module_N_channels = 0 # In this way I will not count the parameters of the projection module when I define the n_parameters variable
 

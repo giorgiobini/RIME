@@ -12,7 +12,6 @@ sys.path.insert(0, '..')
 from config import *
 import util.xai as xai
 import util.misc as utils
-from models.nt_classifier import build as build_model
 from dataset.data import (
     seed_everything,
 )
@@ -21,6 +20,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
 RANDOM = True
+
+from train_binary_cl import MODELARCH
+
+if MODELARCH==1:
+    from models.nt_classifier import build as build_model 
+elif MODELARCH==2:
+    from models.nt_classifier2 import build as build_model 
 
 def str_to_bool(value):
     if isinstance(value, bool):

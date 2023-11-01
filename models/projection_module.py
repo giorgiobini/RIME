@@ -1,6 +1,10 @@
 from torch import nn, Tensor
 import torch
-from util.misc import NestedTensor
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import EMBEDDING_DIM
 
 class BERTProjectionModule(nn.Module):
     """ 
@@ -47,7 +51,7 @@ class SecondaryStructureProjectionModule(nn.Module):
     
 class NTProjectionModule(nn.Module):
     """ 
-    This is the projection module for NT
+    This is the projection module for BERT
     """
     def __init__(self, proj_module_N_channels):
         """ 
@@ -55,7 +59,7 @@ class NTProjectionModule(nn.Module):
             proj_module_N_channels: the number of output channels.
         """
         super().__init__()
-        nt_dim = 2560
+        nt_dim = EMBEDDING_DIM
         self.conv1d = nn.Conv1d(in_channels=nt_dim, out_channels=proj_module_N_channels, kernel_size=1)
         #self.relu = nn.ReLU(inplace=True)
         self.bn = nn.BatchNorm1d(nt_dim)

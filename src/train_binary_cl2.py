@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, '..')
 from util.engine import train_one_epoch
 from util.engine import evaluate
-from models.nt_classifier import build as build_model 
+from models.nt_classifier2 import build as build_model 
 import util.misc as utils
 import json
 from dataset.data import (

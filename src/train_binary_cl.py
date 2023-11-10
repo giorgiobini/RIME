@@ -29,20 +29,6 @@ from dataset.data import (
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
-
-RANDOM = True
-EASY_PRETRAINING = False
-FINETUNING = False
-TRAIN_HQ = False
-
-MODELARCH = 1
-
-if MODELARCH==1:
-    from models.nt_classifier import build as build_model 
-elif MODELARCH==2:
-    from models.nt_classifier2 import build as build_model 
-
-
 def str_to_bool(value):
     if isinstance(value, bool):
         return value
@@ -74,6 +60,15 @@ def get_args_parser():
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
 
+    # Training mood
+
+    parser.add_argument('--easy_pretraining', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True, I will train only for the interaction patches prediction task (no smartneg).")
+    parser.add_argument('--finetuning', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True, train+val data are used for training")
+    parser.add_argument('--train_hq', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True, only the good training positives (interaction length region >20) are used.")
+
     
     # Projection module
     parser.add_argument('--proj_module_N_channels', default=128, type=int,
@@ -86,6 +81,8 @@ def get_args_parser():
                         help="If True, I will project the embeddings in a reduced space.")
 
     # * Model
+    parser.add_argument('--modelarch', default=1, type=int,
+                        help="Can be 1, 2. Architecture 1 has convolution projection on each branch and then contact matrix. Architecture 1 has mlp concatenation for each token combination and the contact matrix is built from this concat.")
     parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
     parser.add_argument('--args.mini_batch_size', default=32, type=int,
@@ -146,31 +143,24 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    if RANDOM: 
-        if EASY_PRETRAINING:
-            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt_easy.csv'))
-            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt_easy.csv'))
-        else:
-            df_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_nt.csv'))
-            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'df_genes_nt.csv'))
+    if EASY_PRETRAINING:
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
     else:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
     
     #-----------------------------------------------------------------------------------------
-    if RANDOM:
-        if EASY_PRETRAINING:
-            subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt_easy.txt")
-        else:
-            if FINETUNING:
-                subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_train_val_fine_tuning_nt.txt")
-            else:
-                if TRAIN_HQ:
-                    subset_train_nt = os.path.join(rna_rna_files_dir,  'RANDOM', 'gene_pairs_training_nt_HQ.txt')
-                else:
-                    subset_train_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_training_nt.txt")
+    if EASY_PRETRAINING:
+        subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt_easy.txt")
     else:
-        subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
+        if FINETUNING:
+            subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_train_val_fine_tuning_nt.txt")
+        else:
+            if TRAIN_HQ:
+                subset_train_nt = os.path.join(rna_rna_files_dir, 'gene_pairs_training_nt_HQ.txt')
+            else:
+                subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
     with open(subset_train_nt, "rb") as fp:  # Unpickling
         list_train = pickle.load(fp)
@@ -181,35 +171,35 @@ def main(args):
 
     if EASY_PRETRAINING:
         pos_multipliers = {15:0.2, 
-                   25:0.3,
-                   50:0.2, 
-                   100:0.23, 
-                   10_000_000: 0.07}
+                25:0.3,
+                50:0.2, 
+                100:0.23, 
+                10_000_000: 0.07}
 
         neg_multipliers = {15:0.05, 
-                           28:0.2,
+                        28:0.15,
 
-                           40:0.08,
-                           50:0.05,
-                           60:0.1,
+                        40:0.08,
+                        50:0.05,
+                        60:0.1,
 
-                           80:0.03,
-                           90:0.03,
-                           100:0.03,
+                        80:0.03,
+                        90:0.03,
+                        100:0.05,
 
-                           110:0.03,
+                        110:0.05,
 
-                           120:0.1,
+                        120:0.1,
 
-                           140:0.05,
-                           160:0.03,
-                           180:0.03,
-                           200:0.02,
-                           220:0.02,
-                           240:0.01,
-                           260:0.01,
+                        140:0.05,
+                        160:0.03,
+                        180:0.03,
+                        200:0.03,
+                        220:0.02,
+                        240:0.01,
+                        260:0.01,
 
-                           10_000_000: 0.1}
+                        10_000_000: 0.1}
         
     else:
         pos_multipliers = {15:0.2, 
@@ -248,31 +238,28 @@ def main(args):
     
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    if RANDOM:
-        if EASY_PRETRAINING:
-            subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt_easy.txt")
-        else:
-            if FINETUNING:
-                subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_test_sampled_nt.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
-                df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'test500.csv'))
-            else:
-                subset_val_nt = os.path.join(rna_rna_files_dir, 'RANDOM', f"gene_pairs_val_sampled_nt.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
-                df500 = pd.read_csv(os.path.join(metadata_dir, 'RANDOM', f'val500.csv'))
-
-            with open(subset_val_nt, "rb") as fp:  # Unpickling
-                list_val = pickle.load(fp)
-
-            assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
-            df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
-            df500 = df500[df500.couples.isin(list_val)]
-
+    if EASY_PRETRAINING:
+        subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt_easy.txt")
     else:
-        raise NotImplementedError
+        if FINETUNING:
+            subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_test_sampled_nt_HQ.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
+            df500 = pd.read_csv(os.path.join(metadata_dir, f'test500.csv'))
+        else:
+            subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt_HQ.txt") # gene_pairs_val_sampled_nt.txt it is also HQ
+            df500 = pd.read_csv(os.path.join(metadata_dir, f'val500.csv'))
 
+        with open(subset_val_nt, "rb") as fp:  # Unpickling
+            list_val = pickle.load(fp)
+
+        assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+        df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
+        df500 = df500[df500.couples.isin(list_val)] # in questo modo ho quasi bilanciato del tutto, ma per avere un bilanciamento al 100% devo fare undersampling
+        df500 = undersample_df(df500) #bilanciamento al 100%.
+        
     if EASY_PRETRAINING:
         pos_multipliers = {25:0.7, 50:0.2, 100:0.1}
-        neg_multipliers = {40:0.1, 50:0.3, 60:0.1,
-                           80:0.05, 90:0.15, 100:0.05,
+        neg_multipliers = {33:0.3, 45:0.1, 55:0.1, 65:0.1,
+                           80:0.05, 90:0.05, 100:0.05,
                            120:0.05, 150:0.02, 160:0.02,
                            170:0.02, 180:0.02, 190:0.02,
                            200:0.02, 210:0.02, 220:0.02}
@@ -367,7 +354,7 @@ def main(args):
                                 current_epoch = epoch, 
                                 best_model_epoch = utils.best_model_epoch(output_dir / "log.txt")):
             break
-
+            
         train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = 1)
         lr_scheduler.step()
         
@@ -419,14 +406,24 @@ def main(args):
     
 if __name__ == '__main__':
     #run me with: -> 
+
     #nohup python train_binary_cl.py &> train_binary_cl.out &
+
+    #nohup python train_binary_cl.py --easy_pretraining &> train_binary_cl_easy.out &
+    #nohup python train_binary_cl.py --finetuning &> train_binary_cl_finetuning.out &
+    #nohup python train_binary_cl.py --train_hq &> train_binary_cl_hq.out &
+
 
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()
     args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
     args.dataset_path = os.path.join(ROOT_DIR, 'dataset')
 
-    if MODELARCH == 1:
+    EASY_PRETRAINING = args.easy_pretraining
+    FINETUNING = args.finetuning
+    TRAIN_HQ = args.train_hq    
+
+    if args.modelarch == 1:
         args.use_projection_module = True
 
     if args.use_projection_module == False:

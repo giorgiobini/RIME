@@ -68,7 +68,8 @@ def get_args_parser():
                         help="If True, train+val data are used for training")
     parser.add_argument('--train_hq', type=str_to_bool, nargs='?', const=True, default=False,
                         help="If True, only the good training positives (interaction length region >20) are used.")
-
+    parser.add_argument('--specie', default='all',
+                        help='can be all, human, mouse')
     
     # Projection module
     parser.add_argument('--proj_module_N_channels', default=128, type=int,
@@ -81,7 +82,7 @@ def get_args_parser():
                         help="If True, I will project the embeddings in a reduced space.")
 
     # * Model
-    parser.add_argument('--modelarch', default=1, type=int,
+    parser.add_argument('--modelarch', default=2, type=int,
                         help="Can be 1, 2. Architecture 1 has convolution projection on each branch and then contact matrix. Architecture 1 has mlp concatenation for each token combination and the contact matrix is built from this concat.")
     parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
@@ -129,36 +130,21 @@ def get_args_parser():
     parser.add_argument('--n_epochs_early_stopping', default=100)
     return parser
 
-def seed_worker(worker_id):
-    worker_seed = torch.initial_seed() % 2**32
-    np.random.seed(worker_seed)
-    random.seed(worker_seed)
-    torch.manual_seed(worker_seed)
-
-def main(args):
-
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    output_dir = Path(args.output_dir)
-
-    if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
-        args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
-
-    if EASY_PRETRAINING:
+def obtain_train_dataset(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
+    if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
-    else:
-        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
-    
-    #-----------------------------------------------------------------------------------------
-    if EASY_PRETRAINING:
         subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt_easy.txt")
     else:
-        if FINETUNING:
-            subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_train_val_fine_tuning_nt.txt")
+        if train_hq:
+            df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
+            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
+            subset_train_nt = os.path.join(rna_rna_files_dir, 'gene_pairs_training_nt_HQ.txt')
         else:
-            if TRAIN_HQ:
-                subset_train_nt = os.path.join(rna_rna_files_dir, 'gene_pairs_training_nt_HQ.txt')
+            df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
+            df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt.csv'))
+            if finetuning:
+                subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_train_val_fine_tuning_nt.txt")
             else:
                 subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
 
@@ -169,7 +155,7 @@ def main(args):
     assert vc_train[False]>vc_train[True]
     unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
 
-    if EASY_PRETRAINING:
+    if easy_pretraining:
         pos_multipliers = {15:0.2, 
                 25:0.3,
                 50:0.2, 
@@ -208,7 +194,6 @@ def main(args):
                        100:0.23,
                        100_000_000:0.07}
         neg_multipliers = pos_multipliers
-    scaling_factor = 5
 
     policies_train = [
         EasyPosAugment(
@@ -232,16 +217,22 @@ def main(args):
             augment_policies=policies_train,
             data_dir = os.path.join(embedding_dir, '32'),
             scaling_factor = scaling_factor,
-            min_n_groups = args.min_n_groups_train,
-            max_n_groups = args.max_n_groups_train,
+            min_n_groups = min_n_groups_train,
+            max_n_groups = max_n_groups_train,
     )
     
-    #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    return dataset_train, policies_train
 
-    if EASY_PRETRAINING:
+def obtain_val_dataset(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor = 5):
+
+    if easy_pretraining:
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
         subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt_easy.txt")
     else:
-        if FINETUNING:
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
+        if finetuning:
             subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_test_sampled_nt_HQ.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
             df500 = pd.read_csv(os.path.join(metadata_dir, f'test500.csv'))
         else:
@@ -256,7 +247,7 @@ def main(args):
         df500 = df500[df500.couples.isin(list_val)] # in questo modo ho quasi bilanciato del tutto, ma per avere un bilanciamento al 100% devo fare undersampling
         df500 = undersample_df(df500) #bilanciamento al 100%.
         
-    if EASY_PRETRAINING:
+    if easy_pretraining:
         pos_multipliers = {25:0.7, 50:0.2, 100:0.1}
         neg_multipliers = {33:0.3, 45:0.1, 55:0.1, 65:0.1,
                            80:0.05, 90:0.05, 100:0.05,
@@ -286,12 +277,10 @@ def main(args):
             augment_policies=policies_val,
             data_dir = os.path.join(embedding_dir, '32'),
             scaling_factor = scaling_factor,
-            min_n_groups = args.min_n_groups_val,
-            max_n_groups = args.max_n_groups_val,
+            min_n_groups = min_n_groups_val,
+            max_n_groups = max_n_groups_val,
         )
-        sampler_val = torch.utils.data.SequentialSampler(dataset_val)
 
-        args.policies_val = policies_val
     else:
 
         df500 = df500.sample(frac=1, random_state=23).reset_index(drop = True)
@@ -301,16 +290,36 @@ def main(args):
             df = df500,
             data_dir = os.path.join(embedding_dir, '32'),
             scaling_factor = scaling_factor,
-            min_n_groups = args.min_n_groups_val,
-            max_n_groups = args.max_n_groups_val,
+            min_n_groups = min_n_groups_val,
+            max_n_groups = max_n_groups_val,
         )
-        args.policies_val = 'dataset500'
+        policies_val = 'dataset500'
 
+    return dataset_val, policies_val
+
+
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    torch.manual_seed(worker_seed)
+
+def main(args):
+
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    output_dir = Path(args.output_dir)
+
+    if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
+        args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
+
+    dataset_train, policies_train = obtain_train_dataset(EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train)
     args.policies_train = policies_train
 
-   #-----------------------------------------------------------------------------------------
+    dataset_val, policies_val = obtain_val_dataset(EASY_PRETRAINING, FINETUNING, args.min_n_groups_val, args.max_n_groups_val)
+    args.policies_val = policies_val
 
-    # Save the namespace of the args object to a file using pickle
+
+     # Save the namespace of the args object to a file using pickle
     with open(os.path.join(args.output_dir, 'args.pkl'), 'wb') as f:
         pickle.dump(args.__dict__, f)
 
@@ -422,6 +431,7 @@ if __name__ == '__main__':
     EASY_PRETRAINING = args.easy_pretraining
     FINETUNING = args.finetuning
     TRAIN_HQ = args.train_hq    
+    SPECIE = args.specie
 
     if args.modelarch == 1:
         args.use_projection_module = True

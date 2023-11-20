@@ -61,7 +61,10 @@ def get_args_parser():
                         help='gradient clipping max norm')
 
     # Training mood
-
+    parser.add_argument('--train_dataset', default='paris',
+                        help='can be paris, mario, ricseq, splash')
+    parser.add_argument('--val_dataset', default='paris',
+                        help='can be paris, mario, ricseq, splash')
     parser.add_argument('--easy_pretraining', type=str_to_bool, nargs='?', const=True, default=False,
                         help="If True, I will train only for the interaction patches prediction task (no smartneg).")
     parser.add_argument('--finetuning', type=str_to_bool, nargs='?', const=True, default=False,
@@ -130,7 +133,7 @@ def get_args_parser():
     parser.add_argument('--n_epochs_early_stopping', default=100)
     return parser
 
-def obtain_train_dataset(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
+def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
     if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
@@ -195,35 +198,43 @@ def obtain_train_dataset(easy_pretraining, train_hq, finetuning, min_n_groups_tr
                        100_000_000:0.07}
         neg_multipliers = pos_multipliers
 
-    policies_train = [
+    policies_train = obtain_policies_object(0.5, unbalance_factor*0.5, pos_multipliers, neg_multipliers)
+    dataset_train  = obtain_dataset_object(policies_train, df_genes_nt, df_nt, subset_train_nt, scaling_factor, min_n_groups_train, max_n_groups_train)
+    
+    return dataset_train, policies_train
+
+
+def obtain_policies_object(per_sample_easypos, per_sample_smartneg, pos_multipliers, neg_multipliers):
+    policies = [
         EasyPosAugment(
-            per_sample=0.5,
+            per_sample=per_sample_easypos,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=pos_multipliers,
             height_multipliers=pos_multipliers,
         ),  
         SmartNegAugment(
-            per_sample=unbalance_factor * 0.5,
+            per_sample=per_sample_smartneg,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=neg_multipliers,
             height_multipliers=neg_multipliers,
         ),
     ] 
-        
-    dataset_train = RNADatasetNT(
+    return policies
+
+def obtain_dataset_object(policies, df_genes_nt, df_nt, subset_nt, scaling_factor, min_n_groups, max_n_groups):
+    dataset = RNADatasetNT(
             gene2info=df_genes_nt,
             interactions=df_nt,
-            subset_file=subset_train_nt,
-            augment_policies=policies_train,
+            subset_file=subset_nt,
+            augment_policies=policies,
             data_dir = os.path.join(embedding_dir, '32'),
             scaling_factor = scaling_factor,
-            min_n_groups = min_n_groups_train,
-            max_n_groups = max_n_groups_train,
+            min_n_groups = min_n_groups,
+            max_n_groups = max_n_groups,
     )
-    
-    return dataset_train, policies_train
+    return dataset
 
-def obtain_val_dataset(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor = 5):
+def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor = 5):
 
     if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
@@ -255,21 +266,7 @@ def obtain_val_dataset(easy_pretraining, finetuning, min_n_groups_val, max_n_gro
                            170:0.02, 180:0.02, 190:0.02,
                            200:0.02, 210:0.02, 220:0.02}
 
-        policies_val = [
-            EasyPosAugment(
-                per_sample=1,
-                interaction_selection=InteractionSelectionPolicy.LARGEST,
-                width_multipliers=pos_multipliers,
-                height_multipliers=pos_multipliers,
-            ),  
-            SmartNegAugment(
-                per_sample=1, # unbalance_factor
-                interaction_selection=InteractionSelectionPolicy.LARGEST,
-                width_multipliers=neg_multipliers,
-                height_multipliers=neg_multipliers,
-            ),
-        ]
-
+        policies_val = obtain_policies_object(1, 1, pos_multipliers, neg_multipliers)
         dataset_val = RNADatasetNT(
             gene2info=df_genes_nt,
             interactions=df_nt,
@@ -298,6 +295,83 @@ def obtain_val_dataset(easy_pretraining, finetuning, min_n_groups_val, max_n_gro
     return dataset_val, policies_val
 
 
+def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
+    if dataset == 'paris':
+        dataset_train, policies_train = obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor)
+    else:
+        assert dataset in ['mario', 'ricseq', 'splash']
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
+        data_dir = os.path.join(rna_rna_files_dir, f'{dataset}')
+        file_training = os.path.join(data_dir, 'gene_pairs_training.txt')
+        with open(file_training, "rb") as fp:   # Unpickling
+            train_couples = pickle.load(fp)
+
+        train_nt = df_nt[df_nt.couples_id.isin(train_couples)]
+
+        vc_train = train_nt.interacting.value_counts()
+        assert vc_train[False]>vc_train[True]
+        unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
+        
+        scaling_factor = 5
+
+        if dataset == 'splash':
+            pos_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
+            neg_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
+
+        elif dataset == 'mario':
+            pos_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
+            neg_multipliers = {5:0.1, 6:0.5, 15:0.2, 50:0.13, 100:0.13}
+
+        elif dataset == 'ricseq':
+            pos_multipliers = {5:0.7, 25:0.1, 70:0.1, 100:0.1}
+            neg_multipliers = {5:0.02, 10:0.85, 70:0.02, 80:0.02, 90:0.02, 100:0.2}
+
+        vc_train = train_nt.interacting.value_counts()
+        if vc_train[False]>vc_train[True]:
+            unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
+            policies_train = obtain_policies_object(0.25, 0.25*unbalance_factor, pos_multipliers, neg_multipliers)
+        elif vc_train[False]<vc_train[True]:
+            unbalance_factor = 1 - (vc_train[True] - vc_train[False]) / vc_train[True]
+            policies_train = obtain_policies_object(0.25*unbalance_factor, 0.25, pos_multipliers, neg_multipliers)
+        elif vc_train[True]==vc_train[True]:
+            unbalance_factor = 1
+
+        dataset_train = obtain_dataset_object(policies_train, df_genes_nt, df_nt, '', scaling_factor, min_n_groups_train, max_n_groups_train)
+    return dataset_train, policies_train
+
+def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor = 5):
+    if dataset == 'paris':
+        dataset_val, policies_val = obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor)
+    else:
+        assert dataset in ['mario', 'ricseq', 'splash']
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
+        data_dir = os.path.join(rna_rna_files_dir, f'{dataset}')
+
+        file_test = os.path.join(data_dir, 'gene_pairs_test.txt')
+        with open(file_test, "rb") as fp:   # Unpickling
+            test_couples = pickle.load(fp)
+
+        df500 = pd.read_csv(os.path.join(metadata_dir, f'{dataset}500.csv'))
+        assert df500.shape[0] == df_nt[['couples', 'couples_id', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+        df500 = df_nt[['couples', 'interacting', 'policy', 'couples_id']].merge(df500, on = 'couples')
+        df500 = df500[df500.couples_id.isin(test_couples)]
+        df500 = df500[df500.policy.isin(['easypos', 'smartneg'])]
+        df500 = undersample_df(df500)
+
+        df500 = df500.sample(frac=1, random_state=23).reset_index(drop = True)
+        assert df500.shape[0]>0
+
+        dataset_val = RNADatasetNT500(
+            df = df500,
+            data_dir = os.path.join(embedding_dir, '32'),
+            scaling_factor = scaling_factor,
+            min_n_groups = min_n_groups_val,
+            max_n_groups = max_n_groups_val,
+        )
+        args.policies_val = 'dataset500'
+    return dataset_val, policies_val
+
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
@@ -312,10 +386,10 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    dataset_train, policies_train = obtain_train_dataset(EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train)
+    dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train)
     args.policies_train = policies_train
 
-    dataset_val, policies_val = obtain_val_dataset(EASY_PRETRAINING, FINETUNING, args.min_n_groups_val, args.max_n_groups_val)
+    dataset_val, policies_val = obtain_val_dataset(VAL_DATASET, EASY_PRETRAINING, FINETUNING, args.min_n_groups_val, args.max_n_groups_val)
     args.policies_val = policies_val
 
 
@@ -388,11 +462,15 @@ def main(args):
         with (output_dir / "log.txt").open("a") as f:
             f.write(json.dumps(log_stats) + "\n")
                 
-        best_model_epoch = utils.best_model_epoch(output_dir / "log.txt")
+        best_model_epoch = utils.best_model_epoch(os.path.join(output_dir, "log.txt"), metric = 'accuracy', maximize = True)
+
+        best_loss = utils.best_model_epoch(log_path = os.path.join(output_dir, "log.txt"), metric = 'loss', maximize = False)
+        best_recall = utils.best_model_epoch(log_path = os.path.join(output_dir, "log.txt"), metric = 'recall', maximize = True)
+        best_specificty = utils.best_model_epoch(log_path = os.path.join(output_dir, "log.txt"), metric = 'specificity', maximize = True)
         
         checkpoint_paths = [output_dir / 'checkpoint.pth']
         # extra checkpoint before LR drop and every 100 epochs
-        if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 100 == 0:
+        if (best_loss == epoch)|(best_recall == epoch)|(best_specificty == epoch):
             checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             
         if best_model_epoch == epoch:
@@ -432,6 +510,8 @@ if __name__ == '__main__':
     FINETUNING = args.finetuning
     TRAIN_HQ = args.train_hq    
     SPECIE = args.specie
+    TRAIN_DATASET = args.train_dataset
+    VAL_DATASET = args.val_dataset
 
     if args.modelarch == 1:
         args.use_projection_module = True

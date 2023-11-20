@@ -1,4 +1,6 @@
 nohup: ignoring input
+/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/init.py:388: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
 /data01/giorgio/RNARNA-NT/src/../util/xai.py:381: RuntimeWarning: Mean of empty slice.
   intensity = matrix[(x1-m_w):(x2+m_w), (y1-m_h):(y2+m_h)].mean()
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in true_divide
@@ -8,4 +10,4 @@ nohup: ignoring input
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
 Be careful, some prediction will be counted more than one time. The number of duplicated sequences is -1
-Testing time 0:03:20
+Testing time 0:06:18

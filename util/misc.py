@@ -623,7 +623,6 @@ def best_model_epoch(log_path, metric = 'accuracy', maximize = True):
             return log.iloc[log['test_{}'.format(metric)].argmin()].epoch
     else:
         return 0
-    
 
 def early_stopping(n_epochs, current_epoch, best_model_epoch):
     interrupt = False

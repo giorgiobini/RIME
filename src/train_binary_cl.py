@@ -55,7 +55,7 @@ def get_args_parser():
     parser.add_argument('--lr_backbone', default=5e-5, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
-    parser.add_argument('--epochs', default=300, type=int)
+    parser.add_argument('--epochs', default=1000, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
@@ -130,10 +130,10 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--n_epochs_early_stopping', default=100)
+    parser.add_argument('--n_epochs_early_stopping', default=200)
     return parser
 
-def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
+def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
     if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
@@ -153,6 +153,11 @@ def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_gro
 
     with open(subset_train_nt, "rb") as fp:  # Unpickling
         list_train = pickle.load(fp)
+        
+    if specie in ['human', 'mouse']:
+        paris = pd.read_csv(os.path.join(processed_files_dir, f'paris.csv'))
+        couples_to_keep = set(paris[paris.specie == specie].couples)
+        df_nt = df_nt[df_nt.couples_id.isin(couples_to_keep)].reset_index(drop = True)
 
     vc_train = df_nt[df_nt.couples.isin(list_train)].interacting.value_counts()
     assert vc_train[False]>vc_train[True]
@@ -234,12 +239,18 @@ def obtain_dataset_object(policies, df_genes_nt, df_nt, subset_nt, scaling_facto
     )
     return dataset
 
-def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor = 5):
+def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor = 5):
+    
+    if specie in ['human', 'mouse']:
+        paris = pd.read_csv(os.path.join(processed_files_dir, f'paris.csv'))
+        couples_to_keep = set(paris[paris.specie == SPECIE].couples)
 
     if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
         subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_val_sampled_nt_easy.txt")
+        if specie in ['human', 'mouse']:
+            df_nt = df_nt[df_nt.couples_id.isin(couples_to_keep)]
     else:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
@@ -252,8 +263,12 @@ def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max
 
         with open(subset_val_nt, "rb") as fp:  # Unpickling
             list_val = pickle.load(fp)
-
-        assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+            
+        if specie in ['human', 'mouse']:
+            df_nt = df_nt[df_nt.couples_id.isin(couples_to_keep)]
+        elif specie == 'all':
+            assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+            
         df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
         df500 = df500[df500.couples.isin(list_val)] # in questo modo ho quasi bilanciato del tutto, ma per avere un bilanciamento al 100% devo fare undersampling
         df500 = undersample_df(df500) #bilanciamento al 100%.
@@ -290,14 +305,13 @@ def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max
             min_n_groups = min_n_groups_val,
             max_n_groups = max_n_groups_val,
         )
-        policies_val = 'dataset500'
 
-    return dataset_val, policies_val
+    return dataset_val, 'dataset500'
+    
 
-
-def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
+def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
     if dataset == 'paris':
-        dataset_train, policies_train = obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, scaling_factor)
+        dataset_train, policies_train = obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
     else:
         assert dataset in ['mario', 'ricseq', 'splash']
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
@@ -308,10 +322,6 @@ def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_
             train_couples = pickle.load(fp)
 
         train_nt = df_nt[df_nt.couples_id.isin(train_couples)]
-
-        vc_train = train_nt.interacting.value_counts()
-        assert vc_train[False]>vc_train[True]
-        unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
         
         scaling_factor = 5
 
@@ -340,9 +350,9 @@ def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_
         dataset_train = obtain_dataset_object(policies_train, df_genes_nt, df_nt, '', scaling_factor, min_n_groups_train, max_n_groups_train)
     return dataset_train, policies_train
 
-def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor = 5):
+def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor = 5):
     if dataset == 'paris':
-        dataset_val, policies_val = obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, scaling_factor)
+        dataset_val, policies_val = obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor)
     else:
         assert dataset in ['mario', 'ricseq', 'splash']
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
@@ -369,8 +379,7 @@ def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, 
             min_n_groups = min_n_groups_val,
             max_n_groups = max_n_groups_val,
         )
-        args.policies_val = 'dataset500'
-    return dataset_val, policies_val
+    return dataset_val, 'dataset500'
 
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
@@ -386,10 +395,10 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train)
+    dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
     args.policies_train = policies_train
 
-    dataset_val, policies_val = obtain_val_dataset(VAL_DATASET, EASY_PRETRAINING, FINETUNING, args.min_n_groups_val, args.max_n_groups_val)
+    dataset_val, policies_val = obtain_val_dataset(VAL_DATASET, EASY_PRETRAINING, FINETUNING, args.min_n_groups_val, args.max_n_groups_val, SPECIE)
     args.policies_val = policies_val
 
 
@@ -500,6 +509,11 @@ if __name__ == '__main__':
     #nohup python train_binary_cl.py --finetuning &> train_binary_cl_finetuning.out &
     #nohup python train_binary_cl.py --train_hq &> train_binary_cl_hq.out &
 
+    #nohup python train_binary_cl.py --train_dataset=ricseq --val_dataset=ricseq &> train_binary_cl_ricseq.out &
+    #nohup python train_binary_cl.py --train_dataset=splash --val_dataset=splash &> train_binary_cl_splash.out &
+    #nohup python train_binary_cl.py --finetuning --val_dataset=splash &> train_binary_cl_finetuning_valsplash.out &
+    #nohup python train_binary_cl.py --train_dataset=ricseq --val_dataset=splash &> train_binary_cl_finetuning_valricseq.out &
+    #nohup python train_binary_cl.py --train_dataset=splash --val_dataset=ricseq &> train_binary_cl_splash.out &
 
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()

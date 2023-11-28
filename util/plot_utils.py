@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import math
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
@@ -155,7 +156,7 @@ def balance_df(df, n_iter = 25):
     balanced = pd.concat(toappend, axis = 0)
     return balanced
 
-def collect_results_based_on_confidence_level(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 0.05):
+def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 0.05):
     auc_nt = []
     auc_intarna = []
     merged_x_axis = []
@@ -198,3 +199,58 @@ def collect_results_based_on_confidence_level(df, how = 'intarna', n_values = 15
             merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
         
     return merged_x_axis, auc_nt, auc_intarna
+
+
+def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, space = 'linear'):
+    
+    total_data = df.shape[0]
+    
+    if space == 'linear':
+        percs_data = np.linspace(MIN_PERC, 100, n_values)[::-1]
+    elif space == 'log':
+        percs_data = np.logspace(np.log10(MIN_PERC), np.log10(100), n_values)[::-1]
+        
+    auc_nt = []
+    auc_intarna = []
+    x_axis = []
+    
+    n_total = df.shape[0]
+
+    for i in range(n_values):
+        
+        n_to_sample = int(math.ceil(percs_data[i]/100 * total_data))
+
+        if how == 'intarna':
+            subset = pd.concat([
+                df.sort_values('E_norm').head(math.ceil(n_to_sample/2)), 
+                df.sort_values('E_norm').tail(math.ceil(n_to_sample/2))
+            ], axis = 0)
+            
+        elif how == 'nt':
+            subset = pd.concat([
+                df.sort_values('probability').head(math.ceil(n_to_sample/2)), 
+                df.sort_values('probability').tail(math.ceil(n_to_sample/2))
+            ], axis = 0)
+        else:
+            raise NotImplementedError
+        
+        n_subset = subset.shape[0]
+        
+        if balance:
+            subset = balance_df(subset)
+        
+        assert n_subset/n_total >= MIN_PERC/100
+        assert abs(n_subset/n_total - percs_data[i]/100) < 0.02
+        fpr, tpr, _ = roc_curve(subset.ground_truth, subset.probability)
+        roc_auc = auc(fpr, tpr)
+        auc_nt.append(roc_auc)
+
+        fpr, tpr, _ = roc_curve(abs(1 - subset.ground_truth), subset.E_norm)
+        roc_auc = auc(fpr, tpr)
+        auc_intarna.append(roc_auc)
+
+        value = str(np.round(percs_data[i], 2))
+
+        x_axis.append(value)
+
+    return x_axis, auc_nt, auc_intarna

@@ -35,6 +35,8 @@ def get_args_parser():
                         help='Can be test or val')
     parser.add_argument('--dataset', default='paris',
                         help='Can be paris, mario, ricseq, splash')
+    parser.add_argument('--folder', default='binary_cl2',
+                        help='Default is binary_cl2')
     return parser
 
 def main(args):
@@ -185,18 +187,20 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_binary_cl_on_test_500.py &> run_binary_cl_on_test_500.out &
+    #nohup python run_binary_cl_on_test_500.py --folder=binary_cl2 &> run_binary_cl_on_test_500.out &
     #nohup python run_binary_cl_on_test_500.py --how=val &> run_binary_cl_on_test_500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=mario &> run_binary_cl_on_test_mario500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=ricseq &> run_binary_cl_on_test_ricseq500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=splash &> run_binary_cl_on_test_splash500.out &
      
 
-    checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')
 
     parser = argparse.ArgumentParser('Test500', parents=[get_args_parser()])
     args = parser.parse_args()
     HOW = args.how 
     DATASET = args.dataset
+
+    checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', args.folder)
 
     # Define the path to the file containing the args namespace
     args_path = os.path.join(checkpoint_dir, 'args.pkl')
@@ -209,7 +213,7 @@ if __name__ == '__main__':
 
     args.dataset = DATASET
 
-    args.resume = os.path.join(args.output_dir, 'best_model.pth') 
+    args.resume = os.path.join(checkpoint_dir, 'best_model.pth') 
 
     seed_everything(123)
     main(args)

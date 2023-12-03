@@ -7,5 +7,5 @@ nohup: ignoring input
   ret = ret.dtype.type(ret / rcount)
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
-Be careful, some prediction will be counted more than one time. The number of duplicated sequences is -1
-Testing time 0:02:41
+Be careful, some prediction will be counted more than one time. The number of duplicated sequences is -3
+Testing time 0:02:38

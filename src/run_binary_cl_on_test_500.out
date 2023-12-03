@@ -9,5 +9,5 @@ nohup: ignoring input
   main(args)
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
-Be careful, some prediction will be counted more than one time. The number of duplicated sequences is 0
-Testing time 0:30:49
+Be careful, some prediction will be counted more than one time. The number of duplicated sequences is -1
+Testing time 0:30:45

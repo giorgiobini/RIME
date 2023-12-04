@@ -24,7 +24,7 @@ def infer(sequences, forward_fn, tokenizer, parameters, random_key):
     outs = forward_fn.apply(parameters, random_key, tokens)
     return outs, tokens
 
-def save_embeddings_from_batch(save_path, embeddings, padding_mask, ids):
+def save_embeddings_from_batch(save_path, embeddings, padding_mask, ids, save_mean = False):
     batch_size = embeddings.shape[0]
     
     for i in range(batch_size):
@@ -34,7 +34,11 @@ def save_embeddings_from_batch(save_path, embeddings, padding_mask, ids):
         # Apply padding mask to remove padding elements
         masked_embeddings = sample_embeddings[sample_padding_mask]  #(dim, 2560)
         
-        np.save(os.path.join(save_path, f'{ids[i]}.npy'), masked_embeddings)
+        if save_mean:
+            masked_embeddings_mean = jnp.mean(masked_embeddings, axis=0)
+            np.save(os.path.join(save_path, f'{ids[i]}.npy'), masked_embeddings_mean)
+        else:
+            np.save(os.path.join(save_path, f'{ids[i]}.npy'), masked_embeddings)
         
 def create_masked_embeddings(outs, layer, tokens, tokenizer):
     embeddings = outs[f'embeddings_{layer}']
@@ -55,6 +59,8 @@ def get_args_parser():
                         help="Where is the embedding_query.csv file")
     parser.add_argument('--embedding_dir', default='/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/embeddings',
                         help="Where is the embedding directory. If it doesn t exist, it will be created")
+    parser.add_argument('--save_mean', default=0, type=int,
+                        help="0 for False, 1 for True. If true, only the mean embedding is saved (2560 shaped vector)")
     return parser
 
 def main(args):
@@ -93,7 +99,7 @@ def main(args):
             outs, tokens = infer(sequences, forward_fn, tokenizer, parameters, random_key)
             embeddings, padding_mask = create_masked_embeddings(outs, args.embedding_layer, tokens, tokenizer)
             del outs
-            save_embeddings_from_batch(save_path, embeddings, padding_mask, ids)
+            save_embeddings_from_batch(save_path, embeddings, padding_mask, ids, save_mean=args.save_mean)
             del embeddings
             del padding_mask
 
@@ -119,6 +125,7 @@ if __name__ == '__main__':
     #run me with: -> 
     #nohup python download_embeddings.py &> download_embeddings.out &
     #nohup python download_embeddings.py --batch_size=2  &> download_embeddings.out & 
+    #nohup python download_embeddings.py --save_mean=1 --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/mean_embeddings --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/mean_embeddings &> download_embeddings.out &
 
     parser = argparse.ArgumentParser('Download NT Embeddings', parents=[get_args_parser()])
     args = parser.parse_args()

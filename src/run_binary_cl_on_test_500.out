@@ -1,13 +1,12 @@
-nohup: ignoring input
 /data01/giorgio/RNARNA-NT/src/../util/xai.py:381: RuntimeWarning: Mean of empty slice.
   intensity = matrix[(x1-m_w):(x2+m_w), (y1-m_h):(y2+m_h)].mean()
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in true_divide
   ret = ret.dtype.type(ret / rcount)
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in double_scalars
   ret = ret.dtype.type(ret / rcount)
-/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test_500.py:215: DtypeWarning: Columns (1,2,16,17,18,20) have mixed types.Specify dtype option on import or set low_memory=False.
+/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test_500.py:219: DtypeWarning: Columns (1,2,16,17,18,20) have mixed types.Specify dtype option on import or set low_memory=False.
   main(args)
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
 Be careful, some prediction will be counted more than one time. The number of duplicated sequences is -1
-Testing time 0:30:45
+Testing time 0:30:01

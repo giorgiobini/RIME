@@ -106,10 +106,10 @@ def main(args):
             with open(os.path.join(metadata_dir, f"done_{args.embedding_layer}.txt"), 'a') as f:
                 for idx in ids:
                     f.write(str(idx) + '\n')
-        except:
+        except Exception as e:
             with open(os.path.join(metadata_dir, f"excluded_{args.embedding_layer}.txt"), 'a') as f:
                 for idx in ids:
-                    f.write(str(idx) + '\n')
+                    f.write(str(idx) + str(e) + '\n')
 
         if i%200 == 0:
             perc = np.round(i/len(slices) * 100, 2)

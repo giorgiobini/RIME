@@ -26,6 +26,8 @@ from dataset.data import (
     seed_everything,
 )
 
+INCLUDE_RICSEQ = False
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import ROOT_DIR, processed_files_dir, original_files_dir, rna_rna_files_dir, metadata_dir, embedding_dir
 
@@ -410,8 +412,9 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    dataset_ricseq, policies_ricseq = obtain_train_dataset('ricseq', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
-    
+    if INCLUDE_RICSEQ:
+        dataset_ricseq, policies_ricseq = obtain_train_dataset('ricseq', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+
     dataset_splash, policies_splash = obtain_train_dataset('splash', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
     
     dataset_paris, policies_paris = obtain_train_dataset('paris', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
@@ -464,7 +467,11 @@ def main(args):
             
             
         # Create UndersampledDataset with the concatenated dataset
-        undersampled_dataset = UndersampledDataset([dataset_ricseq, dataset_splash, dataset_paris])
+        if INCLUDE_RICSEQ:
+            undersampled_dataset = UndersampledDataset([dataset_ricseq, dataset_splash, dataset_paris])
+        else:
+            undersampled_dataset = UndersampledDataset([dataset_splash, dataset_paris])
+
         # Create DataLoader using the undersampled dataset
         data_loader_train = DataLoader(undersampled_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=utils.collate_fn_nt2, num_workers=args.num_workers)
     
@@ -500,7 +507,7 @@ def main(args):
         
         checkpoint_paths = [output_dir / 'checkpoint.pth']
         # extra checkpoint before LR drop and every 100 epochs
-        if (best_loss == epoch)|(best_recall == epoch)|(best_specificty == epoch):
+        if (best_loss == epoch)|(best_recall == epoch)|(best_specificty == epoch)|(best_model_epoch == epoch):
             checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             
         if best_model_epoch == epoch:

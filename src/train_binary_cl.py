@@ -85,7 +85,7 @@ def get_args_parser():
                         help="If True, I will project the embeddings in a reduced space.")
 
     # * Model
-    parser.add_argument('--modelarch', default=1, type=int,
+    parser.add_argument('--modelarch', default=2, type=int,
                         help="Can be 1, 2. Architecture 1 has convolution projection on each branch and then contact matrix. Architecture 1 has mlp concatenation for each token combination and the contact matrix is built from this concat.")
     parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
@@ -479,7 +479,7 @@ def main(args):
         
         checkpoint_paths = [output_dir / 'checkpoint.pth']
         # extra checkpoint before LR drop and every 100 epochs
-        if (best_loss == epoch)|(best_recall == epoch)|(best_specificty == epoch):
+        if (best_loss == epoch)|(best_recall == epoch)|(best_specificty == epoch)|(best_model_epoch == epoch):
             checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             
         if best_model_epoch == epoch:

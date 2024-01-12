@@ -53,7 +53,7 @@ def remove_last_n_if_below_threshold(confidence, percs_subset, accuracies, preci
         for lst in [confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs]:
             lst[:] = lst[:-N]
 
-def obtain_list_of_metrics(df_res, n_conf, excluding_treshold):
+def obtain_list_of_metrics(df_res, n_conf, excluding_treshold, ensemble = False):
 
     confidence = []
     percs_subset = []
@@ -65,7 +65,10 @@ def obtain_list_of_metrics(df_res, n_conf, excluding_treshold):
     npvs = []
 
     for diff in np.linspace(0, 0.49, n_conf): #0.49
-        subset = df_res[(df_res['probability'] > 0.5+diff)|(df_res['probability'] < 0.5-diff)]
+        if ensemble:
+            subset = df_res[(df_res['ensemble_score'] > 0.5+diff)|(df_res['ensemble_score'] < 0.5-diff)]
+        else:
+            subset = df_res[(df_res['probability'] > 0.5+diff)|(df_res['probability'] < 0.5-diff)]
         N_subset = subset.shape[0]
         perc_N = N_subset/df_res.shape[0]
 
@@ -105,8 +108,8 @@ def plot_results(confidence, percs_subset, accuracies, precisions, recalls, f2s,
     plt.legend()
     plt.show()
     
-def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10, excluding_treshold = 0.01, plot_perc = False):
-    confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs = obtain_list_of_metrics(df_res, n_conf, excluding_treshold)
+def obtain_plot(df_res, n_original_df = np.nan, title = 'Metrics', n_conf = 10, excluding_treshold = 0.01, plot_perc = False, ensemble = False):
+    confidence, percs_subset, accuracies, precisions, recalls, f2s, specificities, npvs = obtain_list_of_metrics(df_res, n_conf, excluding_treshold, ensemble = ensemble)
 
     perc = np.round(df_res.shape[0]/n_original_df*100, 2)
 
@@ -201,7 +204,7 @@ def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intar
     return merged_x_axis, auc_nt, auc_intarna
 
 
-def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, space = 'linear'):
+def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, space = 'linear', calc_ens = True):
     
     total_data = df.shape[0]
     
@@ -212,6 +215,7 @@ def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'int
         
     auc_nt = []
     auc_intarna = []
+    auc_ens = []
     x_axis = []
     
     n_total = df.shape[0]
@@ -231,6 +235,12 @@ def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'int
                 df.sort_values('probability').head(math.ceil(n_to_sample/2)), 
                 df.sort_values('probability').tail(math.ceil(n_to_sample/2))
             ], axis = 0)
+            
+        elif how == 'ensemble':
+            subset = pd.concat([
+                df.sort_values('ensemble_score').head(math.ceil(n_to_sample/2)), 
+                df.sort_values('ensemble_score').tail(math.ceil(n_to_sample/2))
+            ], axis = 0)
         else:
             raise NotImplementedError
         
@@ -241,6 +251,8 @@ def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'int
         
         assert n_subset/n_total >= MIN_PERC/100
         assert abs(n_subset/n_total - percs_data[i]/100) < 0.02
+        
+        
         fpr, tpr, _ = roc_curve(subset.ground_truth, subset.probability)
         roc_auc = auc(fpr, tpr)
         auc_nt.append(roc_auc)
@@ -248,9 +260,16 @@ def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'int
         fpr, tpr, _ = roc_curve(abs(1 - subset.ground_truth), subset.E_norm)
         roc_auc = auc(fpr, tpr)
         auc_intarna.append(roc_auc)
-
+        
+        if calc_ens:
+            fpr, tpr, _ = roc_curve(subset.ground_truth, subset.ensemble_score)
+            roc_auc = auc(fpr, tpr)
+            auc_ens.append(roc_auc)
+        
         value = str(np.round(percs_data[i], 2))
-
         x_axis.append(value)
-
-    return x_axis, auc_nt, auc_intarna
+        
+    if calc_ens:
+        return x_axis, auc_nt, auc_intarna, auc_ens
+    else:
+        return x_axis, auc_nt, auc_intarna

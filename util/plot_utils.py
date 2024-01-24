@@ -273,3 +273,58 @@ def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'int
         return x_axis, auc_nt, auc_intarna, auc_ens
     else:
         return x_axis, auc_nt, auc_intarna
+
+def collect_results_based_on_confidence_level_how_many1(df, n_values = 15, how = 'nt', balance = False, MIN_PERC = 1, space = 'linear', intarna_treshold = -1.25):
+    
+    total_data = df.shape[0]
+        
+    confidence_space = np.linspace(0.51, 0.99, n_values)
+        
+    perc_1 = []
+    x_axis = []
+    
+    n_total = df.shape[0]
+
+    for i in range(n_values):
+
+        if how == 'intarna':
+            treshold = confidence_space[i]
+            subset = df[
+                (df.E_norm_conf >= treshold)|
+                (df.E_norm_conf <= (1-treshold))
+            ]
+        elif how == 'nt':
+            treshold = confidence_space[i]
+            subset = df[
+                (df.probability >= treshold)|
+                (df.probability <= (1-treshold))
+            ]
+            
+        elif how == 'ensemble':
+            treshold = confidence_space[i]
+            subset = df[
+                (df.ensemble_score >= treshold)|
+                (df.ensemble_score <= (1-treshold))
+            ]
+        else:
+            raise NotImplementedError
+        
+        n_subset = subset.shape[0]
+        
+        if balance:
+            subset = balance_df(subset)
+        
+        if (n_subset/n_total > MIN_PERC/100):
+
+            if how == 'intarna':
+                perc_1.append(np.round( (subset.E_norm_conf > 0.5).sum()/subset.shape[0], 2))
+            elif how == 'nt':
+                perc_1.append(np.round( (subset.prediction == 1).sum()/subset.shape[0], 2))
+            elif how == 'ensemble':
+                perc_1.append(np.round( (subset.ensemble_score>0.5).sum()/subset.shape[0], 2))
+
+            value = str(np.round(np.round(confidence_space[i],2), 2))
+
+            x_axis.append(value)
+
+    return x_axis, perc_1

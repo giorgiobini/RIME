@@ -1191,6 +1191,7 @@ class RNADataset(Dataset):
                 operator.itemgetter("couple"),
             )
         ]
+
         #print(all_pair_interactions[0]) --> [{'couple': 'ENSG00000000419_ENSG00000249150', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000249150', 'interacting': False, ...}]
 
         self.all_pair_interactions = {

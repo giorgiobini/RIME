@@ -6,3 +6,7 @@
   ret = ret.dtype.type(ret / rcount)
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/numpy/core/_methods.py:189: RuntimeWarning: invalid value encountered in double_scalars
   ret = ret.dtype.type(ret / rcount)
+============================================================
+<class 'transformers.tokenization_dna.DNATokenizer'>
+Be careful, some prediction will be counted more than one time. The number of duplicated sequences is 0
+Testing time 0:10:07

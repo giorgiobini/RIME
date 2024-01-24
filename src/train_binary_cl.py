@@ -347,10 +347,10 @@ def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_
         elif vc_train[True]==vc_train[True]:
             unbalance_factor = 1
 
-        dataset_train = obtain_dataset_object(policies_train, df_genes_nt, df_nt, '', scaling_factor, min_n_groups_train, max_n_groups_train)
+        dataset_train = obtain_dataset_object(policies_train, df_genes_nt, train_nt, '', scaling_factor, min_n_groups_train, max_n_groups_train)
     return dataset_train, policies_train
 
-def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor = 5):
+def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor = 5, filter_test = True):
     if dataset == 'paris':
         dataset_val, policies_val = obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor)
     else:
@@ -365,7 +365,8 @@ def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, 
         df500 = pd.read_csv(os.path.join(metadata_dir, f'{dataset}500.csv'))
         assert df500.shape[0] == df_nt[['couples', 'couples_id', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
         df500 = df_nt[['couples', 'interacting', 'policy', 'couples_id']].merge(df500, on = 'couples')
-        df500 = df500[df500.couples_id.isin(test_couples)]
+        if filter_test:
+            df500 = df500[df500.couples_id.isin(test_couples)]
         df500 = df500[df500.policy.isin(['easypos', 'smartneg'])]
         df500 = undersample_df(df500)
 
@@ -408,7 +409,7 @@ def main(args):
 
     sampler_train = torch.utils.data.RandomSampler(dataset_train)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
-
+    
     batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=False)
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    collate_fn=utils.collate_fn_nt2, num_workers=args.num_workers)
@@ -493,11 +494,19 @@ def main(args):
                 'epoch': epoch,
                 'args': args,
             }, checkpoint_path)
-
-
+            
+        #create the new dataset
+        dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+        sampler_train = torch.utils.data.RandomSampler(dataset_train)
+        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=False)
+        data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
+                                   collate_fn=utils.collate_fn_nt2, num_workers=args.num_workers)
+        data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn_nt2, num_workers=args.num_workers)
+        
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
+    
     
     
 if __name__ == '__main__':

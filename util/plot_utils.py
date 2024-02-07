@@ -328,3 +328,403 @@ def collect_results_based_on_confidence_level_how_many1(df, n_values = 15, how =
             x_axis.append(value)
 
     return x_axis, perc_1
+
+def acc_for_each_class(df):
+    policies = list(df.policy.value_counts().index)
+    for p in policies:
+        subset = df[df.policy == p]
+        if p == 'easypos':
+            acc = np.round(subset[subset.prediction == 1].shape[0]/subset.shape[0], 2)
+        else:
+            acc = np.round(subset[subset.prediction == 0].shape[0]/subset.shape[0], 2)
+        print(f'acc {p}: {acc}')
+
+def calc_acc_for_each_class(df):
+    for p in ['easypos', 'smartneg', 'easyneg', 'hardneg']:
+        subset = df[df.policy == p]
+        if p == 'easypos':
+            if subset.shape[0] > 0:
+                acc_ep = np.round(subset[subset.prediction == 1].shape[0]/subset.shape[0], 2)
+            else: 
+                acc_ep = np.nan
+        elif p == 'smartneg':
+            if subset.shape[0] > 0:
+                acc_sn = np.round(subset[subset.prediction == 0].shape[0]/subset.shape[0], 2)
+            else: 
+                acc_sn = np.nan
+        elif p == 'easyneg':
+            if subset.shape[0] > 0:
+                acc_en = np.round(subset[subset.prediction == 0].shape[0]/subset.shape[0], 2)
+            else: 
+                acc_en = np.nan
+        elif p == 'hardneg':
+            if subset.shape[0] > 0:
+                acc_hn = np.round(subset[subset.prediction == 0].shape[0]/subset.shape[0], 2)
+            else: 
+                acc_hn = np.nan
+    return acc_ep, acc_sn, acc_en, acc_hn
+    
+def plot_confs_and_accs(eps, sns, ens, hns, confs, title):
+    plt.plot(confs, eps, label = 'ep', color = 'b')
+    plt.plot(confs, sns, label = 'sn', color = 'r')
+    plt.plot(confs, ens, label = 'en', linestyle = '-.', color = 'g')
+    plt.plot(confs, hns, label = 'hn', linestyle = '-.', color = 'orange')
+    plt.title(title)
+    plt.xlabel(f"Confidence")
+    plt.ylabel(f"acc")
+    plt.legend()
+    plt.show()
+
+def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, space = 'linear', calc_ens = True):
+    
+    total_data = df.shape[0]
+    
+    if space == 'linear':
+        percs_data = np.linspace(MIN_PERC, 100, n_values)[::-1]
+    elif space == 'log':
+        percs_data = np.logspace(np.log10(MIN_PERC), np.log10(100), n_values)[::-1]
+        
+    prec_nt = []
+    prec_intarna = []
+    prec_ens = []
+
+    recall_nt = []
+    recall_intarna = []
+    recall_ens = []
+
+    spec_nt = []
+    spec_intarna = []
+    spec_ens = []
+
+    npv_nt = []
+    npv_intarna = []
+    npv_ens = []
+
+    x_axis = []
+    
+    n_total = df.shape[0]
+
+    for i in range(n_values):
+        
+        n_to_sample = int(math.ceil(percs_data[i]/100 * total_data))
+
+        if how == 'intarna':
+            subset = pd.concat([
+                df.sort_values('E_norm').head(math.ceil(n_to_sample/2)), 
+                df.sort_values('E_norm').tail(math.ceil(n_to_sample/2))
+            ], axis = 0).reset_index(drop = True)
+            
+        elif how == 'nt':
+            subset = pd.concat([
+                df.sort_values('probability').head(math.ceil(n_to_sample/2)), 
+                df.sort_values('probability').tail(math.ceil(n_to_sample/2))
+            ], axis = 0).reset_index(drop = True)
+            
+        elif how == 'ensemble':
+            subset = pd.concat([
+                df.sort_values('ensemble_score').head(math.ceil(n_to_sample/2)), 
+                df.sort_values('ensemble_score').tail(math.ceil(n_to_sample/2))
+            ], axis = 0).reset_index(drop = True)
+        else:
+            raise NotImplementedError
+        
+        n_subset = subset.shape[0]
+        
+        if balance:
+            subset = balance_df(subset)
+        
+        assert n_subset/n_total >= MIN_PERC/100
+        assert abs(n_subset/n_total - percs_data[i]/100) < 0.02
+
+        precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'probability')
+        prec_nt.append(precision)
+        recall_nt.append(recall)
+        spec_nt.append(specificity)
+        npv_nt.append(npv)
+
+        precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'E_norm_conf')
+        prec_intarna.append(precision)
+        recall_intarna.append(recall)
+        spec_intarna.append(specificity)
+        npv_intarna.append(npv)
+
+        if calc_ens:
+            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'ensemble_score')
+            prec_ens.append(precision)
+            recall_ens.append(recall)
+            spec_ens.append(specificity)
+            npv_ens.append(npv)
+        
+        value = str(np.round(percs_data[i], 2))
+        x_axis.append(value)
+        
+    if calc_ens:
+        return x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (prec_ens, recall_ens, spec_ens, npv_ens)
+    else:
+        return x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
+
+
+def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
+    
+    total_data = df.shape[0]
+    
+    confidence_space = np.linspace(0.51, 0.99, n_values)
+        
+    prec_nt = []
+    prec_intarna = []
+    prec_ens = []
+
+    recall_nt = []
+    recall_intarna = []
+    recall_ens = []
+
+    spec_nt = []
+    spec_intarna = []
+    spec_ens = []
+
+    npv_nt = []
+    npv_intarna = []
+    npv_ens = []
+
+    merged_x_axis = []
+    
+    n_total = df.shape[0]
+
+    for i in range(n_values):
+        
+        treshold = confidence_space[i]
+
+        if how == 'intarna':
+            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
+        elif how == 'nt':
+            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
+        elif how == 'ensemble':
+            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
+        else:
+            raise NotImplementedError
+        
+        n_subset = subset.shape[0]
+            
+        calc = False
+        if set(subset.ground_truth.value_counts().index) == set([0, 1]):
+            n_samples_min = min(subset.ground_truth.value_counts()[0], subset.ground_truth.value_counts()[1])
+            if ( (n_subset/n_total)*100 > MIN_PERC ) & (n_samples_min >= MIN_SAMPLES):
+                calc = True
+        
+        
+        if balance:
+            subset = balance_df(subset)
+        
+        if calc:
+            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'probability')
+        else:
+            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+        prec_nt.append(precision)
+        recall_nt.append(recall)
+        spec_nt.append(specificity)
+        npv_nt.append(npv)
+        
+        if calc:
+            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'E_norm_conf')
+        else:
+            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+        prec_intarna.append(precision)
+        recall_intarna.append(recall)
+        spec_intarna.append(specificity)
+        npv_intarna.append(npv)
+
+        if calc_ens:
+            if calc:
+                precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'ensemble_score')
+            else:
+                precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+            prec_ens.append(precision)
+            recall_ens.append(recall)
+            spec_ens.append(specificity)
+            npv_ens.append(npv)
+            
+        tuple_to_print = (np.round(confidence_space[i],2), np.round(n_subset/n_total, 2))
+        merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
+        
+    if calc_ens:
+        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (prec_ens, recall_ens, spec_ens, npv_ens)
+    else:
+        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
+
+def calc_prec_rec_sens_npv(subset, column):
+    """
+    Calculate precision, recall, specificity, and NPV for binary classification.
+
+    Parameters:
+    subset (DataFrame): The subset of data containing 'column' and 'ground_truth' columns.
+    column (str): The name of the column representing the predicted values.
+
+    Returns:
+    precision (float): Precision score.
+    recall (float): Recall score.
+    specificity (float): Specificity score.
+    npv (float): Negative predictive value score.
+    """
+
+    tp = np.sum((subset[column] > 0.5) & (subset.ground_truth == 1))
+    fn = np.sum((subset[column] < 0.5) & (subset.ground_truth == 1))
+    fp = np.sum((subset[column] > 0.5) & (subset.ground_truth == 0))
+    tn = np.sum((subset[column] < 0.5) & (subset.ground_truth == 0))
+
+    precision = np.round(tp / (tp + fp), 2) if (tp + fp > 0) else np.nan
+    recall = np.round(tp / (tp + fn), 2) if (tp + fn > 0) else np.nan
+    specificity = np.round(tn / (tn + fp), 2) if (tn + fp > 0) else np.nan
+    npv = np.round(tn / (tn + fn), 2) if (tn + fn > 0) else np.nan
+
+    return precision, recall, specificity, npv
+
+
+def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
+    
+    confidence_space = np.linspace(0.51, 0.99, n_values)
+        
+    prec_nt = []
+    prec_intarna = []
+    prec_ens = []
+
+    recall_nt = []
+    recall_intarna = []
+    recall_ens = []
+
+    spec_nt = []
+    spec_intarna = []
+    spec_ens = []
+
+    npv_nt = []
+    npv_intarna = []
+    npv_ens = []
+
+    merged_x_axis = []
+    
+    n_total = df.shape[0]
+
+    for i in range(n_values):
+        
+        treshold = confidence_space[i]
+
+        if how == 'intarna':
+            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
+        elif how == 'nt':
+            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
+        elif how == 'ensemble':
+            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
+        else:
+            raise NotImplementedError
+        
+        n_subset = subset.shape[0]
+            
+        calc = False
+        if set(subset.ground_truth.value_counts().index) == set([0, 1]):
+            n_samples_min = min(subset.ground_truth.value_counts()[0], subset.ground_truth.value_counts()[1])
+            if ( (n_subset/n_total)*100 > MIN_PERC ) & (n_samples_min >= MIN_SAMPLES):
+                calc = True
+        
+        
+        if balance:
+            subset = balance_df(subset)
+        
+        if calc:
+            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'probability')
+        else:
+            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+        prec_nt.append(precision)
+        recall_nt.append(recall)
+        spec_nt.append(specificity)
+        npv_nt.append(npv)
+        
+        if calc:
+            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'E_norm_conf')
+        else:
+            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+        prec_intarna.append(precision)
+        recall_intarna.append(recall)
+        spec_intarna.append(specificity)
+        npv_intarna.append(npv)
+
+        if calc_ens:
+            if calc:
+                precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'ensemble_score')
+            else:
+                precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+            prec_ens.append(precision)
+            recall_ens.append(recall)
+            spec_ens.append(specificity)
+            npv_ens.append(npv)
+            
+        tuple_to_print = (np.round(confidence_space[i],2), np.round(n_subset/n_total, 2))
+        merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
+        
+    if calc_ens:
+        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (prec_ens, recall_ens, spec_ens, npv_ens)
+    else:
+        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
+
+    
+def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
+    
+    
+    confidence_space = np.linspace(0.51, 0.99, n_values)
+                                                                
+        
+    auc_nt = []
+    auc_intarna = []
+    auc_ens = []
+    merged_x_axis = []
+    
+    n_total = df.shape[0]
+    
+    for i in range(n_values):
+        
+        treshold = confidence_space[i]
+
+        if how == 'intarna':
+            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
+        elif how == 'nt':
+            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
+        elif how == 'ensemble':
+            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
+        
+        n_subset = subset.shape[0]  
+                                                                
+        calc = False
+        if set(subset.ground_truth.value_counts().index) == set([0, 1]):
+            n_samples_min = min(subset.ground_truth.value_counts()[0], subset.ground_truth.value_counts()[1])
+            if ( (n_subset/n_total)*100 > MIN_PERC ) & (n_samples_min >= MIN_SAMPLES):
+                calc = True
+                        
+        
+        if balance:
+            subset = balance_df(subset)
+                                            
+        if calc:                                            
+            fpr, tpr, _ = roc_curve(subset.ground_truth, subset.probability)
+            roc_auc = auc(fpr, tpr)
+            auc_nt.append(roc_auc) 
+            
+            fpr, tpr, _ = roc_curve(abs(1 - subset.ground_truth), subset.E_norm)
+            roc_auc = auc(fpr, tpr)
+            auc_intarna.append(roc_auc)
+            
+            if calc_ens:
+                fpr, tpr, _ = roc_curve(subset.ground_truth, subset.ensemble_score)
+                roc_auc = auc(fpr, tpr)
+                auc_ens.append(roc_auc)  
+        else:
+            auc_nt.append(np.nan) 
+            auc_intarna.append(np.nan) 
+            if calc_ens:
+                auc_ens.append(np.nan) 
+            
+        tuple_to_print = (np.round(confidence_space[i],2), np.round(subset.shape[0]/n_total * 100, 2))
+            
+        merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
+        
+    if calc_ens:
+        return merged_x_axis, auc_nt, auc_intarna, auc_ens
+    else:
+        return merged_x_axis, auc_nt, auc_intarna

@@ -170,7 +170,8 @@ if __name__ == '__main__':
     #run me with: -> 
 
     #nohup python train_binary_cl_all_ricseq_test.py --val_dataset=ricseq &> train_binary_cl_all_ricseq_test.out &
-
+    #nohup python train_binary_cl_all_ricseq_test.py --finetuning --val_dataset=ricseq &> train_binary_cl_finetuningANDsplash_ricseq_test.out &
+    
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()
     args.output_dir = os.path.join(ROOT_DIR, 'checkpoints', 'binary_cl2')

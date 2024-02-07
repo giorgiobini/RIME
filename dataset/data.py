@@ -1368,7 +1368,9 @@ class RNADatasetInference(Dataset):
         self,
         gene_info_path: Path,
         interactions_path: Path,
-        step_size: int
+        step_size: int, 
+        max_size:int = MAX_RNA_SIZE
+        
     ):
         self.gene_info_path: Path = gene_info_path
         self.interactions_path: Path = interactions_path
@@ -1385,7 +1387,7 @@ class RNADatasetInference(Dataset):
         
         self.gene2info['length'] = self.gene2info.cdna.str.len()
         
-        fs = FindSplits(max_size = MAX_RNA_SIZE)
+        fs = FindSplits(max_size = self.max_size)
         self.gene2info['coords'] = self.gene2info.length.apply(lambda x: fs.get_split_coords(length = x, step_size=self.step_size))
         
         self.gene2info: Mapping[str, Mapping[str, Any]] = {

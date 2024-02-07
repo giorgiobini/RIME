@@ -9,4 +9,4 @@
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
 Be careful, some prediction will be counted more than one time. The number of duplicated sequences is -1
-Testing time 0:06:11
+Testing time 0:06:06

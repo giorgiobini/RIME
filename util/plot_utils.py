@@ -1,10 +1,24 @@
 import pandas as pd
 import numpy as np
 import math
+import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 from sklearn.metrics import roc_curve, auc
+
+#COLORS##
+COLOR_NT_AUC = '#3C00FF'
+COLOR_NT_PREC = '#747DC6'
+COLOR_NT_NPV = '#281B7C'
+
+COLOR_INTARNA_AUC = 'orange'
+COLOR_INTARNA_PREC = '#FFB450'
+COLOR_INTARNA_NPV = '#A57617'
+
+COLOR_ENS_AUC = 'green'
+COLOR_ENS_PREC = '#70DC6C'
+COLOR_ENS_NPV = '#18791B'
 
 
 '''
@@ -143,6 +157,73 @@ def plot_logs(log, metric, best_model):
 '''
 ------------------------------------------------------------------------------------------
 '''
+# INTARNA MAP
+
+def custom_sigmoid(x, slope_at_origin=2):
+    return 0.5 + 0.5 * np.tanh(x * slope_at_origin)
+
+def map_signal_to_sigmoid_range(signal, threshold):
+    mapped_signal = custom_sigmoid((signal - threshold))
+    return mapped_signal
+
+'''
+------------------------------------------------------------------------------------------
+'''
+    
+    
+def plot_intarna_Enorm_curves(res, treshold_plot = -100):
+    sns.kdeplot(res[(res.policy == 'easypos')&(res.E_norm>treshold_plot)].E_norm, label = 'easypos')
+    sns.kdeplot(res[(res.policy == 'easyneg')&(res.E_norm>treshold_plot)].E_norm, label = 'easyneg')
+    sns.kdeplot(res[(res.policy == 'hardneg')&(res.E_norm>treshold_plot)].E_norm, label = 'hardneg')
+    sns.kdeplot(res[(res.policy == 'smartneg')&(res.E_norm>treshold_plot)].E_norm, label = 'smartneg')
+    plt.title(f'Intarna Normalized Energy distribution (easypos&smartneg)')
+    plt.legend()
+    plt.show()
+    
+def plot_ROC_based_on_confidence(df, how = 'intarna', treshold = 0.05, balance = False):
+    if how == 'intarna':
+        subset = df[
+            (df.E_norm <= df.E_norm.quantile(treshold))|
+            (df.E_norm >= df.E_norm.quantile(1-treshold))
+        ]
+    elif how == 'nt':
+        subset = df[
+            (df.probability <= treshold)|
+            (df.probability >= (1-treshold))
+        ]
+    else:
+        raise NotImplementedError
+    print('perc of the total data: ', np.round(subset.shape[0]/df.shape[0], 3)*100, '%')
+    if balance:
+        subset = balance_df(subset)
+    plot_roc_curves([{'prob': subset.probability, 'model_name': 'NT'},
+                 {'prob': abs(subset.E_norm), 'model_name': 'Intarna'}
+                ], subset.ground_truth)
+    
+    
+def obtain_auc_and_perc_in_specific_treshold(treshold, res, test500, balance = True, intarna = False, ensemble = False):
+    original_res_shape = res.shape[0]
+    #take only big windows
+    subset = test500[ (abs(test500.seed_x1 - test500.seed_x2) >treshold) & (abs(test500.seed_y1 - test500.seed_y2) > treshold) ]
+    res = res[res.id_sample.isin(subset.couples)]
+    
+    perc = np.round((res.shape[0] / original_res_shape)*100, 2)
+    
+    if balance:
+        res = balance_df(res)
+    
+    if intarna:
+        fpr, tpr, _ = roc_curve(abs(1 - res.ground_truth), res.E_norm)
+        roc_auc = auc(fpr, tpr)
+    else:
+        fpr, tpr, _ = roc_curve(res.ground_truth, res.probability)
+        roc_auc = auc(fpr, tpr)
+        
+    if ensemble:
+        fpr, tpr, _ = roc_curve(res.ground_truth, res.ensemble_score)
+        roc_auc = auc(fpr, tpr)
+    
+    return roc_auc, perc
 
 def balance_df(df, n_iter = 25):
     toappend = []
@@ -169,18 +250,14 @@ def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intar
     confidence_space = np.linspace(0.51, 0.99, n_values)
     for i in range(n_values):
         
+        treshold = confidence_space[i]
+        
         if how == 'intarna':
-            treshold = 1-confidence_space[i]
-            subset = df[
-                (df.E_norm <= df.E_norm.quantile(treshold))|
-                (df.E_norm >= df.E_norm.quantile(1-treshold))
-            ]
+            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
         elif how == 'nt':
-            treshold = confidence_space[i]
-            subset = df[
-                (df.probability >= treshold)|
-                (df.probability <= (1-treshold))
-            ]
+            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
+        elif how == 'ensemble':
+            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
         else:
             raise NotImplementedError
         
@@ -204,7 +281,7 @@ def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intar
     return merged_x_axis, auc_nt, auc_intarna
 
 
-def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, space = 'linear', calc_ens = True):
+def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = False, MIN_PERC = 1, space = 'linear', calc_ens = True):
     
     total_data = df.shape[0]
     
@@ -375,7 +452,7 @@ def plot_confs_and_accs(eps, sns, ens, hns, confs, title):
     plt.legend()
     plt.show()
 
-def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, space = 'linear', calc_ens = True):
+def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = False, MIN_PERC = 1, space = 'linear', calc_ens = True):
     
     total_data = df.shape[0]
     
@@ -464,9 +541,32 @@ def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(d
         return x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
 
 
-def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
+def should_I_calculate(subset, MIN_PERC, n_total):
     
-    total_data = df.shape[0]
+    n_subset = subset.shape[0]
+    MIN_SAMPLES = int((subset.shape[0] * MIN_PERC) / 100)
+
+    if (n_subset/n_total)*100 > MIN_PERC:
+        calc = True
+    
+    else:
+        calc = False
+        
+    return calc
+
+def get_prec_npv(pred_pos, pred_neg, column, calc_pos, calc_neg):
+    if calc_pos:
+        precision, _, _, _ = calc_prec_rec_sens_npv(pred_pos, column)
+    else:
+        precision, _, _, _ = np.nan, np.nan, np.nan, np.nan
+    if calc_neg:
+        _, _, _, npv = calc_prec_rec_sens_npv(pred_neg, column)
+    else:
+        _, _, _, npv = np.nan, np.nan, np.nan, np.nan
+        
+    return precision, npv
+
+def collect_prec_npv_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
     
     confidence_space = np.linspace(0.51, 0.99, n_values)
         
@@ -474,19 +574,12 @@ def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_treshold(df,
     prec_intarna = []
     prec_ens = []
 
-    recall_nt = []
-    recall_intarna = []
-    recall_ens = []
-
-    spec_nt = []
-    spec_intarna = []
-    spec_ens = []
-
     npv_nt = []
     npv_intarna = []
     npv_ens = []
 
-    merged_x_axis = []
+    merged_x_axis_pos = []
+    merged_x_axis_neg = []
     
     n_total = df.shape[0]
 
@@ -495,61 +588,45 @@ def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_treshold(df,
         treshold = confidence_space[i]
 
         if how == 'intarna':
-            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
+            pred_pos = df[(df.E_norm_conf > treshold)].reset_index(drop = True)
+            pred_neg = df[(df.E_norm_conf <  (1-treshold))].reset_index(drop = True)
         elif how == 'nt':
-            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
+            pred_pos = df[(df.probability > treshold)].reset_index(drop = True)
+            pred_neg = df[(df.probability <  (1-treshold))].reset_index(drop = True)
         elif how == 'ensemble':
-            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
+            pred_pos = df[(df.ensemble_score > treshold)].reset_index(drop = True)
+            pred_neg = df[(df.ensemble_score < (1-treshold))].reset_index(drop = True)
         else:
             raise NotImplementedError
-        
-        n_subset = subset.shape[0]
             
-        calc = False
-        if set(subset.ground_truth.value_counts().index) == set([0, 1]):
-            n_samples_min = min(subset.ground_truth.value_counts()[0], subset.ground_truth.value_counts()[1])
-            if ( (n_subset/n_total)*100 > MIN_PERC ) & (n_samples_min >= MIN_SAMPLES):
-                calc = True
+        calc_pos = should_I_calculate(pred_pos, MIN_PERC, n_total)
+        calc_neg = should_I_calculate(pred_neg, MIN_PERC, n_total)
         
-        
-        if balance:
-            subset = balance_df(subset)
-        
-        if calc:
-            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'probability')
-        else:
-            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+        precision, npv = get_prec_npv(pred_pos, pred_neg, 'probability', calc_pos, calc_neg)
         prec_nt.append(precision)
-        recall_nt.append(recall)
-        spec_nt.append(specificity)
         npv_nt.append(npv)
         
-        if calc:
-            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'E_norm_conf')
-        else:
-            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+        precision, npv = get_prec_npv(pred_pos, pred_neg, 'E_norm_conf', calc_pos, calc_neg)
         prec_intarna.append(precision)
-        recall_intarna.append(recall)
-        spec_intarna.append(specificity)
         npv_intarna.append(npv)
 
         if calc_ens:
-            if calc:
-                precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'ensemble_score')
-            else:
-                precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
+            precision, npv = get_prec_npv(pred_pos, pred_neg, 'ensemble_score', calc_pos, calc_neg)
             prec_ens.append(precision)
-            recall_ens.append(recall)
-            spec_ens.append(specificity)
             npv_ens.append(npv)
             
-        tuple_to_print = (np.round(confidence_space[i],2), np.round(n_subset/n_total, 2))
-        merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
+        n_subset_pos = pred_pos.shape[0]
+        n_subset_neg = pred_neg.shape[0]
+        conf_to_print = np.round(confidence_space[i],2)
+        tuple_to_print = (conf_to_print, np.round(n_subset_pos/n_total * 100, 2))
+        merged_x_axis_pos.append('\n\n'.join(str(x) for x in tuple_to_print))
+        tuple_to_print = (conf_to_print, np.round(n_subset_neg/n_total * 100, 2))
+        merged_x_axis_neg.append('\n\n'.join(str(x) for x in tuple_to_print))
         
     if calc_ens:
-        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (prec_ens, recall_ens, spec_ens, npv_ens)
+        return (merged_x_axis_pos, merged_x_axis_neg), (prec_nt, npv_nt), (prec_intarna, npv_intarna), (prec_ens, npv_ens)
     else:
-        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
+        return (merged_x_axis_pos, merged_x_axis_neg), (prec_nt, npv_nt), (prec_intarna, npv_intarna)
 
 def calc_prec_rec_sens_npv(subset, column):
     """
@@ -578,91 +655,6 @@ def calc_prec_rec_sens_npv(subset, column):
 
     return precision, recall, specificity, npv
 
-
-def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
-    
-    confidence_space = np.linspace(0.51, 0.99, n_values)
-        
-    prec_nt = []
-    prec_intarna = []
-    prec_ens = []
-
-    recall_nt = []
-    recall_intarna = []
-    recall_ens = []
-
-    spec_nt = []
-    spec_intarna = []
-    spec_ens = []
-
-    npv_nt = []
-    npv_intarna = []
-    npv_ens = []
-
-    merged_x_axis = []
-    
-    n_total = df.shape[0]
-
-    for i in range(n_values):
-        
-        treshold = confidence_space[i]
-
-        if how == 'intarna':
-            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
-        elif how == 'nt':
-            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
-        elif how == 'ensemble':
-            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
-        else:
-            raise NotImplementedError
-        
-        n_subset = subset.shape[0]
-            
-        calc = False
-        if set(subset.ground_truth.value_counts().index) == set([0, 1]):
-            n_samples_min = min(subset.ground_truth.value_counts()[0], subset.ground_truth.value_counts()[1])
-            if ( (n_subset/n_total)*100 > MIN_PERC ) & (n_samples_min >= MIN_SAMPLES):
-                calc = True
-        
-        
-        if balance:
-            subset = balance_df(subset)
-        
-        if calc:
-            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'probability')
-        else:
-            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
-        prec_nt.append(precision)
-        recall_nt.append(recall)
-        spec_nt.append(specificity)
-        npv_nt.append(npv)
-        
-        if calc:
-            precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'E_norm_conf')
-        else:
-            precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
-        prec_intarna.append(precision)
-        recall_intarna.append(recall)
-        spec_intarna.append(specificity)
-        npv_intarna.append(npv)
-
-        if calc_ens:
-            if calc:
-                precision, recall, specificity, npv = calc_prec_rec_sens_npv(subset, 'ensemble_score')
-            else:
-                precision, recall, specificity, npv = np.nan, np.nan, np.nan, np.nan
-            prec_ens.append(precision)
-            recall_ens.append(recall)
-            spec_ens.append(specificity)
-            npv_ens.append(npv)
-            
-        tuple_to_print = (np.round(confidence_space[i],2), np.round(n_subset/n_total, 2))
-        merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
-        
-    if calc_ens:
-        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (prec_ens, recall_ens, spec_ens, npv_ens)
-    else:
-        return merged_x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
 
     
 def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
@@ -728,3 +720,206 @@ def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intar
         return merged_x_axis, auc_nt, auc_intarna, auc_ens
     else:
         return merged_x_axis, auc_nt, auc_intarna
+
+    
+def get_policies_list(task):
+    """Returns policies based on task."""
+    if task == 'patches':
+        return ['hardneg', 'easyneg', 'easypos']
+    elif task == 'interactors':
+        return ['easypos', 'smartneg']
+    else:
+        raise NotImplementedError
+        
+def unzip_confidence_level_percentage(confidence_level_dirty):
+    confidence_level, perc = zip(*[s.split('\n\n') for s in confidence_level_dirty])
+    return confidence_level, perc
+
+def plot_auc_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc_intarna, perc_intarna, auc_ens, perc_ens, task, size_multiplier, plot_ens):
+    # Creazione del plot
+    plt.figure(figsize=(10, 6))
+
+    # Plot AUC per modello 1 e modello 2
+    plt.plot(confidence_level, auc_nt, marker='o', label='NT')
+    plt.plot(confidence_level, auc_intarna, marker='o', label='INTARNA')
+    if plot_ens:
+        plt.plot(confidence_level, auc_ens, marker='o', label='ensemble')
+    # Opzionalmente, variare la dimensione dei punti in base alla numerosità
+    for i, size in enumerate(perc_nt):
+        plt.scatter(confidence_level[i], auc_nt[i], s=float(size)*size_multiplier, color=COLOR_NT_AUC)
+    for i, size in enumerate(perc_intarna):
+        plt.scatter(confidence_level[i], auc_intarna[i], s=float(size)*size_multiplier, color=COLOR_INTARNA_AUC)
+    if plot_ens:
+        for i, size in enumerate(perc_ens):
+            plt.scatter(confidence_level[i], auc_ens[i], s=float(size)*size_multiplier, color=COLOR_ENS_AUC)
+    plt.title(f'AUC based on respective Confidence Levels, task: {task}')
+    plt.xlabel('Confidence Level %')
+    plt.ylabel('AUC')
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.show()
+    
+def plot_prec_npv_based_on_treshold_confidence(confidence_level, prec_nt, npv_nt, perc_pos_nt, perc_neg_nt, prec_intarna, npv_intarna, perc_pos_intarna, perc_neg_intarna, prec_ens, npv_ens, perc_pos_ens, perc_neg_ens, plot_ens, size_multiplier, task):
+    
+    plt.figure(figsize=(10, 6))
+    # PLOT 2 COMPARE PREC, NPV
+    plt.plot(confidence_level, prec_nt, label = 'Precision NT', linestyle = '--', color = COLOR_NT_PREC)
+    plt.plot(confidence_level, npv_nt, label = 'NPV  NT', linestyle = '-.', color = COLOR_NT_NPV)
+
+    plt.plot(confidence_level, prec_intarna, label = 'Precision INTARNA', linestyle = '--', color = COLOR_INTARNA_PREC)
+    plt.plot(confidence_level, npv_intarna, label = 'NPV  INTARNA', linestyle = '-.', color = COLOR_INTARNA_NPV)
+
+    if plot_ens:
+        plt.plot(confidence_level, prec_ens, label = 'Precision ENSEMBLE', linestyle = '--', color = COLOR_ENS_PREC)
+        plt.plot(confidence_level, npv_ens, label = 'NPV  ENSEMBLE', linestyle = '-.', color = COLOR_ENS_NPV)
+
+    # Opzionalmente, variare la dimensione dei punti in base alla numerosità
+    for i, size in enumerate(perc_pos_nt):
+        plt.scatter(confidence_level[i], prec_nt[i], s=float(size)*size_multiplier, color=COLOR_NT_PREC)
+    for i, size in enumerate(perc_neg_nt):
+        plt.scatter(confidence_level[i], npv_nt[i], s=float(size)*size_multiplier, color=COLOR_NT_NPV)
+
+    for i, size in enumerate(perc_pos_intarna):
+        plt.scatter(confidence_level[i], prec_intarna[i], s=float(size)*size_multiplier, color=COLOR_INTARNA_PREC)
+    for i, size in enumerate(perc_neg_intarna):
+        plt.scatter(confidence_level[i], npv_intarna[i], s=float(size)*size_multiplier, color=COLOR_INTARNA_NPV)
+    if plot_ens:
+        for i, size in enumerate(perc_pos_ens):
+            plt.scatter(confidence_level[i], prec_ens[i], s=float(size)*size_multiplier, color=COLOR_ENS_PREC)
+        for i, size in enumerate(perc_neg_ens):
+            plt.scatter(confidence_level[i], npv_ens[i], s=float(size)*size_multiplier, color=COLOR_ENS_NPV)
+
+    plt.title(f'Precision TP/(TP+FP), NPV TN/(TN + FN) based on respective Confidence Levels, task: {task}')
+    plt.legend()
+
+    plt.ylabel('Precision, NPV')
+    plt.xlabel(f"Perc%")
+    plt.grid(True, alpha=0.5)
+
+    plt.show()
+
+
+def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal'):
+
+    assert order_by in ['normal', 'nt', 'intarna', 'ensemble']
+    
+
+    if order_by == 'normal':
+        confidence_level, auc_nt, _, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'nt', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
+        conf_level_intarna, _, auc_intarna, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'intarna', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
+        conf_level_ens, _, _, auc_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'ensemble', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
+
+        # Splitting the strings into two lists based on the separator '\n\n'
+        confidence_level, perc_nt = unzip_confidence_level_percentage(confidence_level)
+        _, perc_intarna = unzip_confidence_level_percentage(conf_level_intarna)
+        _, perc_ens = unzip_confidence_level_percentage(conf_level_ens)
+
+    else:
+        confidence_level, auc_nt, auc_intarna, auc_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = order_by, MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
+        confidence_level, perc_nt = unzip_confidence_level_percentage(confidence_level)
+        perc_intarna = perc_nt
+        perc_ens = perc_nt
+    
+    plot_auc_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc_intarna, perc_intarna, auc_ens, perc_ens, task, size_multiplier, plot_ens)
+
+    if order_by == 'normal':
+        (conflevel_pos, conflevel_neg), (prec_nt, npv_nt), (_, _), (_, _) = collect_prec_npv_based_on_confidence_level_based_on_treshold(subset, how = 'nt', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, n_values = n_values)
+        (conflevel_pos_intarna, conflevel_neg_intarna), (_,  _), (prec_intarna, npv_intarna), (_, _) = collect_prec_npv_based_on_confidence_level_based_on_treshold(subset, how = 'intarna', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, n_values = n_values)
+        (conflevel_pos_ens, conflevel_neg_ens), (_, _), (_, _), (prec_ens, npv_ens) = collect_prec_npv_based_on_confidence_level_based_on_treshold(subset, how = 'ensemble', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, n_values = n_values)
+    
+        # Splitting the strings into two lists based on the separator '\n\n'
+        confidence_level, perc_pos_nt = unzip_confidence_level_percentage(conflevel_pos)
+        _, perc_neg_nt = unzip_confidence_level_percentage(conflevel_neg)
+        _, perc_pos_intarna = unzip_confidence_level_percentage(conflevel_pos_intarna)
+        _, perc_neg_intarna = unzip_confidence_level_percentage(conflevel_neg_intarna)
+        _, perc_pos_ens = unzip_confidence_level_percentage(conflevel_pos_ens)
+        _, perc_neg_ens = unzip_confidence_level_percentage(conflevel_neg_ens)
+
+    else:
+        (conflevel_pos, conflevel_neg), (prec_nt, npv_nt), (prec_intarna, npv_intarna), (prec_ens, npv_ens) = collect_prec_npv_based_on_confidence_level_based_on_treshold(subset, how = order_by, MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, n_values = n_values)
+        confidence_level, perc_pos_nt = unzip_confidence_level_percentage(conflevel_pos)
+        _, perc_neg_nt = unzip_confidence_level_percentage(conflevel_neg)
+        perc_pos_intarna = perc_pos_nt
+        perc_neg_intarna = perc_neg_nt
+        perc_pos_ens = perc_pos_nt
+        perc_neg_ens = perc_neg_nt
+
+
+
+    plot_prec_npv_based_on_treshold_confidence(confidence_level,
+        prec_nt, npv_nt, perc_pos_nt, perc_neg_nt,
+        prec_intarna, npv_intarna, perc_pos_intarna, perc_neg_intarna,
+        prec_ens, npv_ens, perc_pos_ens, perc_neg_ens,
+        plot_ens, size_multiplier, task)
+    
+    
+def plot_results_based_on_percentile(subset, task, MIN_PERC, space, n_values = 12, size_multiplier = 10, plot_ens = False):
+
+    confidence_level, auc_nt, _, _ = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'nt', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
+    _, _, auc_intarna, _ = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'intarna', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
+    _, _, _, auc_ens = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'ensemble', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
+
+
+    plt.plot(confidence_level, auc_nt, label = 'nt')
+    plt.plot(confidence_level, auc_intarna, label = 'intarna')
+
+    if plot_ens:
+        plt.plot(confidence_level, auc_ens, label = 'ensemble')
+    plt.title(f'AUC based on respective Confidence Levels, task: {task}')
+    plt.legend()
+    plt.ylabel('AUC')
+    plt.xlabel(f"Perc%")
+    plt.show()
+
+    subset = balance_df(subset)
+
+
+    confidence_level, (prec_nt, recall_nt, spec_nt, npv_nt), (_, _, _, _), (_, _, _, _) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'nt', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+    _, (_, _, _, _), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (_, _, _, _) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'intarna', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+    _, (_, _, _, _), (_, _, _, _), (prec_ens, recall_ens, spec_ens, npv_ens) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'ensemble', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+
+
+    plot_prec_npv_based_on_treshold_confidence(confidence_level, prec_nt, npv_nt, prec_intarna, npv_intarna, prec_ens, npv_ens, plot_ens, task)
+    
+    
+def plot_length_embeddings_and_rnas(res):
+    ep_len = list(res[res.policy == 'easypos'].len_emb1) + list(res[res.policy == 'easypos'].len_emb2)
+    sn_len = list(res[res.policy == 'smartneg'].len_emb1) + list(res[res.policy == 'smartneg'].len_emb2)
+    hn_len = list(res[res.policy == 'hardneg'].len_emb1) + list(res[res.policy == 'hardneg'].len_emb2)
+    en_len = list(res[res.policy == 'easyneg'].len_emb1) + list(res[res.policy == 'easyneg'].len_emb2)
+
+    sns.kdeplot(ep_len, label = 'ep', color = 'b')
+    sns.kdeplot(sn_len, label = 'sn', color = 'r')
+    sns.kdeplot(hn_len, label = 'hn', color = 'g')
+    sns.kdeplot(en_len, label = 'en', color = 'orange')
+    plt.title(f'Embedding Length distribution for each class')
+    plt.legend()
+    plt.show()
+
+
+    ep_len = list(res[res.policy == 'easypos'].len_g1) + list(res[res.policy == 'easypos'].len_g2)
+    sn_len = list(res[res.policy == 'smartneg'].len_g1) + list(res[res.policy == 'smartneg'].len_g2)
+    hn_len = list(res[res.policy == 'hardneg'].len_g1) + list(res[res.policy == 'hardneg'].len_g2)
+    en_len = list(res[res.policy == 'easyneg'].len_g1) + list(res[res.policy == 'easyneg'].len_g2)
+
+    sns.kdeplot(ep_len, label = 'ep', color = 'b')
+    sns.kdeplot(sn_len, label = 'sn', color = 'r')
+    sns.kdeplot(hn_len, label = 'hn', color = 'g')
+    sns.kdeplot(en_len, label = 'en', color = 'orange')
+    plt.title(f'Length distribution for each class')
+    plt.legend()
+    plt.show()
+
+
+    ep_len = list(res[res.policy == 'easypos'].original_length1) + list(res[res.policy == 'easypos'].original_length2)
+    sn_len = list(res[res.policy == 'smartneg'].original_length1) + list(res[res.policy == 'smartneg'].original_length2)
+    hn_len = list(res[res.policy == 'hardneg'].original_length1) + list(res[res.policy == 'hardneg'].original_length2)
+    en_len = list(res[res.policy == 'easyneg'].original_length1) + list(res[res.policy == 'easyneg'].original_length2)
+
+    sns.kdeplot(ep_len, label = 'ep', color = 'b')
+    sns.kdeplot(sn_len, label = 'sn', color = 'r')
+    sns.kdeplot(hn_len, label = 'hn', color = 'g')
+    sns.kdeplot(en_len, label = 'en', color = 'orange')
+    plt.title(f'Original Length distribution for each class')
+    plt.legend()
+    plt.show()

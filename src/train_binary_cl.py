@@ -85,7 +85,7 @@ def get_args_parser():
                         help="If True, I will project the embeddings in a reduced space.")
 
     # * Model
-    parser.add_argument('--modelarch', default=1, type=int,
+    parser.add_argument('--modelarch', default=2, type=int,
                         help="Can be 1, 2. Architecture 1 has convolution projection on each branch and then contact matrix. Architecture 1 has mlp concatenation for each token combination and the contact matrix is built from this concat.")
     parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
@@ -523,6 +523,7 @@ if __name__ == '__main__':
     #nohup python train_binary_cl.py --finetuning --val_dataset=splash &> train_binary_cl_finetuning_valsplash.out &
     #nohup python train_binary_cl.py --train_dataset=ricseq --val_dataset=splash &> train_binary_cl_finetuning_valricseq.out &
     #nohup python train_binary_cl.py --train_dataset=splash --val_dataset=ricseq &> train_binary_cl_splash.out &
+    #nohup python train_binary_cl.py --train_hq --val_dataset=splash &> train_binary_cl_splash.out &
 
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()

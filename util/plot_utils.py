@@ -6,6 +6,7 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import precision_recall_curve
 
 #COLORS##
 COLOR_NT_AUC = '#3C00FF'
@@ -240,10 +241,73 @@ def balance_df(df, n_iter = 25):
     balanced = pd.concat(toappend, axis = 0)
     return balanced
 
-def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 0.05):
+
+def calc_metric(df, column, metric = 'precision_recall_curve'):
+
+    if metric in ['precision', 'npv', 'recall', 'specificity', 'f1']:
+        precision, recall, specificity, npv = calc_prec_rec_sens_npv(df, column)
+        if metric == 'precision':
+            output=precision
+        elif metric == 'npv':
+            output=npv
+        elif metric == 'recall':
+            output=recall
+        elif metric == 'specificity':
+            output=specificity
+        elif metric == 'f1':
+            output = 2* (precision*recall)/(precision+recall)
+
+    elif metric == 'precision_recall_curve':
+        precision, recall, _ = precision_recall_curve(df['ground_truth'], df[column])
+        output = auc(recall, precision)
+
+    else:
+        raise NotImplementedError
+
+    return output
+
+def make_calculation(calc_pos, calc_neg, metric): 
+    calc = False
+    if (metric == 'precision'):
+        if(calc_pos):
+            calc = True
+    elif (metric == 'npv'):
+        if (calc_neg):
+            calc = True
+    elif metric in ['recall', 'specificity', 'f1', 'precision_recall_curve']:
+        if (calc_pos)&(calc_neg):
+            calc = True
+    else:
+        raise NotImplementedError
+        
+    return calc
+    
+
+def obtain_df_concatenated(pred_pos, pred_neg):
+    if len(pred_pos) > len(pred_neg):
+        df_undersampled = pred_pos.sample(n=len(pred_neg)).reset_index(drop=True)
+    else:
+        df_undersampled = pred_neg.sample(n=len(pred_pos)).reset_index(drop=True)
+    return pd.concat([pred_pos, df_undersampled]).reset_index(drop=True)
+
+
+def obtain_df_concatenated(pred_pos, pred_neg):
+    if len(pred_pos) > len(pred_neg):
+        df_undersampled = pred_pos.sample(n=len(pred_neg)).reset_index(drop = True)
+        df_concatenated = pd.concat([df_undersampled, pred_neg]).reset_index(drop = True)
+    else:
+        df_undersampled = pred_neg.sample(n=len(pred_pos)).reset_index(drop = True)
+        df_concatenated = pd.concat([pred_pos, df_undersampled]).reset_index(drop = True)
+    return df_concatenated
+
+
+def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', calc_ens = True, consensus = False):
+    
     auc_nt = []
     auc_intarna = []
-    merged_x_axis = []
+    auc_ens = []
+    percentages = []
+    conf_space_list = []
     
     n_total = df.shape[0]
     
@@ -251,34 +315,86 @@ def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intar
     for i in range(n_values):
         
         treshold = confidence_space[i]
-        
-        if how == 'intarna':
-            subset = df[(df.E_norm_conf > treshold) | (df.E_norm_conf < (1-treshold))].reset_index(drop = True)
-        elif how == 'nt':
-            subset = df[(df.probability > treshold) | (df.probability < (1-treshold))].reset_index(drop = True)
-        elif how == 'ensemble':
-            subset = df[(df.ensemble_score > treshold) | (df.ensemble_score < (1-treshold))].reset_index(drop = True)
-        else:
-            raise NotImplementedError
-        
-        n_subset = subset.shape[0]
-        if balance:
-            subset = balance_df(subset)
-        
-        if n_subset/n_total > MIN_PERC:
-            fpr, tpr, _ = roc_curve(subset.ground_truth, subset.probability)
-            roc_auc = auc(fpr, tpr)
-            auc_nt.append(roc_auc)
 
-            fpr, tpr, _ = roc_curve(abs(1 - subset.ground_truth), subset.E_norm)
-            roc_auc = auc(fpr, tpr)
-            auc_intarna.append(roc_auc)
+        if how == 'intarna':
+            column = 'E_norm_conf'
+        elif how == 'nt':
+            column = 'probability'
+        elif how == 'ensemble':
+            column = 'ensemble_score'
+        else:
+            raise NotImplementedError      
             
-            tuple_to_print = (np.round(confidence_space[i],2), np.round(subset.shape[0]/n_total, 2))
+        pred_pos, pred_neg = select_predictions(df, treshold, column, consensus)
             
-            merged_x_axis.append('\n\n'.join(str(x) for x in tuple_to_print))
+        calc_pos = should_I_calculate(pred_pos.shape[0], MIN_PERC, n_total)
+        calc_neg = should_I_calculate(pred_neg.shape[0], MIN_PERC, n_total)
         
-    return merged_x_axis, auc_nt, auc_intarna
+        calc = make_calculation(calc_pos, calc_neg, metric)
+        if calc:
+            auc_score_nt = []
+            auc_score_intarna = []
+            auc_score_ens = []
+
+            for _ in range(n_run_undersampling):
+                # Undersample the larger DataFrame to match the size of the smaller one       
+                
+                if how == 'intarna':                    
+                    df_concatenated_nt = obtain_df_concatenated(pred_pos[pred_pos['probability'] > 0.5].reset_index(drop = True), pred_neg[pred_neg['probability'] < 0.5].reset_index(drop = True))
+                    df_concatenated_intarna = obtain_df_concatenated(pred_pos, pred_neg)
+                    if calc_ens:
+                        df_concatenated_ens = obtain_df_concatenated(pred_pos[pred_pos['ensemble_score'] > 0.5].reset_index(drop = True), pred_neg[pred_neg['ensemble_score'] < 0.5].reset_index(drop = True))
+                
+                elif how == 'nt':
+                    df_concatenated_nt = obtain_df_concatenated(pred_pos, pred_neg)
+                    df_concatenated_intarna = obtain_df_concatenated(pred_pos[pred_pos['E_norm_conf'] > 0.5].reset_index(drop = True), pred_neg[pred_neg['E_norm_conf'] < 0.5].reset_index(drop = True))
+                    if calc_ens:
+                        df_concatenated_ens = obtain_df_concatenated(pred_pos[pred_pos['ensemble_score'] > 0.5].reset_index(drop = True), pred_neg[pred_neg['ensemble_score'] < 0.5].reset_index(drop = True))
+                        
+                elif how == 'ensemble':
+                    df_concatenated_nt = obtain_df_concatenated(pred_pos[pred_pos['probability'] > 0.5].reset_index(drop = True), pred_neg[pred_neg['probability'] < 0.5].reset_index(drop = True))
+                    df_concatenated_intarna = obtain_df_concatenated(pred_pos[pred_pos['E_norm_conf'] > 0.5].reset_index(drop = True), pred_neg[pred_neg['E_norm_conf'] < 0.5].reset_index(drop = True))
+                    if calc_ens:
+                        df_concatenated_ens = obtain_df_concatenated(pred_pos, pred_neg)
+                        
+                auc_score_nt.append(calc_metric(df_concatenated_nt, 'probability', metric = metric))
+                auc_score_intarna.append(calc_metric(df_concatenated_intarna, 'E_norm_conf', metric = metric))
+                if calc_ens:
+                    auc_score_ens.append(calc_metric(df_concatenated_ens, 'ensemble_score', metric = metric))
+
+            auc_nt.append(np.mean(auc_score_nt))
+            auc_intarna.append(np.mean(auc_score_intarna))
+            if calc_ens:
+                auc_ens.append(np.mean(auc_score_ens))
+                
+            perc_nt, perc_intarna, perc_ens = len(df_concatenated_nt)/n_total * 100, len(df_concatenated_intarna)/n_total * 100, len(df_concatenated_ens)/n_total * 100
+        else:
+            auc_nt.append(np.nan) 
+            auc_intarna.append(np.nan) 
+            if calc_ens:
+                auc_ens.append(np.nan) 
+            
+            perc_nt, perc_intarna, perc_ens = 0, 0, 0
+        
+        percentages.append([perc_nt, perc_intarna, perc_ens])
+        conf_space_list.append(str(np.round(confidence_space[i],2)))
+        
+    if calc_ens:
+        return conf_space_list, percentages, auc_nt, auc_intarna, auc_ens
+    else:
+        return conf_space_list, percentages, auc_nt, auc_intarna
+    
+    
+    
+
+def select_predictions(df, threshold, column, consensus):
+    if consensus:
+        pred_pos = df[(df['probability'] > threshold) & (df['E_norm_conf'] > threshold)].reset_index(drop=True)
+        pred_neg = df[(df['probability'] < (1 - threshold)) & (df['E_norm_conf'] < (1 - threshold))].reset_index(drop=True)
+    else:
+        pred_pos = df[df[column] > threshold].reset_index(drop=True)
+        pred_neg = df[df[column] < (1 - threshold)].reset_index(drop=True)
+    return pred_pos, pred_neg
 
 
 def collect_results_based_on_confidence_level_based_on_percentile(df, how = 'intarna', n_values = 15, balance = False, MIN_PERC = 1, space = 'linear', calc_ens = True):
@@ -541,10 +657,9 @@ def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(d
         return x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
 
 
-def should_I_calculate(subset, MIN_PERC, n_total):
+def should_I_calculate(n_subset, MIN_PERC, n_total):
     
-    n_subset = subset.shape[0]
-    MIN_SAMPLES = int((subset.shape[0] * MIN_PERC) / 100)
+    MIN_SAMPLES = int((n_subset * MIN_PERC) / 100)
 
     if (n_subset/n_total)*100 > MIN_PERC:
         calc = True
@@ -558,11 +673,11 @@ def get_prec_npv(pred_pos, pred_neg, column, calc_pos, calc_neg):
     if calc_pos:
         precision, _, _, _ = calc_prec_rec_sens_npv(pred_pos, column)
     else:
-        precision, _, _, _ = np.nan, np.nan, np.nan, np.nan
+        precision = np.nan
     if calc_neg:
         _, _, _, npv = calc_prec_rec_sens_npv(pred_neg, column)
     else:
-        _, _, _, npv = np.nan, np.nan, np.nan, np.nan
+        npv = np.nan
         
     return precision, npv
 
@@ -589,18 +704,18 @@ def collect_prec_npv_based_on_confidence_level_based_on_treshold(df, how = 'inta
 
         if how == 'intarna':
             pred_pos = df[(df.E_norm_conf > treshold)].reset_index(drop = True)
-            pred_neg = df[(df.E_norm_conf <  (1-treshold))].reset_index(drop = True)
+            pred_neg = df[(df.E_norm_conf < (1-treshold))].reset_index(drop = True)
         elif how == 'nt':
             pred_pos = df[(df.probability > treshold)].reset_index(drop = True)
-            pred_neg = df[(df.probability <  (1-treshold))].reset_index(drop = True)
+            pred_neg = df[(df.probability < (1-treshold))].reset_index(drop = True)
         elif how == 'ensemble':
             pred_pos = df[(df.ensemble_score > treshold)].reset_index(drop = True)
             pred_neg = df[(df.ensemble_score < (1-treshold))].reset_index(drop = True)
         else:
             raise NotImplementedError
             
-        calc_pos = should_I_calculate(pred_pos, MIN_PERC, n_total)
-        calc_neg = should_I_calculate(pred_neg, MIN_PERC, n_total)
+        calc_pos = should_I_calculate(pred_pos.shape[0], MIN_PERC, n_total)
+        calc_neg = should_I_calculate(pred_neg.shape[0], MIN_PERC, n_total)
         
         precision, npv = get_prec_npv(pred_pos, pred_neg, 'probability', calc_pos, calc_neg)
         prec_nt.append(precision)
@@ -655,9 +770,8 @@ def calc_prec_rec_sens_npv(subset, column):
 
     return precision, recall, specificity, npv
 
-
     
-def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
+def collect_results_based_on_confidence_level_based_on_treshold_old(df, how = 'intarna', n_values = 15, balance = True, MIN_PERC = 1, MIN_SAMPLES = 8, calc_ens = True):
     
     
     confidence_space = np.linspace(0.51, 0.99, n_values)
@@ -735,7 +849,7 @@ def unzip_confidence_level_percentage(confidence_level_dirty):
     confidence_level, perc = zip(*[s.split('\n\n') for s in confidence_level_dirty])
     return confidence_level, perc
 
-def plot_auc_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc_intarna, perc_intarna, auc_ens, perc_ens, task, size_multiplier, plot_ens):
+def plot_metric_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc_intarna, perc_intarna, auc_ens, perc_ens, task, size_multiplier, plot_ens, metric):
     # Creazione del plot
     plt.figure(figsize=(10, 6))
 
@@ -744,6 +858,7 @@ def plot_auc_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc
     plt.plot(confidence_level, auc_intarna, marker='o', label='INTARNA')
     if plot_ens:
         plt.plot(confidence_level, auc_ens, marker='o', label='ensemble')
+    
     # Opzionalmente, variare la dimensione dei punti in base alla numerosità
     for i, size in enumerate(perc_nt):
         plt.scatter(confidence_level[i], auc_nt[i], s=float(size)*size_multiplier, color=COLOR_NT_AUC)
@@ -752,9 +867,9 @@ def plot_auc_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc
     if plot_ens:
         for i, size in enumerate(perc_ens):
             plt.scatter(confidence_level[i], auc_ens[i], s=float(size)*size_multiplier, color=COLOR_ENS_AUC)
-    plt.title(f'AUC based on respective Confidence Levels, task: {task}')
+    plt.title(f'{metric} based on respective Confidence Levels, task: {task}')
     plt.xlabel('Confidence Level %')
-    plt.ylabel('AUC')
+    plt.ylabel(f'{metric}')
     plt.legend()
     plt.grid(True, alpha=0.5)
     plt.show()
@@ -799,28 +914,28 @@ def plot_prec_npv_based_on_treshold_confidence(confidence_level, prec_nt, npv_nt
     plt.show()
 
 
-def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal'):
+def plot_results_based_on_treshold_old(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal', n_run_undersampling = 30, metric = 'precision_recall_curve', consensus = False):
 
     assert order_by in ['normal', 'nt', 'intarna', 'ensemble']
-    
 
     if order_by == 'normal':
-        confidence_level, auc_nt, _, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'nt', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
-        conf_level_intarna, _, auc_intarna, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'intarna', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
-        conf_level_ens, _, _, auc_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'ensemble', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
 
-        # Splitting the strings into two lists based on the separator '\n\n'
-        confidence_level, perc_nt = unzip_confidence_level_percentage(confidence_level)
-        _, perc_intarna = unzip_confidence_level_percentage(conf_level_intarna)
-        _, perc_ens = unzip_confidence_level_percentage(conf_level_ens)
+        confidence_level, percentages, metric_nt, _, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'nt', n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+        _, percentages, _, metric_intarna, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'intarna', n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+        _, percentages, _, _, metric_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'ensemble', n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+
+        perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
 
     else:
-        confidence_level, auc_nt, auc_intarna, auc_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = order_by, MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, balance = False, n_values = n_values)
-        confidence_level, perc_nt = unzip_confidence_level_percentage(confidence_level)
-        perc_intarna = perc_nt
-        perc_ens = perc_nt
+        confidence_level, percentages, metric_nt, metric_intarna, metric_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = order_by, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+        perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
     
-    plot_auc_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, auc_intarna, perc_intarna, auc_ens, perc_ens, task, size_multiplier, plot_ens)
+    plot_metric_based_on_treshold_confidence(confidence_level,
+    metric_nt, perc_nt, 
+    metric_intarna, perc_intarna, 
+    metric_ens, perc_ens, 
+    task, size_multiplier, plot_ens, metric
+    )
 
     if order_by == 'normal':
         (conflevel_pos, conflevel_neg), (prec_nt, npv_nt), (_, _), (_, _) = collect_prec_npv_based_on_confidence_level_based_on_treshold(subset, how = 'nt', MIN_PERC = MIN_PERC, MIN_SAMPLES=MIN_SAMPLES, n_values = n_values)
@@ -844,14 +959,35 @@ def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values
         perc_pos_ens = perc_pos_nt
         perc_neg_ens = perc_neg_nt
 
-
-
     plot_prec_npv_based_on_treshold_confidence(confidence_level,
         prec_nt, npv_nt, perc_pos_nt, perc_neg_nt,
         prec_intarna, npv_intarna, perc_pos_intarna, perc_neg_intarna,
         prec_ens, npv_ens, perc_pos_ens, perc_neg_ens,
         plot_ens, size_multiplier, task)
     
+def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal', n_run_undersampling = 30, metric = 'precision_recall_curve', consensus = False):
+
+    assert order_by in ['normal', 'nt', 'intarna', 'ensemble']
+
+    if order_by == 'normal':
+
+        confidence_level, percentages, metric_nt, _, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'nt', n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+        _, percentages, _, metric_intarna, _ = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'intarna', n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+        _, percentages, _, _, metric_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = 'ensemble', n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+
+        perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
+
+    else:
+        confidence_level, percentages, metric_nt, metric_intarna, metric_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = order_by, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
+        perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
+    
+    plot_metric_based_on_treshold_confidence(confidence_level,
+    metric_nt, perc_nt, 
+    metric_intarna, perc_intarna, 
+    metric_ens, perc_ens, 
+    task, size_multiplier, plot_ens, metric
+    )
+
     
 def plot_results_based_on_percentile(subset, task, MIN_PERC, space, n_values = 12, size_multiplier = 10, plot_ens = False):
 

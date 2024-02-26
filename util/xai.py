@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import random
+import pickle
 import pandas as pd
 from . import contact_matrix
 from . import box_ops
@@ -189,7 +190,7 @@ def plot_matrix(matrix, list_of_boxes, scaling_factor = 500, plot_axis = False, 
     int(matrix.shape[0]/scaling_factor), 
     )
 
-    plt.imshow(matrix, cmap = 'viridis')
+    plt.imshow(matrix, cmap = cmap)
 
     ax = plt.gca()
     colors = itertools.cycle('rcmkgy')
@@ -266,30 +267,30 @@ def cosine_similarity_expl(expl_matrix, bbox_coord):
                                   dim = 0)
     return cos_sim
 
-def estimate_bbox(expl_matrix_tr, desired_dim = 35):
+def estimate_bbox(expl_matrix, desired_dim = 35):
     #convolution-based approach
     """
-    expl_matrix_tr: lime matrix
+    expl_matrix: lime matrix
     desired_dim: width and height of the bounding box
     """
     
     stride = desired_dim
 
 
-    output_shape1 = int(expl_matrix_tr.shape[0]/desired_dim)
-    output_shape2 = int(expl_matrix_tr.shape[1]/desired_dim)
+    output_shape1 = int(expl_matrix.shape[0]/desired_dim)
+    output_shape2 = int(expl_matrix.shape[1]/desired_dim)
 
-    k1 =  int(expl_matrix_tr.shape[0] - (output_shape1 - 1)*stride - 1)
-    k2 =  int(expl_matrix_tr.shape[1] - (output_shape2 - 1)*stride - 1)
+    k1 =  int(expl_matrix.shape[0] - (output_shape1 - 1)*stride - 1)
+    k2 =  int(expl_matrix.shape[1] - (output_shape2 - 1)*stride - 1)
 
-    A = Variable(torch.tensor(expl_matrix_tr).unsqueeze(0).unsqueeze(0).type(torch.double))
+    A = Variable(torch.tensor(expl_matrix).unsqueeze(0).unsqueeze(0).type(torch.double))
     M = Variable(torch.ones(1, 1, k1, k2).type(torch.double))
     output = F.conv2d(A, M, stride = stride).squeeze()
     if len(output.shape) == 1:
         output = output.unsqueeze(-1)
 
     # a questo punto prendiamo le coordinate della bbox associata alla massima cella. 
-    bbox_dim = np.array(expl_matrix_tr.shape)/output.shape #width and height of each bbox
+    bbox_dim = np.array(expl_matrix.shape)/output.shape #width and height of each bbox
     idx_max = np.unravel_index(output.argmax(), output.shape) #coords of the output cell where we have the maximium variation
     x1hat, y1hat = (bbox_dim * (idx_max[0], idx_max[1])).astype(int)
     x2hat, y2hat = (bbox_dim * (idx_max[0] + 1, idx_max[1] + 1)).astype(int) #add + 1 because the python index starts with 0
@@ -421,3 +422,19 @@ def get_gradcam_results(model, id_couple, swapped_genes, outputs, rna1, rna2, he
     "intensity_tr":intensity_tr,
     "intensity_rand":intensity_rand,
     }
+
+def download_gradcam_matrixes(model, id_couple, rna1, rna2, height, width, x1, x2, y1, y2, probability, savepath = ''):
+    
+    expl_matrix = gradcam(model, rna1, rna2, counterfactual = False, cnn_layer = 2)
+    expl_matrix_reshaped = interpolate_expl_matrix(expl_matrix, height, width)
+    to_save = [expl_matrix_reshaped, id_couple, height, width, x1, x2, y1, y2, probability]
+    save_pickle_results(to_save, savepath)
+
+def save_pickle_results(file, savepath):
+    with open(savepath, 'wb') as handle:
+        pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def read_pickle_results(savepath):
+    with open(savepath, 'rb') as handle:
+        [expl_matrix_reshaped, id_couple, height, width, x1, x2, y1, y2, probability] = pickle.load(handle)
+    return [expl_matrix_reshaped, id_couple, height, width, x1, x2, y1, y2, probability]

@@ -964,8 +964,9 @@ def plot_results_based_on_treshold_old(subset, task, MIN_PERC, MIN_SAMPLES, n_va
         prec_intarna, npv_intarna, perc_pos_intarna, perc_neg_intarna,
         prec_ens, npv_ens, perc_pos_ens, perc_neg_ens,
         plot_ens, size_multiplier, task)
+
     
-def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal', n_run_undersampling = 30, metric = 'precision_recall_curve', consensus = False):
+def get_results_based_on_treshold(subset, MIN_PERC, n_values = 12, order_by = 'normal', n_run_undersampling = 30, metric = 'precision_recall_curve', consensus = False):
 
     assert order_by in ['normal', 'nt', 'intarna', 'ensemble']
 
@@ -980,6 +981,12 @@ def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values
     else:
         confidence_level, percentages, metric_nt, metric_intarna, metric_ens = collect_results_based_on_confidence_level_based_on_treshold(subset, how = order_by, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, calc_ens = True, consensus=consensus)
         perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
+    
+    return confidence_level, metric_nt, perc_nt, metric_intarna, perc_intarna, metric_ens, perc_ens
+
+def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal', n_run_undersampling = 30, metric = 'precision_recall_curve', consensus = False):
+
+    confidence_level, metric_nt, perc_nt, metric_intarna, perc_intarna, metric_ens, perc_ens = get_results_based_on_treshold(subset, MIN_PERC, n_values, order_by , n_run_undersampling, metric, consensus)
     
     plot_metric_based_on_treshold_confidence(confidence_level,
     metric_nt, perc_nt, 

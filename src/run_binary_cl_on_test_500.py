@@ -117,7 +117,8 @@ def main(args):
             y2 = int(row.seed_y2-row.y1)
             width = row.len1
             height = row.len2
-            gradcam_results.append(xai.get_gradcam_results(model, id_sample, False, outputs, rna1, rna2, height, width, x1, x2, y1, y2, treshold = 75))
+            #gradcam_results.append(xai.get_gradcam_results(model, id_sample, False, outputs, rna1, rna2, height, width, x1, x2, y1, y2, treshold = 75))
+            gradcam_results.append('fake_gradcam') #for improving script speed
 
         probability += outputs.softmax(-1)[:, 1].tolist()
 

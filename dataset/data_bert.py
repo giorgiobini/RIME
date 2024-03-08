@@ -1192,6 +1192,7 @@ class RNADataset(Dataset):
             )
         ]
 
+        
         #print(all_pair_interactions[0]) --> [{'couple': 'ENSG00000000419_ENSG00000249150', 'gene1': 'ENSG00000000419', 'gene2': 'ENSG00000249150', 'interacting': False, ...}]
 
         self.all_pair_interactions = {
@@ -1200,6 +1201,20 @@ class RNADataset(Dataset):
             ): pair_interactions
             for pair_interactions in all_pair_interactions
         }
+        
+        for i in all_pair_interactions:
+            if 145600 == i[0]['couple']:
+                print('145600 present in all_pair_interactions')
+            if 145601 == i[0]['couple']:
+                print('145601 present in all_pair_interactions')
+                
+        for pair, pair_interactions in self.all_pair_interactions.items():
+            for i in pair_interactions:
+                if i['couple'] == 145600:
+                    print('145600 present in self.all_pair_interactions')
+                if i['couple'] == 145601:
+                    print('145601 present in self.all_pair_interactions')
+                
 
         self.augment_specs = [
             augment_spec
@@ -1212,6 +1227,17 @@ class RNADataset(Dataset):
                 couple_interactions=pair_interactions,
             )
         ]
+                
+        for k in self.augment_specs:
+            for i in k['couple_interactions']:
+                if 145600 == i['couple']:
+                    print(145600)
+                    print('present in augment_specs')
+        for k in self.augment_specs:
+            for i in k['couple_interactions']:
+                if 145601 == i['couple']:
+                    print(145601)
+                    print('present in augment_specs')
 
     def __getitem__(self, item: int) -> Sample:
         """ """

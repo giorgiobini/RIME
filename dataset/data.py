@@ -1538,6 +1538,25 @@ class RNADatasetNT500():
         return s_nt
         
     
+def clean_nt_dataframes_before_class_input(df_nt, df_genes_nt):
+
+    df_nt['gene1_emb_name'] = df_nt['gene1']
+    df_nt['gene2_emb_name'] = df_nt['gene2']
+
+    df_nt['gene1'] = df_nt['gene1'] + '_' + df_nt['x1'].astype(str)
+    df_nt['gene2'] = df_nt['gene2'] + '_' +  df_nt['y1'].astype(str)
+
+    need = df_nt[['gene1', 'gene2', 'gene1_emb_name', 'gene2_emb_name']].drop_duplicates().reset_index(drop = True)
+
+    need = pd.concat([
+        need[['gene1', 'gene1_emb_name']].rename({'gene1':'new_gene_id', 'gene1_emb_name':'gene_id'}, axis = 1),
+        need[['gene2', 'gene2_emb_name']].rename({'gene2':'new_gene_id', 'gene2_emb_name':'gene_id'}, axis = 1)
+    ], axis = 0).drop_duplicates().reset_index(drop = True)
+
+    df_genes_nt = df_genes_nt.merge(need, on = 'gene_id').drop('gene_id', axis = 1).rename({'new_gene_id':'gene_id'}, axis = 1).drop_duplicates().reset_index(drop = True)
+
+    return df_nt, df_genes_nt
+
 #- - - - - - - - - - - - HUGGINGFACE DATASET - - - - - - - - - - - -
 
 def group_averages(arr, k):

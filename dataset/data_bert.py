@@ -6,6 +6,7 @@ import pickle
 import random
 import shutil
 import sys
+import re
 import time
 from abc import abstractmethod
 from enum import auto
@@ -1201,19 +1202,6 @@ class RNADataset(Dataset):
             ): pair_interactions
             for pair_interactions in all_pair_interactions
         }
-        
-        for i in all_pair_interactions:
-            if 145600 == i[0]['couple']:
-                print('145600 present in all_pair_interactions')
-            if 145601 == i[0]['couple']:
-                print('145601 present in all_pair_interactions')
-                
-        for pair, pair_interactions in self.all_pair_interactions.items():
-            for i in pair_interactions:
-                if i['couple'] == 145600:
-                    print('145600 present in self.all_pair_interactions')
-                if i['couple'] == 145601:
-                    print('145601 present in self.all_pair_interactions')
                 
 
         self.augment_specs = [
@@ -1227,17 +1215,6 @@ class RNADataset(Dataset):
                 couple_interactions=pair_interactions,
             )
         ]
-                
-        for k in self.augment_specs:
-            for i in k['couple_interactions']:
-                if 145600 == i['couple']:
-                    print(145600)
-                    print('present in augment_specs')
-        for k in self.augment_specs:
-            for i in k['couple_interactions']:
-                if 145601 == i['couple']:
-                    print(145601)
-                    print('present in augment_specs')
 
     def __getitem__(self, item: int) -> Sample:
         """ """
@@ -1506,13 +1483,21 @@ class RNADatasetNT(RNADataset):
             all_couple_interactions=s.all_couple_interactions,
             gene1_info=s.gene1_info,
             gene2_info=s.gene2_info,
-            embedding1_path = os.path.join(self.data_dir, f'{s.gene1}.npy'),
-            embedding2_path = os.path.join(self.data_dir, f'{s.gene2}.npy'),
+            embedding1_path = os.path.join(self.data_dir, f'{clean_gene_name(s.gene1)}.npy'),
+            embedding2_path = os.path.join(self.data_dir, f'{clean_gene_name(s.gene2)}.npy'),
             scaling_factor = self.scaling_factor,
             min_n_groups = self.min_n_groups,
             max_n_groups = self.max_n_groups,
         )
         return s_nt
+
+    
+def clean_gene_name(dirty_gene_name):
+    # Define a regular expression pattern to match the last '_' and the last element after it
+    pattern = r'_(\d+)$'
+    # Use re.sub() to substitute the matched pattern with an empty string
+    clean_gene_name = re.sub(pattern, '', dirty_gene_name)
+    return clean_gene_name
 
 class RNADatasetNT500():
     def __init__(self, df, data_dir, scaling_factor, min_n_groups, max_n_groups):
@@ -1551,6 +1536,7 @@ class RNADatasetNT500():
             max_n_groups = self.max_n_groups,
         )
         return s_nt
+        
     
 #- - - - - - - - - - - - HUGGINGFACE DATASET - - - - - - - - - - - -
 

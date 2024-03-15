@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve
+from .misc import balance_df
 
 #COLORS##
 COLOR_NT_AUC = '#3C00FF'
@@ -154,22 +155,6 @@ def plot_logs(log, metric, best_model):
     plt.axvline(x = best_model, color = 'gray', label = 'best model', linestyle = '--')
     plt.legend()
     plt.show()
-
-'''
-------------------------------------------------------------------------------------------
-'''
-# INTARNA MAP
-
-def custom_sigmoid(x, slope_at_origin=2):
-    return 0.5 + 0.5 * np.tanh(x * slope_at_origin)
-
-def map_signal_to_sigmoid_range(signal, threshold):
-    mapped_signal = custom_sigmoid((signal - threshold))
-    return mapped_signal
-
-'''
-------------------------------------------------------------------------------------------
-'''
     
     
 def plot_intarna_Enorm_curves(res, treshold_plot = -100):
@@ -225,21 +210,6 @@ def obtain_auc_and_perc_in_specific_treshold(treshold, res, test500, balance = T
         roc_auc = auc(fpr, tpr)
     
     return roc_auc, perc
-
-def balance_df(df, n_iter = 25):
-    toappend = []
-    if df[df.ground_truth == 0].shape[0] > df[df.ground_truth == 1].shape[0]:
-        for i in range(n_iter):
-            negs = df[df.ground_truth == 0]
-            poss = df[df.ground_truth == 1]
-            toappend.append(pd.concat([negs.sample(len(poss)), poss], axis = 0))
-    else:
-        for i in range(n_iter):
-            negs = df[df.ground_truth == 0]
-            poss = df[df.ground_truth == 1]
-            toappend.append(pd.concat([poss.sample(len(negs)), negs], axis = 0))
-    balanced = pd.concat(toappend, axis = 0)
-    return balanced
 
 
 def calc_metric(df, column, metric = 'precision_recall_curve'):
@@ -1065,4 +1035,106 @@ def plot_length_embeddings_and_rnas(res):
     sns.kdeplot(en_len, label = 'en', color = 'orange')
     plt.title(f'Original Length distribution for each class')
     plt.legend()
+    plt.show()
+    
+    
+def plot_tnr_based_on_distance(test500, ephnen, bins_distance):
+    tnrs_nt = []
+    tnrs_intarna = []
+    distances_axis = []
+    percs = []
+
+    for (dist1, dist2) in bins_distance:
+        subset = test500[(test500.distance_from_site >= dist1) & (test500.distance_from_site <= dist2)].reset_index(drop = True)
+        subset = subset[(subset.policy.isin(['hardneg', 'easyneg']))].reset_index(drop = True)
+
+        perc_of_total_df = np.round(
+            (
+            subset.shape[0] / test500[test500.policy.isin(['hardneg', 'easyneg'])].shape[0] 
+            ) * 100, 2)
+        percs.append(perc_of_total_df)
+
+        couples_to_keep = set(subset.couples)
+        subset = ephnen[ephnen.id_sample.isin(couples_to_keep)].reset_index(drop = True)
+
+        #NT
+        tnr = (subset.ground_truth == (subset.probability > 0.5).astype(int)).sum() / subset.shape[0]
+        tnrs_nt.append(tnr)
+
+        #INTARNA
+        tnr = (subset.ground_truth == (subset.E_norm_conf > 0.5).astype(int)).sum() / subset.shape[0]
+        tnrs_intarna.append(tnr)
+
+        distances_axis.append(f'{dist1}, {dist2}')
+   
+
+    plt.figure(figsize=(10, 6))
+    size_multiplier = 20
+    plt.title('TNR of models in the task pathces based on distance interval')
+    plt.plot(distances_axis, tnrs_nt, label = 'nt', color = COLOR_NT_AUC, linewidth=2)
+    plt.plot(distances_axis, tnrs_intarna, label = 'intarna', color = COLOR_INTARNA_AUC, linewidth=2)
+
+    for i, size in enumerate(percs):
+        plt.scatter(distances_axis[i], tnrs_nt[i], s=float(size)*size_multiplier, color=COLOR_NT_AUC)
+
+    for i, size in enumerate(percs):
+        plt.scatter(distances_axis[i], tnrs_intarna[i], s=float(size)*size_multiplier, color=COLOR_INTARNA_AUC)
+
+
+    plt.xlabel(f"Distance Interval")
+    plt.ylabel(f"TNR Patches task")
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.show()
+    
+def quantile_bins(series, num_bins):
+    # Compute quantiles
+    quantiles = pd.qcut(series, q=num_bins, duplicates='drop')
+    
+    # Extract quantile edges
+    quantile_edges = quantiles.unique().categories.values
+    
+    # Generate list of lists
+    bins = [[q.left, q.right] for q in quantile_edges]
+    
+    return bins
+
+def obtain_regression_line(data):
+    x=np.arange(len(data))
+    coefficients = np.polyfit(x, data, 1)
+    polynomial = np.poly1d(coefficients)
+    y_fit = polynomial(x)
+    return y_fit
+
+def plot_confidence_based_on_distance(test500, ephnen, bins_distance):
+    
+    mean_confidence_nt = [] 
+    mean_confidence_intarna = [] 
+    mean_distances = []
+
+    for (dist1, dist2) in bins_distance:
+        subset = test500[(test500.distance_from_site >= dist1) & (test500.distance_from_site <= dist2)].reset_index(drop = True)
+        subset = subset[(subset.policy.isin(['hardneg', 'easyneg']))].reset_index(drop = True)
+
+        couples_to_keep = set(subset.couples)
+        subset = ephnen[ephnen.id_sample.isin(couples_to_keep)].reset_index(drop = True)
+
+        mean_confidence_nt.append(abs(0.5 - subset.probability.mean()))
+        mean_confidence_intarna.append(abs(0.5 - subset.E_norm_conf.mean()))
+        mean_distances.append(str(np.mean([dist1, dist2]).astype(int)))
+
+    regression_nt = obtain_regression_line(mean_confidence_nt)
+    regression_intarna = obtain_regression_line(mean_confidence_intarna)
+
+    plt.figure(figsize=(10, 6))
+    plt.title('Confidence of the models VS distances from the interaction site')
+    plt.plot(mean_distances, mean_confidence_nt, label = 'nt', color = COLOR_NT_AUC, linewidth=2)
+    plt.plot(mean_distances, regression_nt, label = 'nt', linestyle = '--', color = COLOR_NT_AUC, linewidth=2, alpha = 0.5)
+    plt.plot(mean_distances, mean_confidence_intarna, label = 'intarna', color = COLOR_INTARNA_AUC, linewidth=2)
+    plt.plot(mean_distances, regression_intarna, label = 'nt', linestyle = '--', color = COLOR_INTARNA_AUC, linewidth=2, alpha = 0.5)
+
+    plt.xlabel(f"Mean Distance of the interval")
+    plt.ylabel(f"Mean Confidence in the interval")
+    plt.legend()
+    plt.grid(True, alpha=0.5)
     plt.show()

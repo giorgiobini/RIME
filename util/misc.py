@@ -630,3 +630,18 @@ def early_stopping(n_epochs, current_epoch, best_model_epoch):
         interrupt = True
     return interrupt
     
+    
+def balance_df(df, n_iter = 25):
+    toappend = []
+    if df[df.ground_truth == 0].shape[0] > df[df.ground_truth == 1].shape[0]:
+        for i in range(n_iter):
+            negs = df[df.ground_truth == 0]
+            poss = df[df.ground_truth == 1]
+            toappend.append(pd.concat([negs.sample(len(poss)), poss], axis = 0))
+    else:
+        for i in range(n_iter):
+            negs = df[df.ground_truth == 0]
+            poss = df[df.ground_truth == 1]
+            toappend.append(pd.concat([poss.sample(len(negs)), negs], axis = 0))
+    balanced = pd.concat(toappend, axis = 0)
+    return balanced

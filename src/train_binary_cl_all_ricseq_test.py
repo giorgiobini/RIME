@@ -168,9 +168,12 @@ def main(args):
     
 if __name__ == '__main__':
     #run me with: -> 
+    
+    # QUESTO SCRIPT RISPETTO A TRAIN_BINARY_CL_ALL HA LA DIFFERENZA CHE RICSEQ E PRESO TUTTO E NON SOLO IL TEST SET
 
     #nohup python train_binary_cl_all_ricseq_test.py --val_dataset=ricseq &> train_binary_cl_all_ricseq_test.out &
     #nohup python train_binary_cl_all_ricseq_test.py --finetuning --val_dataset=ricseq &> train_binary_cl_finetuningANDsplash_ricseq_test.out &
+    #nohup python train_binary_cl_all_ricseq_test.py --finetuning --train_hq --val_dataset=ricseq &> train_binary_cl_finetuningANDsplash_ricseq_test.out &
     
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()

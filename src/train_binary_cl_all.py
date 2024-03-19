@@ -26,7 +26,7 @@ from dataset.data import (
     seed_everything,
 )
 
-INCLUDE_RICSEQ = True
+INCLUDE_RICSEQ = False
 
 from train_binary_cl import obtain_train_dataset_paris, obtain_policies_object, obtain_dataset_object, obtain_val_dataset_paris, obtain_train_dataset, obtain_val_dataset, seed_worker, get_args_parser
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

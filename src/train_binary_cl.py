@@ -24,6 +24,7 @@ from dataset.data import (
     InteractionSelectionPolicy,
     SmartNegAugment,
     seed_everything,
+    clean_nt_dataframes_before_class_input,
 )
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -137,6 +138,11 @@ def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_gro
     if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
+        
+        # DEVO METTERE
+        # df_nt, df_genes_nt = clean_nt_dataframes_before_class_input(df_nt, df_genes_nt)
+        # OPPURE NO?
+        
         subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt_easy.txt")
     else:
         if train_hq:
@@ -150,6 +156,7 @@ def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_gro
                 subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_train_val_fine_tuning_nt.txt")
             else:
                 subset_train_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_training_nt.txt")
+        df_nt, df_genes_nt = clean_nt_dataframes_before_class_input(df_nt, df_genes_nt)
 
     with open(subset_train_nt, "rb") as fp:  # Unpickling
         list_train = pickle.load(fp)
@@ -267,9 +274,9 @@ def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max
         if specie in ['human', 'mouse']:
             df_nt = df_nt[df_nt.couples_id.isin(couples_to_keep)]
         elif specie == 'all':
-            assert df500.shape[0] == df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
+            assert df500.shape[0] == df_nt[['couples', 'interacting']].merge(df500, on = 'couples').shape[0]
             
-        df500 = df_nt[['couples', 'interacting', 'policy']].merge(df500, on = 'couples')
+        df500 = df_nt[['couples', 'interacting']].merge(df500, on = 'couples')
         df500 = df500[df500.couples.isin(list_val)] # in questo modo ho quasi bilanciato del tutto, ma per avere un bilanciamento al 100% devo fare undersampling
         df500 = undersample_df(df500) #bilanciamento al 100%.
         
@@ -316,6 +323,7 @@ def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_
         assert dataset in ['mario', 'ricseq', 'splash']
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
+        df_nt, df_genes_nt = clean_nt_dataframes_before_class_input(df_nt, df_genes_nt)
         data_dir = os.path.join(rna_rna_files_dir, f'{dataset}')
         file_training = os.path.join(data_dir, 'gene_pairs_training.txt')
         with open(file_training, "rb") as fp:   # Unpickling
@@ -326,16 +334,16 @@ def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_
         scaling_factor = 5
 
         if dataset == 'splash':
-            pos_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
-            neg_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
+            pos_multipliers = {2:0.7, 8:0.1, 15:0.1, 50:0.1, 100:0.1}
+            neg_multipliers = {7:0.5, 15:0.3, 50:0.15, 100:0.15}
 
         elif dataset == 'mario':
             pos_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
-            neg_multipliers = {5:0.1, 6:0.5, 15:0.2, 50:0.13, 100:0.13}
+            neg_multipliers = {5:0.1, 6:0.35, 15:0.2, 50:0.15, 100:0.2}
 
         elif dataset == 'ricseq':
-            pos_multipliers = {5:0.7, 25:0.1, 70:0.1, 100:0.1}
-            neg_multipliers = {5:0.02, 10:0.85, 70:0.02, 80:0.02, 90:0.02, 100:0.2}
+            pos_multipliers = {3:0.8, 40:0.15, 100:0.05}
+            neg_multipliers = {6:0.73, 70:0.13, 100:0.13}
 
         vc_train = train_nt.interacting.value_counts()
         if vc_train[False]>vc_train[True]:
@@ -363,8 +371,8 @@ def obtain_val_dataset(dataset, easy_pretraining, finetuning, min_n_groups_val, 
             test_couples = pickle.load(fp)
 
         df500 = pd.read_csv(os.path.join(metadata_dir, f'{dataset}500.csv'))
-        assert df500.shape[0] == df_nt[['couples', 'couples_id', 'interacting', 'policy']].merge(df500, on = 'couples').shape[0]
-        df500 = df_nt[['couples', 'interacting', 'policy', 'couples_id']].merge(df500, on = 'couples')
+        assert df500.shape[0] == df_nt[['couples', 'couples_id', 'interacting']].merge(df500, on = 'couples').shape[0]
+        df500 = df_nt[['couples', 'interacting', 'couples_id']].merge(df500, on = 'couples')
         if filter_test:
             df500 = df500[df500.couples_id.isin(test_couples)]
         df500 = df500[df500.policy.isin(['easypos', 'smartneg'])]

@@ -74,10 +74,10 @@ conda install -c conda-forge -c bioconda intarna
 
 create_intarna_fasta.ipynb
 cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/test500/
-nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 &> test.csv &
+nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 --noSeed &> test.csv &
 
 cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/val500/
-nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 &> val.csv &
+nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 --noSeed &> val.csv &
 ``` 
 
 ## 2. Data

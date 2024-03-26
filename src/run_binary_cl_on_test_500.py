@@ -80,7 +80,6 @@ def main(args):
     len_g2 = []
     couple_id = []
     ids = []
-    gradcam_results = []
 
     for _, row in df.iterrows():
 
@@ -117,8 +116,6 @@ def main(args):
             y2 = int(row.seed_y2-row.y1)
             width = row.len1
             height = row.len2
-            #gradcam_results.append(xai.get_gradcam_results(model, id_sample, False, outputs, rna1, rna2, height, width, x1, x2, y1, y2, treshold = 75))
-            gradcam_results.append('fake_gradcam') #for improving script speed
 
         probability += outputs.softmax(-1)[:, 1].tolist()
 
@@ -130,8 +127,6 @@ def main(args):
         len_g1.append(l1)
         len_g2.append(l2)
         ids.append(id_sample)
-
-    gradcam_results = pd.DataFrame(gradcam_results)
 
     res = pd.DataFrame({
         'id_sample':ids,
@@ -175,10 +170,8 @@ def main(args):
 
     if paris:
         res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500.csv'))
-        gradcam_results.to_csv(os.path.join(checkpoint_dir, f'gradcam_results_{HOW}500.csv'))
     else:
         res.to_csv(os.path.join(checkpoint_dir, f'{dataset}_results500.csv'))
-        gradcam_results.to_csv(os.path.join(checkpoint_dir, f'gradcam_results_{dataset}500.csv'))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

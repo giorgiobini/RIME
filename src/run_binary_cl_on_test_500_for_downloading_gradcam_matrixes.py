@@ -71,7 +71,7 @@ def main(args):
     
     model.eval()
 
-    folder_path = os.path.join(checkpoint_dir, 'gradcam_matrix')
+    folder_path = os.path.join(checkpoint_dir, f'gradcam_matrix_{dataset}')
     if not os.path.exists(folder_path):
         # Create the directory
         os.makedirs(folder_path)
@@ -87,8 +87,6 @@ def main(args):
         assert df_nt_row.gene2 == gene2
 
         id_sample = id_couple
-        policy_sample = df_nt_row.policy
-        couple_id_sample = df_nt_row.couples_id
 
         if interacting:
 
@@ -131,11 +129,10 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
-    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
-    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --how=val &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
-    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --dataset=mario &> run_binary_cl_on_test_mario500_for_downloading_gradcam_matrixes.out &
-    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --dataset=ricseq &> run_binary_cl_on_test_ricseq500_for_downloading_gradcam_matrixes.out &
-    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --dataset=splash &> run_binary_cl_on_test_splash500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --how=test --dataset=paris &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --dataset=mario &> run_binary_cl_on_test_mario500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --dataset=ricseq &> run_binary_cl_on_test_ricseq500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --dataset=splash &> run_binary_cl_on_test_splash500_for_downloading_gradcam_matrixes.out &
      
 
 

@@ -56,9 +56,9 @@ def main(args):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
     if INCLUDE_RICSEQ:
-        dataset_ricseq, policies_ricseq = obtain_train_dataset('ricseq', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
-    dataset_splash, policies_splash = obtain_train_dataset('splash', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
-    dataset_paris, policies_paris = obtain_train_dataset('paris', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+        dataset_ricseq, policies_ricseq = obtain_train_dataset('ricseq', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+    dataset_splash, policies_splash = obtain_train_dataset('splash', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+    dataset_paris, policies_paris = obtain_train_dataset('paris', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
     
     args.policies_train = policies_paris
 

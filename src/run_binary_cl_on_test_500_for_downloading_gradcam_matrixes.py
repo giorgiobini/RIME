@@ -129,12 +129,16 @@ def main(args):
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
+    
     #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --how=test --dataset=paris &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
     #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --dataset=mario &> run_binary_cl_on_test_mario500_for_downloading_gradcam_matrixes.out &
     #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --dataset=ricseq &> run_binary_cl_on_test_ricseq500_for_downloading_gradcam_matrixes.out &
     #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=binary_cl2 --dataset=splash &> run_binary_cl_on_test_splash500_for_downloading_gradcam_matrixes.out &
      
-
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=all_modelarch2_wrongSN_easypretrain11_paristfinetuningSPLASHval0039parisHQSPLASHval0054 --dataset=splash &> run_binary_cl_on_test_splash500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=all_modelarch2_wrongSN_easypretrain11_paristfinetuningSPLASHval0039parisHQSPLASHval0054 --how=test --dataset=paris &> run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=all_modelarch2_wrongSN_easypretrain11_paristfinetuningSPLASHval0039parisHQSPLASHval0054 --dataset=mario &> run_binary_cl_on_test_mario500_for_downloading_gradcam_matrixes.out &
+    #nohup python run_binary_cl_on_test_500_for_downloading_gradcam_matrixes.py --folder=all_modelarch2_wrongSN_easypretrain11_paristfinetuningSPLASHval0039parisHQSPLASHval0054 --dataset=ricseq &> run_binary_cl_on_test_ricseq500_for_downloading_gradcam_matrixes.out &
 
     parser = argparse.ArgumentParser('Test500', parents=[get_args_parser()])
     args = parser.parse_args()

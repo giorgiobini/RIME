@@ -21,6 +21,8 @@ from dataset.data import (
     RNADatasetNT,
     RNADatasetNT500,
     EasyPosAugment,
+    EasyNegAugment,
+    HardNegAugment,
     InteractionSelectionPolicy,
     SmartNegAugment,
     seed_everything,
@@ -104,6 +106,10 @@ def get_args_parser():
                     help="Number of hidden channels (2 layer) in the final cnn")
 
     # dataset policies parameters
+    parser.add_argument('--per_sample_p', default=0.5, type=float, help='for each epoch, I can see all the postives (per_sample_p = 1), half of them (per_sample_p = 0.5) or a fraction of them (e.g. per_sample_p = 0.25). The number of negatives is proportional also to this value.')
+    parser.add_argument('--proportion_sn', default=0.55, type=float, help='when training for interactors task, I will keep a proportion of SN, of a proportion of HN and a proportion of EN')
+    parser.add_argument('--proportion_hn', default=0.35, type=float, help='when training for interactors task, I will keep a proportion of SN, of a proportion of HN and a proportion of EN')
+    parser.add_argument('--proportion_en', default=0.1, type=float, help='when training for interactors task, I will keep a proportion of SN, of a proportion of HN and a proportion of EN')
     parser.add_argument('--min_n_groups_train', default=5, type=int,
                        help='both rna will be dividend in n_groups and averaged their values in each group. The n_groups variable is sampled in the range [min_n_groups, max_n_groups] where both extremes of the interval are included')
     parser.add_argument('--max_n_groups_train', default=80, type=int,
@@ -134,7 +140,7 @@ def get_args_parser():
     parser.add_argument('--n_epochs_early_stopping', default=200)
     return parser
 
-def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
+def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
     if easy_pretraining:
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_easy.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_easy.csv'))
@@ -202,6 +208,8 @@ def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_gro
 
                         10_000_000: 0.1}
         
+        sn_per_sample, hn_per_sample, en_per_sample = get_per_sample_from_proportion(per_sample_p, unbalance_factor, 1, 0, 0)
+        policies_train = obtain_policies_object(per_sample_p, sn_per_sample, hn_per_sample, en_per_sample, pos_multipliers, neg_multipliers, {})
     else:
         pos_multipliers = {15:0.2, 
                        25:0.3,
@@ -210,28 +218,58 @@ def obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_gro
                        100_000_000:0.07}
         neg_multipliers = pos_multipliers
 
-    policies_train = obtain_policies_object(0.5, unbalance_factor*0.5, pos_multipliers, neg_multipliers)
+        neg_windows = {(280, 800): 0.4, (800, 1_500): 0.15, (1_500, 2_000): 0.1, (2_000, 2_300): 0.1, (2_300, 5_969): 0.15, (5_969, 5_970): 0.1}
+
+        sn_per_sample, hn_per_sample, en_per_sample = get_per_sample_from_proportion(per_sample_p, unbalance_factor, proportion_sn, proportion_hn, proportion_en)
+        policies_train = obtain_policies_object(per_sample_p, sn_per_sample, hn_per_sample, en_per_sample, pos_multipliers, neg_multipliers, neg_windows)
+
     dataset_train  = obtain_dataset_object(policies_train, df_genes_nt, df_nt, subset_train_nt, scaling_factor, min_n_groups_train, max_n_groups_train)
     
     return dataset_train, policies_train
 
+def get_per_sample_from_proportion(per_sample_p, unbalance_factor, proportion_sn, proportion_hn, proportion_en):
+    sn_per_sample = unbalance_factor * (per_sample_p) * proportion_sn
+    hn_per_sample = (per_sample_p) * proportion_hn
+    en_per_sample = unbalance_factor * (per_sample_p) * proportion_en
+    return sn_per_sample, hn_per_sample, en_per_sample
 
-def obtain_policies_object(per_sample_easypos, per_sample_smartneg, pos_multipliers, neg_multipliers):
-    policies = [
+
+def obtain_policies_object(per_sample_p, sn_per_sample, hn_per_sample, en_per_sample, pos_multipliers, neg_multipliers, neg_windows):
+    policies_train = [
         EasyPosAugment(
-            per_sample=per_sample_easypos,
+            per_sample=per_sample_p,
             interaction_selection=InteractionSelectionPolicy.LARGEST,
             width_multipliers=pos_multipliers,
             height_multipliers=pos_multipliers,
-        ),  
-        SmartNegAugment(
-            per_sample=per_sample_smartneg,
-            interaction_selection=InteractionSelectionPolicy.LARGEST,
-            width_multipliers=neg_multipliers,
-            height_multipliers=neg_multipliers,
         ),
-    ] 
-    return policies
+    ]
+
+    if sn_per_sample>0:
+        policies_train.append(
+            SmartNegAugment(
+                per_sample=sn_per_sample,
+                interaction_selection=InteractionSelectionPolicy.LARGEST,
+                width_multipliers=neg_multipliers,
+                height_multipliers=neg_multipliers,
+            ),
+        )
+    if hn_per_sample>0:
+        policies_train.append(
+            HardNegAugment(
+                per_sample=hn_per_sample,
+                width_windows=neg_windows,
+                height_windows=neg_windows,
+            ),
+        )
+    if en_per_sample>0:
+        policies_train.append(
+            EasyNegAugment(
+                per_sample=en_per_sample,
+                width_windows=neg_windows,
+                height_windows=neg_windows,
+            ),
+        )
+    return policies_train
 
 def obtain_dataset_object(policies, df_genes_nt, df_nt, subset_nt, scaling_factor, min_n_groups, max_n_groups):
     dataset = RNADatasetNT(
@@ -288,7 +326,8 @@ def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max
                            170:0.02, 180:0.02, 190:0.02,
                            200:0.02, 210:0.02, 220:0.02}
 
-        policies_val = obtain_policies_object(1, 1, pos_multipliers, neg_multipliers)
+        policies_val = obtain_policies_object(1, 1, 0, 0, pos_multipliers, neg_multipliers, {})
+        
         dataset_val = RNADatasetNT(
             gene2info=df_genes_nt,
             interactions=df_nt,
@@ -316,9 +355,9 @@ def obtain_val_dataset_paris(easy_pretraining, finetuning, min_n_groups_val, max
     return dataset_val, 'dataset500'
     
 
-def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
+def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
     if dataset == 'paris':
-        dataset_train, policies_train = obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
+        dataset_train, policies_train = obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
     else:
         assert dataset in ['mario', 'ricseq', 'splash']
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
@@ -348,10 +387,10 @@ def obtain_train_dataset(dataset, easy_pretraining, train_hq, finetuning, min_n_
         vc_train = train_nt.interacting.value_counts()
         if vc_train[False]>vc_train[True]:
             unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
-            policies_train = obtain_policies_object(0.25, 0.25*unbalance_factor, pos_multipliers, neg_multipliers)
+            policies_train = obtain_policies_object(per_sample_p, per_sample_p*unbalance_factor, 0, 0, pos_multipliers, neg_multipliers, {})
         elif vc_train[False]<vc_train[True]:
             unbalance_factor = 1 - (vc_train[True] - vc_train[False]) / vc_train[True]
-            policies_train = obtain_policies_object(0.25*unbalance_factor, 0.25, pos_multipliers, neg_multipliers)
+            policies_train = obtain_policies_object(per_sample_p*unbalance_factor, per_sample_p, 0, 0, pos_multipliers, neg_multipliers, {})
         elif vc_train[True]==vc_train[True]:
             unbalance_factor = 1
 
@@ -404,7 +443,7 @@ def main(args):
     if os.path.isfile(os.path.join(args.output_dir, 'checkpoint.pth')):
         args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
 
-    dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+    dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
     args.policies_train = policies_train
 
     dataset_val, policies_val = obtain_val_dataset(VAL_DATASET, EASY_PRETRAINING, FINETUNING, args.min_n_groups_val, args.max_n_groups_val, SPECIE)
@@ -504,7 +543,7 @@ def main(args):
             }, checkpoint_path)
             
         #create the new dataset
-        dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+        dataset_train, policies_train = obtain_train_dataset(TRAIN_DATASET, EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
         batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=False)
         data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,

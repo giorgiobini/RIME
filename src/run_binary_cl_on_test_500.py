@@ -37,9 +37,16 @@ def get_args_parser():
                         help='Can be paris, mario, ricseq, splash')
     parser.add_argument('--folder', default='binary_cl2',
                         help='Default is binary_cl2')
+    parser.add_argument('--enhn', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True, I will calculate the EN, HN results (test set of 500 X 500 matrixes where the embedding is containing interacting regions - easypos in the case of HN, smartneg in the case of EN -)")
     return parser
 
 def main(args):
+    
+    if ENHN:
+        enhn_suffix = 'ENHN'
+    else:
+        enhn_suffix = ''
 
     dataset = args.dataset
     assert dataset in ['paris', 'mario', 'ricseq', 'splash']
@@ -51,12 +58,12 @@ def main(args):
     start_time = time.time() 
 
     if paris:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW + enhn_suffix}500.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt_HQ.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
 
     else:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{dataset}500.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, f'{dataset + enhn_suffix}500.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
 
@@ -150,8 +157,8 @@ def main(args):
         print(f"Be careful, some prediction will be counted more than one time. The number of duplicated sequences is {(df.merge(res, on = 'couples').drop_duplicates().shape[0]-res.shape[0])}")
 
     res = df.merge(res, on = 'couples').drop_duplicates().reset_index(drop = True)
-    res=res.rename({'protein_coding_1': 'gene1_pc'}, axis = 1)
-    res=res.rename({'protein_coding_2': 'gene2_pc'}, axis = 1)
+    res = res.rename({'protein_coding_1': 'gene1_pc'}, axis = 1)
+    res = res.rename({'protein_coding_2': 'gene2_pc'}, axis = 1)
 
     if dataset == 'splash':
         df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes_splash.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
@@ -169,9 +176,9 @@ def main(args):
     res['gene1_original'], res['gene2_original'] = g12[0], g12[1]
 
     if paris:
-        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results500.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{HOW + enhn_suffix}_results500.csv'))
     else:
-        res.to_csv(os.path.join(checkpoint_dir, f'{dataset}_results500.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{dataset + enhn_suffix}_results500.csv'))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -186,6 +193,10 @@ if __name__ == '__main__':
     #nohup python run_binary_cl_on_test_500.py --dataset=mario &> run_binary_cl_on_test_mario500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=ricseq &> run_binary_cl_on_test_ricseq500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=splash &> run_binary_cl_on_test_splash500.out &
+    
+    #For ENHN, add --enhn argument, like:
+    #nohup python run_binary_cl_on_test_500.py --how=test --enhn &> run_binary_cl_on_test_500.out &
+    #nohup python run_binary_cl_on_test_500.py --dataset=mario --enhn &> run_binary_cl_on_test_mario500.out &
      
 
 
@@ -193,7 +204,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     HOW = args.how 
     DATASET = args.dataset
-
+    ENHN = args.enhn
+    
+    
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', args.folder)
 
     # Define the path to the file containing the args namespace

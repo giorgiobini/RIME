@@ -228,8 +228,11 @@ def calc_metric(df, column, metric = 'precision_recall_curve'):
             output = 2* (precision*recall)/(precision+recall)
 
     elif metric == 'precision_recall_curve':
-        precision, recall, _ = precision_recall_curve(df['ground_truth'], df[column])
-        output = auc(recall, precision)
+        try:
+            precision, recall, _ = precision_recall_curve(df['ground_truth'], df[column])
+            output = auc(recall, precision)
+        except:
+            output = np.nan
 
     else:
         raise NotImplementedError
@@ -1039,6 +1042,7 @@ def plot_length_embeddings_and_rnas(res):
     
     
 def plot_tnr_based_on_distance(test500, ephnen, bins_distance):
+    
     tnrs_nt = []
     tnrs_intarna = []
     distances_axis = []
@@ -1065,7 +1069,7 @@ def plot_tnr_based_on_distance(test500, ephnen, bins_distance):
         tnr = (subset.ground_truth == (subset.E_norm_conf > 0.5).astype(int)).sum() / subset.shape[0]
         tnrs_intarna.append(tnr)
 
-        distances_axis.append(f'{dist1}, {dist2}')
+        distances_axis.append(str(np.mean([dist1, dist2]).astype(int)))
    
 
     plt.figure(figsize=(10, 6))

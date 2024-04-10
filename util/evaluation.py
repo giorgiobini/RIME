@@ -297,6 +297,39 @@ def add_row_values(task_name, set_name, subset, row, n_values, n_run_undersampli
     
     return row, confidence_level
 
+
+def add_ENHN500_row_results(how, couples_to_keep, row, checkpoint_dir, metadata_dir, test = False):
+    
+    if test:
+        suffix= '_test'
+    else:
+        suffix= ''
+    
+    #ENHN500 difficult
+    if how == 'paris':
+        testenhn500 = pd.read_csv(os.path.join(metadata_dir, f'testENHN500.csv'))
+        enhn = pd.read_csv(os.path.join(checkpoint_dir, f'testENHN_results500.csv')).drop('policy', axis = 1)
+    else:
+        testenhn500 = pd.read_csv(os.path.join(metadata_dir, f'{how}ENHN500.csv'))
+        enhn = pd.read_csv(os.path.join(checkpoint_dir, f'{how}ENHN_results500.csv')).drop('policy', axis = 1)  
+
+    enhn = enhn.merge(testenhn500[['policy', 'couples']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample')
+    enhn.ground_truth = 0
+
+    enhn = enhn[enhn.couples.isin(couples_to_keep)].reset_index(drop = True)  
+
+    hn = enhn[enhn.policy == 'hardneg'].reset_index(drop = True)
+    vc_nt = (hn.probability<0.5).value_counts()
+    tnr_nt = (vc_nt.loc[True])/ hn.shape[0]
+    row[f'TNR_HN_{how}{suffix}_difficult'] = tnr_nt
+
+    en = enhn[enhn.policy == 'easyneg'].reset_index(drop = True)
+    vc_nt = (en.probability<0.5).value_counts()
+    tnr_nt = (vc_nt.loc[True])/ en.shape[0]
+    row[f'TNR_EN_{how}{suffix}_difficult'] = tnr_nt
+    
+    return row
+
 def otain_results(checkpoint_dir_paths, space, n_values, MIN_PERC, index_name = 0):
 
     diz_results = {}
@@ -358,6 +391,9 @@ def otain_results(checkpoint_dir_paths, space, n_values, MIN_PERC, index_name = 
             subset = balance_df(subset).reset_index(drop = True)
             row, _ = add_row_values('patches', how, subset, row, n_values, n_run_undersampling, MIN_PERC)
             
+            couples_to_keep = set(res.couples)
+            row = add_ENHN500_row_results(how, couples_to_keep, row, checkpoint_dir, metadata_dir)
+            
         # -------------------
         # SPLASH RICSEQ test
         # -------------------
@@ -375,6 +411,9 @@ def otain_results(checkpoint_dir_paths, space, n_values, MIN_PERC, index_name = 
             subset = ephnen.copy()
             subset = balance_df(subset).reset_index(drop = True)
             row, _ = add_row_values('patches', how+'test', subset, row, n_values, n_run_undersampling, MIN_PERC)
+            
+            couples_to_keep = set(res.couples)
+            row = add_ENHN500_row_results(how, couples_to_keep, row, checkpoint_dir, metadata_dir, test = True)
             
         model_name = f'model{idx_v + index_name}'
         name_map[model_name] = checkpoint_dir

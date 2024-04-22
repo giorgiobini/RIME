@@ -1,4 +1,6 @@
 nohup: ignoring input
+/data01/giorgio/RNARNA-NT/src/train_binary_cl.py:360: DtypeWarning: Columns (1,2,16,17,18,20) have mixed types.Specify dtype option on import or set low_memory=False.
+  dataset_train, policies_train = obtain_train_dataset_paris(easy_pretraining, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/init.py:388: UserWarning: Initializing zero-element tensors is a no-op
   warnings.warn("Initializing zero-element tensors is a no-op")
 ============================================================

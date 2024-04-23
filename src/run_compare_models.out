@@ -1,1 +1,37 @@
 nohup: ignoring input
+/data01/giorgio/RNARNA-NT/src/../util/plot_utils.py:228: RuntimeWarning: invalid value encountered in double_scalars
+  output = 2* (precision*recall)/(precision+recall)
+/data01/giorgio/RNARNA-NT/src/../util/plot_utils.py:228: RuntimeWarning: invalid value encountered in double_scalars
+  output = 2* (precision*recall)/(precision+recall)
+============================================================
+<class 'transformers.tokenization_dna.DNATokenizer'>
+  0%|          | 0/1 [00:00<?, ?it/s]
+# excluded couples:  234
+# excluded couples:  56
+# excluded couples:  64
+# excluded couples:  12
+  0%|          | 0/1 [00:00<?, ?it/s]
+# excluded couples:  234
+# excluded couples:  56
+# excluded couples:  64
+# excluded couples:  12
+  0%|          | 0/1 [00:00<?, ?it/s]
+# excluded couples:  234
+# excluded couples:  56
+# excluded couples:  64
+# excluded couples:  12
+  0%|          | 0/1 [00:00<?, ?it/s]
+# excluded couples:  234
+# excluded couples:  56
+# excluded couples:  64
+# excluded couples:  12
+  0%|          | 0/1 [00:00<?, ?it/s]
+# excluded couples:  234
+# excluded couples:  56
+# excluded couples:  64
+# excluded couples:  12
+  0%|          | 0/1 [00:00<?, ?it/s]
+# excluded couples:  234
+# excluded couples:  56
+# excluded couples:  64
+# excluded couples:  12

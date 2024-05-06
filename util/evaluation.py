@@ -7,7 +7,7 @@ from tqdm.notebook import tqdm
 import sys
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
-from .plot_utils import get_results_based_on_treshold
+from .plot_utils import get_results_based_on_treshold, plot_roc_curves
 from .misc import balance_df
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -468,3 +468,105 @@ def otain_results(checkpoint_dir_paths, space, n_values, MIN_PERC, index_name = 
     df_full = df_full.rename(map_name, axis = 1).reset_index(drop = True)
 
     return df_full, name_map, confidence_level
+
+
+# -----------
+
+def plot_histogram_01(data, bins = 50):
+
+    # Plot histogram
+    n, bins, patches = plt.hist(data, density=True, bins=bins, alpha=0)  # Plot without displaying
+
+    # Get the maximum value in the histogram
+    max_density = max(n)
+
+    # Scale the y-values
+    n_scaled = [val / max_density for val in n]
+
+    # Plot the scaled histogram
+    plt.bar(bins[:-1], n_scaled, width=bins[1]-bins[0], color = 'orange')
+    
+def remove_outliers(df, column):
+    z_scores = (df[column] - df[column].mean()) / df[column].std()
+
+    # Define a threshold (e.g., 3)
+    threshold = 3
+
+    # Filter data based on Z-score
+    filtered_data = df[column][abs(z_scores) < threshold]
+    
+    df = df[abs(z_scores) < threshold]
+    
+    return df
+
+def log_func(i, c, x):
+    z = i + np.dot(x, c.T)  # Compute the linear combination
+    return 1 / (1 + np.exp(-z))  # Apply the logistic function
+
+
+def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ, specie_paris):
+
+    if dataset == 'paris':
+        test500 = pd.read_csv(os.path.join(metadata_dir, f'test500.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
+        assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
+        test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
+        id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
+        res = load_paris_results(checkpoint_dir, test500, 'test', specie_paris)
+    else:
+        test500 = pd.read_csv(os.path.join(metadata_dir, f'{how}500.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{how}.csv'))
+        res = load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ)
+
+    res = res.drop_duplicates('id_sample').reset_index(drop = True)
+    assert res.shape[0] == len(res.id_sample.unique())
+    
+    for tool_name in tools:
+        tool = pd.read_csv(os.path.join(external_dataset_dir, f'{tool_name}_{how}500.csv'), sep = ',').fillna(0)
+        tool['value'] = tool['value'].astype(float)
+        assert (tool.minimum == True).all()
+        res = res.merge(tool[['value', 'couples']].rename({'couples':'id_sample', 'value':tool_name}, axis =1), on = 'id_sample')
+    res = res.drop_duplicates('id_sample').reset_index(drop = True)
+    assert res.shape[0] == len(res.id_sample.unique())
+    
+    return res
+
+
+def plot_all_model_auc(subset, tools):
+    
+    result_list = []
+
+    result_list.append({'prob': subset.probability, 'model_name': 'NT'})
+    result_list.append({'prob': abs(subset.E_norm), 'model_name': 'Intarna'})
+
+    for tool_name in tools:
+        result_list.append({'prob': abs(subset[tool_name]), 'model_name': tool_name})
+
+    plot_roc_curves(result_list, subset.ground_truth)
+    
+    
+def obtain_all_model_auc(subset, tools):
+    
+    aucs=[]
+    names = []
+    
+    fpr, tpr, _ = roc_curve(subset.ground_truth, subset['probability'])
+    roc_auc = auc(fpr, tpr)
+    aucs.append(roc_auc)
+    names.append('NT')
+    
+    fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset['E_norm']))
+    roc_auc = auc(fpr, tpr)
+    aucs.append(roc_auc)
+    names.append('INTARNA')
+    
+    for tool_name in tools:
+        
+        fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset[tool_name]))
+        roc_auc = auc(fpr, tpr)
+        aucs.append(roc_auc)
+        names.append(tool_name)
+        
+    df_out= pd.DataFrame({'model_name':names, 'auc':aucs})
+    df_out['auc'] = df_out['auc'].round(2)
+    return df_out

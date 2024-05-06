@@ -8,19 +8,7 @@ from matplotlib.pyplot import figure
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve
 from .misc import balance_df
-
-#COLORS##
-COLOR_NT_AUC = '#3C00FF'
-COLOR_NT_PREC = '#747DC6'
-COLOR_NT_NPV = '#281B7C'
-
-COLOR_INTARNA_AUC = 'orange'
-COLOR_INTARNA_PREC = '#FFB450'
-COLOR_INTARNA_NPV = '#A57617'
-
-COLOR_ENS_AUC = 'green'
-COLOR_ENS_PREC = '#70DC6C'
-COLOR_ENS_NPV = '#18791B'
+from .colors import *
 
 
 '''
@@ -840,6 +828,26 @@ def plot_metric_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, 
     if plot_ens:
         for i, size in enumerate(perc_ens):
             plt.scatter(confidence_level[i], auc_ens[i], s=float(size)*size_multiplier, color=COLOR_ENS_AUC)
+            
+    plt.title(f'{metric} based on respective Confidence Levels, task: {task}')
+    plt.xlabel('Confidence Level %')
+    plt.ylabel(f'{metric}')
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.show()
+    
+def plot_all_model_metrics_based_on_treshold_confidence(confidence_level, auc_models, perc_models, model_names, task, size_multiplier, metric):
+    
+    #auc_models, perc_models, model_names sono delle liste
+    
+
+    for i, model_name in enumerate(model_names):
+        model_color = 'TODO'
+        plt.plot(confidence_level, auc_models[i], marker='o', label=model_name[i], color = model_color)
+        # Opzionalmente, variare la dimensione dei punti in base alla numerosità
+        for _, size in enumerate(perc_models[i]):
+            plt.scatter(confidence_level[_], auc_models[_], s=float(size)*size_multiplier, color=model_color)
+            
     plt.title(f'{metric} based on respective Confidence Levels, task: {task}')
     plt.xlabel('Confidence Level %')
     plt.ylabel(f'{metric}')
@@ -959,7 +967,7 @@ def get_results_based_on_treshold(subset, MIN_PERC, n_values = 12, order_by = 'n
 
 def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values = 12, size_multiplier = 10, plot_ens = False, order_by = 'normal', n_run_undersampling = 30, metric = 'precision_recall_curve', consensus = False):
 
-    confidence_level, metric_nt, perc_nt, metric_intarna, perc_intarna, metric_ens, perc_ens = get_results_based_on_treshold(subset, MIN_PERC, n_values, order_by , n_run_undersampling, metric, consensus)
+    confidence_level, metric_nt, perc_nt, metric_intarna, perc_intarna, metric_ens, perc_ens = get_results_based_on_treshold(subset, MIN_PERC, n_values, order_by, n_run_undersampling, metric, consensus)
     
     plot_metric_based_on_treshold_confidence(confidence_level,
     metric_nt, perc_nt, 

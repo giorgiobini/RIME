@@ -17,6 +17,9 @@ processed_files_dir = os.path.join(dataset_files_dir, "processed_files")
 #INTARNA
 intarna_dir = os.path.join(processed_files_dir, "intarna")
 
+#Logistic regression mapping path
+LR_MAPPING_PATH = os.path.join(dataset_files_dir, 'logistic_regression_mapping.pkl')
+
 #NT
 nt_data_dir = os.path.join(processed_files_dir, "nt_data")
 embedding_dir = os.path.join(nt_data_dir, "embeddings")

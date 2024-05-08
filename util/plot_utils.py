@@ -262,6 +262,54 @@ def obtain_df_concatenated(pred_pos, pred_neg):
     return df_concatenated
 
 
+def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve'):
+    
+    auc_model = []
+    percentages = []
+    conf_space_list = []
+    
+    n_total = df.shape[0]
+    
+    confidence_space = np.linspace(0.51, 0.99, n_values)
+    for i in range(n_values):
+        
+        treshold = confidence_space[i]
+
+        if how == 'intarna':
+            column = 'E_norm_conf'
+        elif how == 'nt':
+            column = 'probability'
+        elif how == 'ensemble':
+            column = 'ensemble_score'
+        else:
+            column = how
+            
+        pred_pos, pred_neg = select_predictions(df, treshold, column, False)
+            
+        calc_pos = should_I_calculate(pred_pos.shape[0], MIN_PERC, n_total)
+        calc_neg = should_I_calculate(pred_neg.shape[0], MIN_PERC, n_total)
+        
+        calc = make_calculation(calc_pos, calc_neg, metric)
+        if calc:
+            auc_score_run = []
+
+            for _ in range(n_run_undersampling):
+                # Undersample the larger DataFrame to match the size of the smaller one
+                df_concatenated = obtain_df_concatenated(pred_pos, pred_neg)
+                auc_score_run.append(calc_metric(df_concatenated, column, metric = metric))
+
+            auc_model.append(np.mean(auc_score_run))
+            perc_model = len(df_concatenated)/n_total * 100
+            
+        else:
+            auc_model.append(np.nan)
+            perc_model = 0
+        
+        percentages.append(perc_model)
+        conf_space_list.append(str(np.round(confidence_space[i],2)))
+        
+    return conf_space_list, percentages, auc_model
+
 def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', calc_ens = True, consensus = False):
     
     auc_nt = []
@@ -284,7 +332,7 @@ def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intar
         elif how == 'ensemble':
             column = 'ensemble_score'
         else:
-            raise NotImplementedError      
+            raise NotImplementedError
             
         pred_pos, pred_neg = select_predictions(df, treshold, column, consensus)
             
@@ -836,25 +884,6 @@ def plot_metric_based_on_treshold_confidence(confidence_level, auc_nt, perc_nt, 
     plt.grid(True, alpha=0.5)
     plt.show()
     
-def plot_all_model_metrics_based_on_treshold_confidence(confidence_level, auc_models, perc_models, model_names, task, size_multiplier, metric):
-    
-    #auc_models, perc_models, model_names sono delle liste
-    
-
-    for i, model_name in enumerate(model_names):
-        model_color = 'TODO'
-        plt.plot(confidence_level, auc_models[i], marker='o', label=model_name[i], color = model_color)
-        # Opzionalmente, variare la dimensione dei punti in base alla numerosità
-        for _, size in enumerate(perc_models[i]):
-            plt.scatter(confidence_level[_], auc_models[_], s=float(size)*size_multiplier, color=model_color)
-            
-    plt.title(f'{metric} based on respective Confidence Levels, task: {task}')
-    plt.xlabel('Confidence Level %')
-    plt.ylabel(f'{metric}')
-    plt.legend()
-    plt.grid(True, alpha=0.5)
-    plt.show()
-    
 def plot_prec_npv_based_on_treshold_confidence(confidence_level, prec_nt, npv_nt, perc_pos_nt, perc_neg_nt, prec_intarna, npv_intarna, perc_pos_intarna, perc_neg_intarna, prec_ens, npv_ens, perc_pos_ens, perc_neg_ens, plot_ens, size_multiplier, task):
     
     plt.figure(figsize=(10, 6))
@@ -976,6 +1005,57 @@ def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values
     task, size_multiplier, plot_ens, metric
     )
 
+    
+def get_results_based_on_treshold_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision_recall_curve'):
+
+    confidence_level, percentages, auc_model = collect_results_based_on_confidence_level_based_on_treshold_for_single_model(subset, how = how, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric)
+    
+    #perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
+    
+    return confidence_level, auc_model, percentages
+
+def plot_results_based_on_treshold_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision_recall_curve', task_name = 'patches', size_multiplier = 10):
+
+    auc_models = []
+    perc_models = []
+    model_names = []
+    
+    confidence_level = []
+    
+    for model_name in list_of_models_to_test:
+        c_l, auc_model, percentages = get_results_based_on_treshold_for_all_models(
+            subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric
+        )
+        auc_models.append(auc_model)
+        perc_models.append(percentages)
+        model_names.append(model_name)
+        
+        if len(c_l)>len(confidence_level):
+            confidence_level = c_l
+    
+    plot_metric_based_on_treshold_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric)
+    
+def plot_metric_based_on_treshold_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric):
+    
+    """
+    auc_models: list
+    perc_models: list
+    model_names : list
+    """
+    
+    for i, model_name in enumerate(model_names):
+        model_color = model_colors_dict[model_name]
+        plt.plot(confidence_level, auc_models[i], marker='o', label=model_name, color = model_color)
+        # Opzionalmente, variare la dimensione dei punti in base alla numerosità
+        for _, size in enumerate(perc_models[i]):
+            plt.scatter(confidence_level[_], auc_models[i][_], s=float(size)*size_multiplier, color=model_color)
+            
+    plt.title(f'{metric} based on respective Confidence Levels, task: {task_name}')
+    plt.xlabel('Confidence Level %')
+    plt.ylabel(f'{metric}')
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.show()
     
 def plot_results_based_on_percentile(subset, task, MIN_PERC, space, n_values = 12, size_multiplier = 10, plot_ens = False):
 

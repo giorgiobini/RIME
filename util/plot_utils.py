@@ -244,72 +244,6 @@ def make_calculation(calc_pos, calc_neg, metric):
     return calc
     
 
-def obtain_df_concatenated(pred_pos, pred_neg):
-    if len(pred_pos) > len(pred_neg):
-        df_undersampled = pred_pos.sample(n=len(pred_neg)).reset_index(drop=True)
-    else:
-        df_undersampled = pred_neg.sample(n=len(pred_pos)).reset_index(drop=True)
-    return pd.concat([pred_pos, df_undersampled]).reset_index(drop=True)
-
-
-def obtain_df_concatenated(pred_pos, pred_neg):
-    if len(pred_pos) > len(pred_neg):
-        df_undersampled = pred_pos.sample(n=len(pred_neg)).reset_index(drop = True)
-        df_concatenated = pd.concat([df_undersampled, pred_neg]).reset_index(drop = True)
-    else:
-        df_undersampled = pred_neg.sample(n=len(pred_pos)).reset_index(drop = True)
-        df_concatenated = pd.concat([pred_pos, df_undersampled]).reset_index(drop = True)
-    return df_concatenated
-
-
-def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve'):
-    
-    auc_model = []
-    percentages = []
-    conf_space_list = []
-    
-    n_total = df.shape[0]
-    
-    confidence_space = np.linspace(0.51, 0.99, n_values)
-    for i in range(n_values):
-        
-        treshold = confidence_space[i]
-
-        if how == 'intarna':
-            column = 'E_norm_conf'
-        elif how == 'nt':
-            column = 'probability'
-        elif how == 'ensemble':
-            column = 'ensemble_score'
-        else:
-            column = how
-            
-        pred_pos, pred_neg = select_predictions(df, treshold, column, False)
-            
-        calc_pos = should_I_calculate(pred_pos.shape[0], MIN_PERC, n_total)
-        calc_neg = should_I_calculate(pred_neg.shape[0], MIN_PERC, n_total)
-        
-        calc = make_calculation(calc_pos, calc_neg, metric)
-        if calc:
-            auc_score_run = []
-
-            for _ in range(n_run_undersampling):
-                # Undersample the larger DataFrame to match the size of the smaller one
-                df_concatenated = obtain_df_concatenated(pred_pos, pred_neg)
-                auc_score_run.append(calc_metric(df_concatenated, column, metric = metric))
-
-            auc_model.append(np.mean(auc_score_run))
-            perc_model = len(df_concatenated)/n_total * 100
-            
-        else:
-            auc_model.append(np.nan)
-            perc_model = 0
-        
-        percentages.append(perc_model)
-        conf_space_list.append(str(np.round(confidence_space[i],2)))
-        
-    return conf_space_list, percentages, auc_model
-
 def collect_results_based_on_confidence_level_based_on_treshold(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', calc_ens = True, consensus = False):
     
     auc_nt = []
@@ -665,6 +599,34 @@ def collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(d
     else:
         return x_axis, (prec_nt, recall_nt, spec_nt, npv_nt), (prec_intarna, recall_intarna, spec_intarna, npv_intarna)
 
+def plot_results_based_on_percentile(subset, task, MIN_PERC, space, n_values = 12, size_multiplier = 10, plot_ens = False):
+
+    confidence_level, auc_nt, _, _ = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'nt', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
+    _, _, auc_intarna, _ = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'intarna', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
+    _, _, _, auc_ens = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'ensemble', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
+
+
+    plt.plot(confidence_level, auc_nt, label = 'nt')
+    plt.plot(confidence_level, auc_intarna, label = 'intarna')
+
+    if plot_ens:
+        plt.plot(confidence_level, auc_ens, label = 'ensemble')
+    plt.title(f'AUC based on respective Confidence Levels, task: {task}')
+    plt.legend()
+    plt.ylabel('AUC')
+    plt.xlabel(f"Perc%")
+    plt.show()
+
+    subset = balance_df(subset)
+
+
+    confidence_level, (prec_nt, recall_nt, spec_nt, npv_nt), (_, _, _, _), (_, _, _, _) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'nt', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+    _, (_, _, _, _), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (_, _, _, _) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'intarna', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+    _, (_, _, _, _), (_, _, _, _), (prec_ens, recall_ens, spec_ens, npv_ens) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'ensemble', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+
+
+    plot_prec_npv_based_on_treshold_confidence(confidence_level, prec_nt, npv_nt, prec_intarna, npv_intarna, prec_ens, npv_ens, plot_ens, task)
+    
 
 def should_I_calculate(n_subset, MIN_PERC, n_total):
     
@@ -751,6 +713,10 @@ def collect_prec_npv_based_on_confidence_level_based_on_treshold(df, how = 'inta
         return (merged_x_axis_pos, merged_x_axis_neg), (prec_nt, npv_nt), (prec_intarna, npv_intarna), (prec_ens, npv_ens)
     else:
         return (merged_x_axis_pos, merged_x_axis_neg), (prec_nt, npv_nt), (prec_intarna, npv_intarna)
+    
+    
+
+
 
 def calc_prec_rec_sens_npv(subset, column):
     """
@@ -1033,9 +999,9 @@ def plot_results_based_on_treshold_for_all_models(subset, MIN_PERC, list_of_mode
         if len(c_l)>len(confidence_level):
             confidence_level = c_l
     
-    plot_metric_based_on_treshold_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric)
+    plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Confidence Level')
     
-def plot_metric_based_on_treshold_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric):
+def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label):
     
     """
     auc_models: list
@@ -1045,45 +1011,98 @@ def plot_metric_based_on_treshold_confidence_for_all_models(confidence_level, au
     
     for i, model_name in enumerate(model_names):
         model_color = model_colors_dict[model_name]
+        
         plt.plot(confidence_level, auc_models[i], marker='o', label=model_name, color = model_color)
+        #print(model_name, perc_models[i])
         # Opzionalmente, variare la dimensione dei punti in base alla numerosità
         for _, size in enumerate(perc_models[i]):
             plt.scatter(confidence_level[_], auc_models[i][_], s=float(size)*size_multiplier, color=model_color)
             
-    plt.title(f'{metric} based on respective Confidence Levels, task: {task_name}')
-    plt.xlabel('Confidence Level %')
+    plt.title(f'{metric} based on respective {string_label}, task: {task_name}')
+    plt.xlabel(f'{string_label} %')
     plt.ylabel(f'{metric}')
     plt.legend()
     plt.grid(True, alpha=0.5)
     plt.show()
     
-def plot_results_based_on_percentile(subset, task, MIN_PERC, space, n_values = 12, size_multiplier = 10, plot_ens = False):
-
-    confidence_level, auc_nt, _, _ = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'nt', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
-    _, _, auc_intarna, _ = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'intarna', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
-    _, _, _, auc_ens = collect_results_based_on_confidence_level_based_on_percentile(subset, how = 'ensemble', MIN_PERC = MIN_PERC, balance = False, n_values = n_values, space = space)
-
-
-    plt.plot(confidence_level, auc_nt, label = 'nt')
-    plt.plot(confidence_level, auc_intarna, label = 'intarna')
-
-    if plot_ens:
-        plt.plot(confidence_level, auc_ens, label = 'ensemble')
-    plt.title(f'AUC based on respective Confidence Levels, task: {task}')
-    plt.legend()
-    plt.ylabel('AUC')
-    plt.xlabel(f"Perc%")
-    plt.show()
-
-    subset = balance_df(subset)
+    
+    
+def obtain_df_concatenated(pred_pos, pred_neg):
+    if len(pred_pos) > len(pred_neg):
+        df_undersampled = pred_pos.sample(n=len(pred_neg)).reset_index(drop = True)
+        df_concatenated = pd.concat([df_undersampled, pred_neg]).reset_index(drop = True)
+    else:
+        df_undersampled = pred_neg.sample(n=len(pred_pos)).reset_index(drop = True)
+        df_concatenated = pd.concat([pred_pos, df_undersampled]).reset_index(drop = True)
+    return df_concatenated
 
 
-    confidence_level, (prec_nt, recall_nt, spec_nt, npv_nt), (_, _, _, _), (_, _, _, _) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'nt', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
-    _, (_, _, _, _), (prec_intarna, recall_intarna, spec_intarna, npv_intarna), (_, _, _, _) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'intarna', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
-    _, (_, _, _, _), (_, _, _, _), (prec_ens, recall_ens, spec_ens, npv_ens) = collect_prec_recall_sens_npv_based_on_confidence_level_based_on_percentile(subset, how = 'ensemble', MIN_PERC = MIN_PERC, balance = False, n_values = n_values)
+def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve'):
+    
+    auc_model = []
+    percentages = []
+    conf_space_list = []
+    
+    
+    confidence_space = np.linspace(0.5, 0.99, n_values)
+    for i in range(n_values):
+        
+        treshold = confidence_space[i]
 
+        if how == 'intarna':
+            column = 'E_norm_conf'
+        elif how == 'nt':
+            column = 'probability'
+        elif how == 'ensemble':
+            column = 'ensemble_score'
+        else:
+            column = how
+            
+        pred_pos, pred_neg = select_predictions(df, treshold, column, False)
+            
+        calc_pos = should_I_calculate(pred_pos.shape[0], MIN_PERC, df.shape[0])
+        calc_neg = should_I_calculate(pred_neg.shape[0], MIN_PERC, df.shape[0])
+        
+        calc = make_calculation(calc_pos, calc_neg, metric)
+        if calc:
+            auc_score_run = []
 
-    plot_prec_npv_based_on_treshold_confidence(confidence_level, prec_nt, npv_nt, prec_intarna, npv_intarna, prec_ens, npv_ens, plot_ens, task)
+            for _ in range(n_run_undersampling):
+                # Undersample the larger DataFrame to match the size of the smaller one
+                df_concatenated = obtain_df_concatenated(pred_pos, pred_neg)
+                auc_score_run.append(calc_metric(df_concatenated, column, metric = metric))
+
+            auc_model.append(np.mean(auc_score_run))
+            
+            perc_model = calc_perc_model(metric, 
+                                         df.shape[0],  
+                                         df[df.ground_truth == 1].shape[0], 
+                                         df[df.ground_truth == 0].shape[0], 
+                                         pred_pos.shape[0], 
+                                         pred_neg.shape[0]
+                                        )
+        else:
+            auc_model.append(np.nan)
+            perc_model = 0
+        
+        percentages.append(perc_model)
+        conf_space_list.append(str(np.round(confidence_space[i],2)))
+        
+    return conf_space_list, percentages, auc_model
+    
+    
+def calc_perc_model(metric, n_total, n_total_pos, n_total_neg, n_pred_pos, n_pred_neg):
+    if metric in ['precision', 'npv',  'f1', 'precision_recall_curve']:
+        perc_model = ( (n_pred_pos + n_pred_neg) / n_total ) * 100
+
+    elif metric == 'recall':
+        perc_model = ( n_pred_pos / n_total_pos ) * 100 #it can be more than 100% if n_pred_pos is > n_total_pos
+        
+    elif metric == 'specificity':
+        perc_model = ( n_pred_neg / n_total_neg ) * 100  #it can be more than 100% if n_pred_neg is > n_total_neg
+        
+    return perc_model
+    
     
     
 def plot_length_embeddings_and_rnas(res):
@@ -1230,3 +1249,78 @@ def plot_confidence_based_on_distance(test500, ephnen, bins_distance):
     plt.legend()
     plt.grid(True, alpha=0.5)
     plt.show()
+    
+    
+def plot_results_based_on_topbottom_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision', task_name = 'patches', size_multiplier = 10):
+
+    metric_models = []
+    perc_models = []
+    model_names = []
+    
+    for model_name in list_of_models_to_test:
+        metric_model, percentages = get_results_based_on_topbottom_for_all_models(
+            subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric
+        )
+        metric_models.append(metric_model)
+        perc_models.append(percentages)
+        model_names.append(model_name)
+    
+    assert perc_models[0] == perc_models[1] #they should be all the same
+    
+    plot_metric_confidence_for_all_models([str(perc) for perc in perc_models[0]], metric_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Percentage Data')
+    
+    
+def get_results_based_on_topbottom_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision'):
+
+    percentages, metric_model = collect_results_based_on_confidence_level_based_on_topbottom_for_single_model(subset, how = how, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric)
+    
+    #perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
+    
+    return metric_model, percentages
+    
+def collect_results_based_on_confidence_level_based_on_topbottom_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision'):
+    
+    metric_model = []
+    percentages = []
+    
+    n_total = df.shape[0]
+    
+    percs_data = np.linspace(MIN_PERC, 100, n_values)[::-1]
+
+    if how == 'intarna':
+        column = 'E_norm_conf'
+    elif how == 'nt':
+        column = 'probability'
+    elif how == 'ensemble':
+        column = 'ensemble_score'
+    else:
+        column = how
+
+        
+    pred_pos = df[df[column]>0.5].reset_index(drop = True)
+    pred_neg = df[df[column]<0.5].reset_index(drop = True)
+    
+    for i in range(n_values):
+
+        
+        if metric == 'precision':
+    
+            n_to_sample = int(math.ceil(percs_data[i]/100 * pred_pos.shape[0]))
+            
+            subset = pred_pos.sort_values(column, ascending = False).head(n_to_sample)
+            
+        elif metric == 'npv':
+            
+            n_to_sample = int(math.ceil(percs_data[i]/100 * pred_neg.shape[0]))
+            
+            subset = pred_neg.sort_values(column, ascending = False).tail(n_to_sample)
+            
+        else:
+            raise NotImplementedError
+            
+        
+        metric_model.append(calc_metric(subset, column, metric = metric))
+        
+        percentages.append(np.round(percs_data[i], 2))
+        
+    return percentages, metric_model

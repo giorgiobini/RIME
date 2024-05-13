@@ -486,11 +486,8 @@ def plot_histogram_01(data, bins = 50):
     # Plot the scaled histogram
     plt.bar(bins[:-1], n_scaled, width=bins[1]-bins[0], color = 'orange')
     
-def remove_outliers(df, column):
+def remove_outliers(df, column, threshold = 3):
     z_scores = (df[column] - df[column].mean()) / df[column].std()
-
-    # Define a threshold (e.g., 3)
-    threshold = 3
 
     # Filter data based on Z-score
     filtered_data = df[column][abs(z_scores) < threshold]
@@ -503,29 +500,70 @@ def log_func(i, c, x):
     z = i + np.dot(x, c.T)  # Compute the linear combination
     return 1 / (1 + np.exp(-z))  # Apply the logistic function
 
+def load_intarnaENHN500(how):
+    
+    if how in ['ricseq', 'splash', 'mario']:
+        enhnintarna = pd.read_csv(os.path.join(intarna_dir, f'{how}ENHN500_RANDOM', f'{how}ENHN.csv'), sep = ';')
+        
+    else:
+        enhnintarna = pd.read_csv(os.path.join(intarna_dir, f'{how}ENHN500', f'{how}ENHN.csv'), sep = ';')
+        
+    enhnintarna['key'] = enhnintarna.id1 + '_' + enhnintarna.id2
 
-def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ, specie_paris):
+    # keep only the lower E_norm for each group
+    enhnintarna.sort_values('E_norm', ascending = False, inplace=True)
+    enhnintarna.drop_duplicates(subset='key', keep='first', inplace=True)
+    enhnintarna = enhnintarna.reset_index(drop = True)
+    enhnintarna['couples'] = enhnintarna.id1.str.extractall('(.*)_(.*)').reset_index(drop = True)[0]
+    enhnintarna['couples'] = enhnintarna['couples'].astype(int)
+
+    enhnintarna = enhnintarna.dropna()    
+    return enhnintarna
+
+def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ, specie_paris, enhn500 = False):
 
     if dataset == 'paris':
+        
         test500 = pd.read_csv(os.path.join(metadata_dir, f'test500.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
         assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
         test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
         id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
         res = load_paris_results(checkpoint_dir, test500, 'test', specie_paris)
+            
     else:
         test500 = pd.read_csv(os.path.join(metadata_dir, f'{how}500.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{how}.csv'))
         res = load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ)
+        
+        
+    if enhn500:
+        testenhn500 = pd.read_csv(os.path.join(metadata_dir, f'{how}ENHN500.csv'))
+        testenhn500['distance_from_site'] = ( (testenhn500['distance_x'] ** 2) + (testenhn500['distance_y']** 2) )**(0.5) #pitagora
+        enhn = pd.read_csv(os.path.join(checkpoint_dir, f'{how}ENHN_results500.csv')).drop('policy', axis = 1)
+        enhn = enhn.merge(testenhn500[['policy', 'couples']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample')
+        enhn.ground_truth = 0
+        couples_to_keep = set(res.couples)
+        enhn = enhn[enhn.couples.isin(couples_to_keep)].reset_index(drop = True)
+
+        enhnintarna = load_intarnaENHN500(how)
+        enhn = enhn.merge(enhnintarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample')
+        enhn['original_area'] = enhn.original_length1 * enhn.original_length2
+
+        res = enhn.copy()
 
     res = res.drop_duplicates('id_sample').reset_index(drop = True)
     assert res.shape[0] == len(res.id_sample.unique())
     
+    if enhn500:
+        how = how + 'ENHN'
+        
     for tool_name in tools:
         tool = pd.read_csv(os.path.join(external_dataset_dir, f'{tool_name}_{how}500.csv'), sep = ',').fillna(0)
         tool['value'] = tool['value'].astype(float)
         assert (tool.minimum == True).all()
         res = res.merge(tool[['value', 'couples']].rename({'couples':'id_sample', 'value':tool_name}, axis =1), on = 'id_sample')
+    
     res = res.drop_duplicates('id_sample').reset_index(drop = True)
     assert res.shape[0] == len(res.id_sample.unique())
     

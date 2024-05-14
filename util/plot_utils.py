@@ -972,15 +972,15 @@ def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values
     )
 
     
-def get_results_based_on_treshold_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision_recall_curve'):
+def get_results_based_on_treshold_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision_recall_curve', balance_at_each_step = True):
 
-    confidence_level, percentages, auc_model = collect_results_based_on_confidence_level_based_on_treshold_for_single_model(subset, how = how, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric)
+    confidence_level, percentages, auc_model = collect_results_based_on_confidence_level_based_on_treshold_for_single_model(subset, how = how, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, balance_at_each_step = balance_at_each_step)
     
     #perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
     
     return confidence_level, auc_model, percentages
 
-def plot_results_based_on_treshold_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision_recall_curve', task_name = 'patches', size_multiplier = 10):
+def plot_results_based_on_treshold_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision_recall_curve', task_name = 'patches', size_multiplier = 10, balance_at_each_step = True):
 
     auc_models = []
     perc_models = []
@@ -990,7 +990,7 @@ def plot_results_based_on_treshold_for_all_models(subset, MIN_PERC, list_of_mode
     
     for model_name in list_of_models_to_test:
         c_l, auc_model, percentages = get_results_based_on_treshold_for_all_models(
-            subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric
+            subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric, balance_at_each_step = balance_at_each_step
         )
         auc_models.append(auc_model)
         perc_models.append(percentages)
@@ -1037,7 +1037,7 @@ def obtain_df_concatenated(pred_pos, pred_neg):
     return df_concatenated
 
 
-def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve'):
+def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', balance_at_each_step = True):
     
     auc_model = []
     percentages = []
@@ -1059,20 +1059,25 @@ def collect_results_based_on_confidence_level_based_on_treshold_for_single_model
             column = how
             
         pred_pos, pred_neg = select_predictions(df, treshold, column, False)
+        #print(pred_pos.shape[0], pred_neg.shape[0])
             
         calc_pos = should_I_calculate(pred_pos.shape[0], MIN_PERC, df.shape[0])
         calc_neg = should_I_calculate(pred_neg.shape[0], MIN_PERC, df.shape[0])
         
         calc = make_calculation(calc_pos, calc_neg, metric)
         if calc:
-            auc_score_run = []
+            if balance_at_each_step:
+                auc_score_run = []
+                for _ in range(n_run_undersampling):
+                    
+                    # Undersample the larger DataFrame to match the size of the smaller one
+                    df_concatenated = obtain_df_concatenated(pred_pos, pred_neg)
+                    auc_score_run.append(calc_metric(df_concatenated, column, metric = metric))
 
-            for _ in range(n_run_undersampling):
-                # Undersample the larger DataFrame to match the size of the smaller one
-                df_concatenated = obtain_df_concatenated(pred_pos, pred_neg)
-                auc_score_run.append(calc_metric(df_concatenated, column, metric = metric))
-
-            auc_model.append(np.mean(auc_score_run))
+                auc_model.append(np.mean(auc_score_run))
+            else:
+                df_concatenated = pd.concat([pred_pos, pred_neg]).reset_index()
+                auc_model.append(calc_metric(df_concatenated, column, metric = metric))
             
             perc_model = calc_perc_model(metric, 
                                          df.shape[0],  

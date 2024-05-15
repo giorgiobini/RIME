@@ -1036,7 +1036,6 @@ def obtain_df_concatenated(pred_pos, pred_neg):
         df_concatenated = pd.concat([pred_pos, df_undersampled]).reset_index(drop = True)
     return df_concatenated
 
-
 def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', balance_at_each_step = True):
     
     auc_model = []
@@ -1329,3 +1328,66 @@ def collect_results_based_on_confidence_level_based_on_topbottom_for_single_mode
         percentages.append(np.round(percs_data[i], 2))
         
     return percentages, metric_model
+
+
+def plot_results_how_many_repeats_in_pred_pos_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, both_sr = False, feature_to_search = 'Simple_repeat'):
+
+    perc_models = []
+    model_names = []
+    
+    confidence_level = []
+    
+    for model_name in list_of_models_to_test:
+        c_l, percentages = how_many_repeats_in_pred_pos_for_single_model(
+            subset, how = model_name, n_values = n_values, MIN_PERC = MIN_PERC, both_sr = both_sr, feature_to_search = feature_to_search
+        )
+        
+        perc_models.append(percentages)
+        model_names.append(model_name)
+        
+        if len(c_l)>len(confidence_level):
+            confidence_level = c_l
+    
+    plot_metric_confidence_for_all_models(confidence_level, perc_models, [[0 for i in range(len(perc_models[0]))] for j in range(len(perc_models))], model_names, feature_to_search, 0, 'Percentage of positive predictions', string_label = 'Confidence Level')
+
+def how_many_repeats_in_pred_pos_for_single_model(df, how = 'intarna', n_values = 15, MIN_PERC = 0.05, both_sr = False, feature_to_search = 'Simple_repeat'):
+
+    confidence_space = np.linspace(0.5, 0.99, n_values)
+    
+    conf_space_list = []
+    percentages = []
+
+    for i in range(n_values):
+
+        treshold = confidence_space[i]
+
+        if how == 'intarna':
+            column = 'E_norm_conf'
+        elif how == 'nt':
+            column = 'probability'
+        elif how == 'ensemble':
+            column = 'ensemble_score'
+        else:
+            column = how
+
+        pred_pos = df[df[column] > treshold].reset_index(drop=True)
+        
+        if feature_to_search == 'Simple_repeat':
+            label_x = 'simple_repeat1'
+            label_y = 'simple_repeat2'
+        else:
+            raise NotImplementedError
+        
+        if (pred_pos.shape[0]/df.shape[0] *100 ) > MIN_PERC:
+            if both_sr:
+                perc_sr = pred_pos[pred_pos[label_x] & pred_pos[label_y]].shape[0] / pred_pos.shape[0] * 100
+            else:
+                perc_sr = pred_pos[pred_pos[label_x] | pred_pos[label_y]].shape[0] / pred_pos.shape[0] * 100
+        else:
+            
+            perc_sr = np.nan
+            
+        percentages.append(perc_sr)
+        conf_space_list.append(str(np.round(confidence_space[i],2)))
+            
+    return conf_space_list, percentages

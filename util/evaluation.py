@@ -4,10 +4,11 @@ import os
 import seaborn as sns
 import pickle
 from tqdm.notebook import tqdm
+from scipy import stats
 import sys
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
-from .plot_utils import get_results_based_on_treshold, plot_roc_curves
+from .plot_utils import get_results_based_on_treshold, plot_roc_curves, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models
 from .misc import balance_df
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -520,7 +521,13 @@ def load_intarnaENHN500(how):
     enhnintarna = enhnintarna.dropna()    
     return enhnintarna
 
-def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ, specie_paris, enhn500 = False):
+def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ, specie_paris, paris_hq, paris_hq_threshold, enhn500 = False):
+    
+    if type(checkpoint_dir) == str:
+        checkpoint_dir = [checkpoint_dir]
+    else:
+        assert type(checkpoint_dir) == list
+        assert type(checkpoint_dir[0]) == str
 
     if dataset == 'paris':
         
@@ -529,18 +536,44 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
         assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
         test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
         id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
-        res = load_paris_results(checkpoint_dir, test500, 'test', specie_paris)
-            
+        
+        for i in range(len(checkpoint_dir)):
+            r = load_paris_results(checkpoint_dir[i], test500, 'test', specie_paris)
+            if paris_hq:
+                r = filter_hq_data_by_interaction_length(r, test500, paris_hq_threshold)
+                
+            if i == 0:
+                res = r.copy()
+            else:
+                r = r.rename({'probability':f'nt{i}'}, axis = 1)
+                res = pd.concat([res, r[f'nt{i}']], axis = 1)
+                
+        
     else:
         test500 = pd.read_csv(os.path.join(metadata_dir, f'{how}500.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{how}.csv'))
-        res = load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ)
         
+        for i in range(len(checkpoint_dir)):
+            r = load_ricseq_splash_mario_results(checkpoint_dir[i], test500, df_nt, how, only_test, exclude_train_genes, exclude_paris_genes, exclude_paris_couples, filter_hq_ricseq, MIN_N_READS_RICSEQ)
+            if i == 0:
+                res = r.copy()
+            else:
+                r = r.rename({'probability':f'nt{i}'}, axis = 1)
+                res = pd.concat([res, r[f'nt{i}']], axis = 1)
         
+
     if enhn500:
         testenhn500 = pd.read_csv(os.path.join(metadata_dir, f'{how}ENHN500.csv'))
         testenhn500['distance_from_site'] = ( (testenhn500['distance_x'] ** 2) + (testenhn500['distance_y']** 2) )**(0.5) #pitagora
-        enhn = pd.read_csv(os.path.join(checkpoint_dir, f'{how}ENHN_results500.csv')).drop('policy', axis = 1)
+        
+        for i in range(len(checkpoint_dir)):
+            r = pd.read_csv(os.path.join(checkpoint_dir[i], f'{how}ENHN_results500.csv')).drop('policy', axis = 1)
+            if i == 0:
+                enhn = r.copy()
+            else:
+                r = r.rename({'probability':f'nt{i}'}, axis = 1)
+                enhn = pd.concat([enhn, r[f'nt{i}']], axis = 1)
+                
         enhn = enhn.merge(testenhn500[['policy', 'couples']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample')
         enhn.ground_truth = 0
         couples_to_keep = set(res.couples)
@@ -630,46 +663,53 @@ def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logi
             if task == 'patches500': 
 
                 enhn500 = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, 
-                                     args_datasets[how]['only_test'], 
-                                     args_datasets[how]['exclude_train_genes'], 
-                                     args_datasets[how]['exclude_paris_genes'], 
-                                     args_datasets[how]['exclude_paris_couples'],
-                                     args_datasets[how]['filter_hq_ricseq'], 
-                                     args_datasets[how]['MIN_N_READS_RICSEQ'], 
-                                     args_datasets[how]['SPECIE_PARIS'],
+                                             args_datasets[how]['only_test'], 
+                                             args_datasets[how]['exclude_train_genes'], 
+                                             args_datasets[how]['exclude_paris_genes'], 
+                                             args_datasets[how]['exclude_paris_couples'],
+                                             args_datasets[how]['filter_hq_ricseq'], 
+                                             args_datasets[how]['MIN_N_READS_RICSEQ'], 
+                                             args_datasets[how]['SPECIE_PARIS'],
+                                             args_datasets[how]['PARIS_HQ'],
+                                             args_datasets[how]['PARIS_HQ_THRESHOLD'],
                                              True)
 
                 pos = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, 
-                                     args_datasets[how]['only_test'], 
-                                     args_datasets[how]['exclude_train_genes'], 
-                                     args_datasets[how]['exclude_paris_genes'], 
-                                     args_datasets[how]['exclude_paris_couples'],
-                                     args_datasets[how]['filter_hq_ricseq'], 
-                                     args_datasets[how]['MIN_N_READS_RICSEQ'], 
-                                     args_datasets[how]['SPECIE_PARIS'],
+                                         args_datasets[how]['only_test'], 
+                                         args_datasets[how]['exclude_train_genes'], 
+                                         args_datasets[how]['exclude_paris_genes'], 
+                                         args_datasets[how]['exclude_paris_couples'],
+                                         args_datasets[how]['filter_hq_ricseq'], 
+                                         args_datasets[how]['MIN_N_READS_RICSEQ'], 
+                                         args_datasets[how]['SPECIE_PARIS'],
+                                         args_datasets[how]['PARIS_HQ'],
+                                         args_datasets[how]['PARIS_HQ_THRESHOLD'],
                                          False)
 
                 pos = pos[pos.policy == 'easypos'].reset_index(drop = True)
                 res = pd.concat([pos, enhn500], axis=0).reset_index(drop = True)
 
             else:
-                res = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, 
-                                 args_datasets[how]['only_test'], 
-                                 args_datasets[how]['exclude_train_genes'], 
-                                 args_datasets[how]['exclude_paris_genes'], 
-                                 args_datasets[how]['exclude_paris_couples'],
-                                 args_datasets[how]['filter_hq_ricseq'], 
-                                 args_datasets[how]['MIN_N_READS_RICSEQ'], 
-                                 args_datasets[how]['SPECIE_PARIS']
-                                         , False)
+                res = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how,
+                                         args_datasets[how]['only_test'],
+                                         args_datasets[how]['exclude_train_genes'],
+                                         args_datasets[how]['exclude_paris_genes'],
+                                         args_datasets[how]['exclude_paris_couples'],
+                                         args_datasets[how]['filter_hq_ricseq'],
+                                         args_datasets[how]['MIN_N_READS_RICSEQ'],
+                                         args_datasets[how]['SPECIE_PARIS'],
+                                         args_datasets[how]['PARIS_HQ'],
+                                         args_datasets[how]['PARIS_HQ_THRESHOLD'],
+                                         False)
                 res = obtain_subset_from_task(res, task)
+                
 
             for model_column in energy_columns:
                 lrm_dict = logistic_regression_models[model_column]
                 X_test = np.expand_dims(res[model_column], 1)
                 y_pred = log_func(lrm_dict['intercept'], lrm_dict['coef'], X_test)
                 res[model_column] = pd.Series(y_pred.flatten()) #modify column according to the model mapping
-
+            
             for metric in list_of_metrics:
                 print(f'---------- DATASET: {dataset} ----------')
                 print(f'           -- -- -- {task} -- -- -- ')
@@ -688,7 +728,6 @@ def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logi
                                                                                   balance_at_each_step = balance_at_each_step
                                                                                  )
                 else:
-                    plot_results_based_on_topbottom_for_all_models
                     plot_results_based_on_topbottom_for_all_models(subset_to_plot, MIN_PERC = MIN_PERC, 
                                                                    list_of_models_to_test = list_of_models_to_test, 
                                                                    n_values = n_values, n_run_undersampling = n_run_undersampling, 
@@ -698,6 +737,21 @@ def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logi
                 plt.show()
 
             print('\n\n')
+            
+            
+def filter_hq_data_by_interaction_length(res, test500, hq_threshold):
+    
+    condition_1 = test500.policy.isin(['easypos', 'smartneg'])
+    condition_2 = abs(test500.seed_x1 - test500.seed_x2) > hq_threshold
+    condition_3 = abs(test500.seed_y1 - test500.seed_y2) > hq_threshold
+    condition_4 = test500.policy.isin(['easyneg', 'hardneg'])
+    condition_final = (condition_1 & condition_2 & condition_3) | condition_4
+
+    id_sample_to_keep = set(test500[condition_final].couples)
+    
+    res = res[res.id_sample.isin(id_sample_to_keep)].reset_index(drop = True)
+    
+    return res
             
 def obtain_sr_nosr(res, both_sr_condition, filtered_policies):
 

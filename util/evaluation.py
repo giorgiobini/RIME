@@ -608,3 +608,125 @@ def obtain_all_model_auc(subset, tools):
     df_out= pd.DataFrame({'model_name':names, 'auc':aucs})
     df_out['auc'] = df_out['auc'].round(2)
     return df_out
+
+
+#########
+def obtain_subset_from_task(res, task):
+
+    if task == 'patches':
+        subset_to_plot = res[(res.policy == 'easyneg')|(res.policy == 'easypos')|(res.policy == 'hardneg')].reset_index(drop = True)
+
+    elif task == 'interactors':
+        subset_to_plot = res[res.policy.isin(['smartneg', 'easypos'])].reset_index(drop = True)
+        
+    return subset_to_plot
+
+def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logistic_regression_models, datasets, args_datasets, energy_columns, MIN_PERC, list_of_models_to_test, n_values, n_run_undersampling, list_of_metrics, figsize, size_multiplier, based_on_threshold = True, balance_at_each_step = True):
+    
+    for dataset in datasets:
+        print(f'##############   ##############   ##############   ##############   ##############')
+        how = dataset if dataset != 'paris' else 'test'
+        for task in ['patches500', 'patches', 'interactors']:
+            if task == 'patches500': 
+
+                enhn500 = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, 
+                                     args_datasets[how]['only_test'], 
+                                     args_datasets[how]['exclude_train_genes'], 
+                                     args_datasets[how]['exclude_paris_genes'], 
+                                     args_datasets[how]['exclude_paris_couples'],
+                                     args_datasets[how]['filter_hq_ricseq'], 
+                                     args_datasets[how]['MIN_N_READS_RICSEQ'], 
+                                     args_datasets[how]['SPECIE_PARIS'],
+                                             True)
+
+                pos = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, 
+                                     args_datasets[how]['only_test'], 
+                                     args_datasets[how]['exclude_train_genes'], 
+                                     args_datasets[how]['exclude_paris_genes'], 
+                                     args_datasets[how]['exclude_paris_couples'],
+                                     args_datasets[how]['filter_hq_ricseq'], 
+                                     args_datasets[how]['MIN_N_READS_RICSEQ'], 
+                                     args_datasets[how]['SPECIE_PARIS'],
+                                         False)
+
+                pos = pos[pos.policy == 'easypos'].reset_index(drop = True)
+                res = pd.concat([pos, enhn500], axis=0).reset_index(drop = True)
+
+            else:
+                res = load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how, 
+                                 args_datasets[how]['only_test'], 
+                                 args_datasets[how]['exclude_train_genes'], 
+                                 args_datasets[how]['exclude_paris_genes'], 
+                                 args_datasets[how]['exclude_paris_couples'],
+                                 args_datasets[how]['filter_hq_ricseq'], 
+                                 args_datasets[how]['MIN_N_READS_RICSEQ'], 
+                                 args_datasets[how]['SPECIE_PARIS']
+                                         , False)
+                res = obtain_subset_from_task(res, task)
+
+            for model_column in energy_columns:
+                lrm_dict = logistic_regression_models[model_column]
+                X_test = np.expand_dims(res[model_column], 1)
+                y_pred = log_func(lrm_dict['intercept'], lrm_dict['coef'], X_test)
+                res[model_column] = pd.Series(y_pred.flatten()) #modify column according to the model mapping
+
+            for metric in list_of_metrics:
+                print(f'---------- DATASET: {dataset} ----------')
+                print(f'           -- -- -- {task} -- -- -- ')
+                print(f'           -  -  -  {metric}  -  -  - ')
+
+                subset_to_plot = balance_df(res).reset_index(drop = True)
+
+                plt.figure(figsize=figsize)
+                
+                if based_on_threshold:
+                    plot_function = plot_results_based_on_treshold_for_all_models(subset_to_plot, MIN_PERC = MIN_PERC, 
+                                                                                  list_of_models_to_test = list_of_models_to_test, 
+                                                                                  n_values = n_values, n_run_undersampling = n_run_undersampling, 
+                                                                                  metric = metric, task_name = task, 
+                                                                                  size_multiplier = size_multiplier, 
+                                                                                  balance_at_each_step = balance_at_each_step
+                                                                                 )
+                else:
+                    plot_results_based_on_topbottom_for_all_models
+                    plot_results_based_on_topbottom_for_all_models(subset_to_plot, MIN_PERC = MIN_PERC, 
+                                                                   list_of_models_to_test = list_of_models_to_test, 
+                                                                   n_values = n_values, n_run_undersampling = n_run_undersampling, 
+                                                                   metric = metric, task_name = task, 
+                                                                   size_multiplier = 0, 
+                                                                  )
+                plt.show()
+
+            print('\n\n')
+            
+def obtain_sr_nosr(res, both_sr_condition, filtered_policies):
+
+    if both_sr_condition:
+        sr = res[res['simple_repeat1'] & res['simple_repeat2']]
+    else:
+        sr = res[res['simple_repeat1'] | res['simple_repeat2']]
+
+    no_sr = res[(res['simple_repeat1'] == False) & (res['simple_repeat2'] == False)] #res[res['none1'] & res['none2']] #res[(res['simple_repeat1'] == False) & (res['simple_repeat2'] == False)]
+
+    sr = sr[sr.policy.isin(filtered_policies)].reset_index(drop = True)
+    no_sr = no_sr[no_sr.policy.isin(filtered_policies)].reset_index(drop = True)
+
+    return sr, no_sr
+
+
+def make_plot_kde_and_test_difference(x, y, label_x, label_y, title, figsize):
+    plt.figure(figsize=figsize)
+    sns.kdeplot(x, common_norm=True, label = label_x)
+    sns.kdeplot(y, common_norm=True,  label = label_y)
+    plt.legend()
+    plt.title(f'{title}')
+    plt.show()
+    # Test di Kolmogorov-Smirnov
+    ks_statistic, ks_p_value = np.round(stats.ks_2samp(x, y), 10)
+    print(f"Test di Kolmogorov-Smirnov:\nStatistiche KS: {ks_statistic}\nP-value: {ks_p_value}\n")
+
+    # Test di Mann-Whitney U
+    mwu_statistic, mwu_p_value = np.round(stats.mannwhitneyu(x, y, alternative='two-sided'), 10)
+    print(f"Test di Mann-Whitney U:\nStatistiche U: {mwu_statistic}\nP-value: {mwu_p_value}")
+    
+    print('\n')

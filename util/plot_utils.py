@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve
-from .misc import balance_df
+from .misc import balance_df, undersample_df
 from .colors import *
 
 
@@ -972,32 +972,46 @@ def plot_results_based_on_treshold(subset, task, MIN_PERC, MIN_SAMPLES, n_values
     )
 
     
-def get_results_based_on_treshold_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision_recall_curve', balance_at_each_step = True):
+def get_results_based_on_treshold_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision_recall_curve', balance_predictions_at_each_step = True):
 
-    confidence_level, percentages, auc_model = collect_results_based_on_confidence_level_based_on_treshold_for_single_model(subset, how = how, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, balance_at_each_step = balance_at_each_step)
+    confidence_level, percentages, auc_model = collect_results_based_on_confidence_level_based_on_treshold_for_single_model(subset, how = how, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric, balance_predictions_at_each_step = balance_predictions_at_each_step)
     
     #perc_nt, perc_intarna, perc_ens = list(map(list, zip(*percentages)))
     
     return confidence_level, auc_model, percentages
 
-def plot_results_based_on_treshold_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision_recall_curve', task_name = 'patches', size_multiplier = 10, balance_at_each_step = True):
+def plot_results_based_on_treshold_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision_recall_curve', task_name = 'patches', size_multiplier = 10, balance_predictions_at_each_step = True):
 
-    auc_models = []
-    perc_models = []
-    model_names = []
+    auc_runs = []
+    perc_runs = []
     
-    confidence_level = []
-    
-    for model_name in list_of_models_to_test:
-        c_l, auc_model, percentages = get_results_based_on_treshold_for_all_models(
-            subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric, balance_at_each_step = balance_at_each_step
-        )
-        auc_models.append(auc_model)
-        perc_models.append(percentages)
-        model_names.append(model_name)
+    for run in range(n_run_undersampling):
         
-        if len(c_l)>len(confidence_level):
-            confidence_level = c_l
+        subset = undersample_df(df) #undersampling at each run
+        
+        auc_models = []
+        perc_models = []
+        model_names = []
+
+        confidence_level = []
+
+        for model_name in list_of_models_to_test:
+            c_l, auc_model, percentages = get_results_based_on_treshold_for_all_models(
+                subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric, balance_predictions_at_each_step = balance_predictions_at_each_step
+            )
+            auc_models.append(auc_model)
+            perc_models.append(percentages)
+            model_names.append(model_name)
+
+            if len(c_l)>len(confidence_level):
+                confidence_level = c_l
+                
+        
+        auc_runs.append(auc_models)
+        perc_runs.append(perc_models)
+    
+    auc_models=np.mean(auc_runs, axis = 0)
+    perc_models=np.mean(perc_runs, axis = 0)
     
     plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Confidence Level')
     
@@ -1036,7 +1050,7 @@ def obtain_df_concatenated(pred_pos, pred_neg):
         df_concatenated = pd.concat([pred_pos, df_undersampled]).reset_index(drop = True)
     return df_concatenated
 
-def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', balance_at_each_step = True):
+def collect_results_based_on_confidence_level_based_on_treshold_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision_recall_curve', balance_predictions_at_each_step = True):
     
     auc_model = []
     percentages = []
@@ -1065,7 +1079,7 @@ def collect_results_based_on_confidence_level_based_on_treshold_for_single_model
         
         calc = make_calculation(calc_pos, calc_neg, metric)
         if calc:
-            if balance_at_each_step:
+            if balance_predictions_at_each_step:
                 auc_score_run = []
                 for _ in range(n_run_undersampling):
                     
@@ -1255,23 +1269,40 @@ def plot_confidence_based_on_distance(test500, ephnen, bins_distance):
     plt.show()
     
     
-def plot_results_based_on_topbottom_for_all_models(subset, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision', task_name = 'patches', size_multiplier = 10):
-
-    metric_models = []
-    perc_models = []
-    model_names = []
+def plot_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision', task_name = 'patches', size_multiplier = 10):
     
-    for model_name in list_of_models_to_test:
-        metric_model, percentages = get_results_based_on_topbottom_for_all_models(
+    
+    auc_runs = []
+    perc_runs = []
+    
+    for run in range(n_run_undersampling):
+        
+        subset = undersample_df(df) #undersampling at each run
+        
+        auc_models = []
+        perc_models = []
+        model_names = []
+
+        confidence_level = []
+
+        for model_name in list_of_models_to_test:
+            auc_model, percentages = get_results_based_on_topbottom_for_all_models(
             subset, MIN_PERC, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, metric = metric
         )
-        metric_models.append(metric_model)
-        perc_models.append(percentages)
-        model_names.append(model_name)
+            auc_models.append(auc_model)
+            perc_models.append(percentages)
+            model_names.append(model_name)
+
+        assert perc_models[0] == perc_models[1]
+        
+        auc_runs.append(auc_models)
+        perc_runs.append(perc_models)
     
-    assert perc_models[0] == perc_models[1] #they should be all the same
-    
-    plot_metric_confidence_for_all_models([str(perc) for perc in perc_models[0]], metric_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Percentage Data')
+    auc_models=np.mean(auc_runs, axis = 0)
+    perc_models=np.mean(perc_runs, axis = 0)
+
+    plot_metric_confidence_for_all_models([str(perc) for perc in perc_models[0]], auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Percentage Data')
+
     
     
 def get_results_based_on_topbottom_for_all_models(subset, MIN_PERC, how = 'nt', n_values = 12, n_run_undersampling = 30, metric = 'precision'):
@@ -1306,21 +1337,19 @@ def collect_results_based_on_confidence_level_based_on_topbottom_for_single_mode
     
     for i in range(n_values):
 
+        n_to_sample = int(math.ceil(percs_data[i]/100 * pred_pos.shape[0]))
         
         if metric == 'precision':
-    
-            n_to_sample = int(math.ceil(percs_data[i]/100 * pred_pos.shape[0]))
-            
             subset = pred_pos.sort_values(column, ascending = False).head(n_to_sample)
             
         elif metric == 'npv':
-            
-            n_to_sample = int(math.ceil(percs_data[i]/100 * pred_neg.shape[0]))
-            
             subset = pred_neg.sort_values(column, ascending = False).tail(n_to_sample)
             
-        else:
-            raise NotImplementedError
+        elif metric in ['f1', 'recall', 'specificity', 'precision_recall_curve']:
+            subset = pd.concat([
+                pred_pos.sort_values(column, ascending = False).head(n_to_sample),
+                pred_neg.sort_values(column, ascending = False).tail(n_to_sample)
+            ], axis = 0).reset_index(drop = True)
             
         
         metric_model.append(calc_metric(subset, column, metric = metric))

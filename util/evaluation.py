@@ -9,7 +9,7 @@ import sys
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
 from .plot_utils import get_results_based_on_treshold, plot_roc_curves, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models
-from .misc import balance_df
+from .misc import balance_df, undersample_df
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
@@ -654,7 +654,7 @@ def obtain_subset_from_task(res, task):
         
     return subset_to_plot
 
-def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logistic_regression_models, datasets, args_datasets, energy_columns, MIN_PERC, list_of_models_to_test, n_values, n_run_undersampling, list_of_metrics, figsize, size_multiplier, based_on_threshold = True, balance_at_each_step = True):
+def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logistic_regression_models, datasets, args_datasets, energy_columns, MIN_PERC, list_of_models_to_test, n_values, n_run_undersampling, list_of_metrics, figsize, size_multiplier, based_on_threshold = True, balance_predictions_at_each_step = True):
     
     for dataset in datasets:
         print(f'##############   ##############   ##############   ##############   ##############')
@@ -714,8 +714,8 @@ def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logi
                 print(f'---------- DATASET: {dataset} ----------')
                 print(f'           -- -- -- {task} -- -- -- ')
                 print(f'           -  -  -  {metric}  -  -  - ')
-
-                subset_to_plot = balance_df(res).reset_index(drop = True)
+                
+                subset_to_plot = res.copy().reset_index(drop = True)
 
                 plt.figure(figsize=figsize)
                 
@@ -725,7 +725,7 @@ def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logi
                                                                                   n_values = n_values, n_run_undersampling = n_run_undersampling, 
                                                                                   metric = metric, task_name = task, 
                                                                                   size_multiplier = size_multiplier, 
-                                                                                  balance_at_each_step = balance_at_each_step
+                                                                                  balance_predictions_at_each_step = balance_predictions_at_each_step
                                                                                  )
                 else:
                     plot_results_based_on_topbottom_for_all_models(subset_to_plot, MIN_PERC = MIN_PERC, 

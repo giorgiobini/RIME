@@ -26,7 +26,7 @@ from dataset.data import (
     seed_everything,
 )
 
-INCLUDE_RICSEQ = False
+INCLUDE_RICSEQ = True
 
 from train_binary_cl import obtain_train_dataset_paris, obtain_policies_object, obtain_dataset_object, obtain_val_dataset_paris, obtain_train_dataset, obtain_val_dataset, seed_worker, get_args_parser
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -164,9 +164,8 @@ def main(args):
                 'args': args,
             }, checkpoint_path)
             
-        dataset_splash, policies_splash = obtain_train_dataset('splash', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
-        dataset_paris, policies_paris = obtain_train_dataset('paris', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
-
+        dataset_splash, policies_splash = obtain_train_dataset('splash', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
+        dataset_paris, policies_paris = obtain_train_dataset('paris', EASY_PRETRAINING, TRAIN_HQ, FINETUNING, args.per_sample_p, args.proportion_sn, args.proportion_hn, args.proportion_en, args.min_n_groups_train, args.max_n_groups_train, SPECIE)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

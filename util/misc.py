@@ -645,3 +645,23 @@ def balance_df(df, n_iter = 25):
             toappend.append(pd.concat([poss.sample(len(negs)), negs], axis = 0))
     balanced = pd.concat(toappend, axis = 0)
     return balanced
+
+
+def undersample_df(df, column='ground_truth'):
+    # Separate the DataFrame into the two classes
+    class_0 = df[df[column] == 0]
+    class_1 = df[df[column] == 1]
+
+    if len(class_0) > len(class_1):
+        majority_class = class_0
+        minority_class = class_1
+    else:
+        majority_class = class_1
+        minority_class = class_0
+
+    num_minority_samples = len(minority_class)
+    majority_class_undersampled = majority_class.sample(num_minority_samples)
+    df_balanced = pd.concat([majority_class_undersampled, minority_class])
+    df_balanced = df_balanced.sample(frac=1).reset_index(drop=True)
+
+    return df_balanced

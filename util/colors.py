@@ -4,9 +4,9 @@ COLOR_NT_PREC = '#747DC6'
 COLOR_NT_NPV = '#281B7C'
 
 
-COLOR_NT2 = '#5159FF' #if you have more than 1 NT model to show
+COLOR_NT1 = '#2B2D63' #if you have more than 1 NT model to show
+COLOR_NT2 = '#80B2FF'
 COLOR_NT3 = '#3864AC'
-COLOR_NT4 = '#001C47'
 
 COLOR_INTARNA_AUC = 'orange'
 COLOR_INTARNA_PREC = '#FFB450'
@@ -42,9 +42,9 @@ model_colors_dict = {
     'NT': COLOR_NT_AUC,
     'nt': COLOR_NT_AUC,
     
+    'nt1': COLOR_NT1,
     'nt2': COLOR_NT2,
     'nt3': COLOR_NT3,
-    'nt4': COLOR_NT4,
     
     'ensemble': COLOR_ENS_AUC,
     'ensemble_score': COLOR_ENS_AUC,

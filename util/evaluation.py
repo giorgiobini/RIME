@@ -7,9 +7,10 @@ from tqdm.notebook import tqdm
 from scipy import stats
 import sys
 import matplotlib.pyplot as plt
+from sklearn.utils import resample
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
-from .plot_utils import get_results_based_on_treshold, plot_roc_curves, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models
-from .misc import balance_df, undersample_df
+from .plot_utils import get_results_based_on_treshold, plot_roc_curves_with_undersampling, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models
+from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
@@ -603,45 +604,71 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
     return res
 
 
-def plot_all_model_auc(subset, tools):
-    
-    result_list = []
+def obtain_all_model_auc(subset, tools, n_runs=50):
+    if is_unbalanced(subset):
+        aucs_dict = {tool_name: [] for tool_name in ['NT', 'INTARNA'] + tools}
 
-    result_list.append({'prob': subset.probability, 'model_name': 'NT'})
-    result_list.append({'prob': abs(subset.E_norm), 'model_name': 'Intarna'})
+        for _ in range(n_runs):
+            # Perform undersampling to create a balanced subset
+            majority_class, minority_class = obtain_majority_minority_class(subset)
 
-    for tool_name in tools:
-        result_list.append({'prob': abs(subset[tool_name]), 'model_name': tool_name})
+            # Undersample majority class
+            majority_undersampled = resample(majority_class, 
+                                             replace=False, 
+                                             n_samples=len(minority_class), 
+                                             random_state=np.random.randint(10000))
 
-    plot_roc_curves(result_list, subset.ground_truth)
-    
-    
-def obtain_all_model_auc(subset, tools):
-    
-    aucs=[]
-    names = []
-    
-    fpr, tpr, _ = roc_curve(subset.ground_truth, subset['probability'])
-    roc_auc = auc(fpr, tpr)
-    aucs.append(roc_auc)
-    names.append('NT')
-    
-    fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset['E_norm']))
-    roc_auc = auc(fpr, tpr)
-    aucs.append(roc_auc)
-    names.append('INTARNA')
-    
-    for tool_name in tools:
+            # Combine minority class with undersampled majority class
+            balanced_subset = pd.concat([minority_class, majority_undersampled])
+
+            # Calculate AUC for 'NT'
+            fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, balanced_subset['probability'])
+            roc_auc = auc(fpr, tpr)
+            aucs_dict['NT'].append(roc_auc)
+
+            # Calculate AUC for 'INTARNA'
+            fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, abs(balanced_subset['E_norm']))
+            roc_auc = auc(fpr, tpr)
+            aucs_dict['INTARNA'].append(roc_auc)
+
+            # Calculate AUC for each tool
+            for tool_name in tools:
+                fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, abs(balanced_subset[tool_name]))
+                roc_auc = auc(fpr, tpr)
+                aucs_dict[tool_name].append(roc_auc)
+
+        # Calculate mean AUC for each model
+        mean_aucs = {tool_name: np.mean(aucs_dict[tool_name]) for tool_name in aucs_dict}
+    else:
+        # Calculate AUC directly without undersampling
+        mean_aucs = {}
         
-        fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset[tool_name]))
-        roc_auc = auc(fpr, tpr)
-        aucs.append(roc_auc)
-        names.append(tool_name)
+        fpr, tpr, _ = roc_curve(subset.ground_truth, subset['probability'])
+        mean_aucs['NT'] = auc(fpr, tpr)
         
-    df_out= pd.DataFrame({'model_name':names, 'auc':aucs})
-    df_out['auc'] = df_out['auc'].round(2)
+        fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset['E_norm']))
+        mean_aucs['INTARNA'] = auc(fpr, tpr)
+        
+        for tool_name in tools:
+            fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset[tool_name]))
+            mean_aucs[tool_name] = auc(fpr, tpr)
+    
+    # Create DataFrame with results
+    df_out = pd.DataFrame({
+        'model_name': list(mean_aucs.keys()),
+        'auc': [round(auc, 2) for auc in mean_aucs.values()]
+    })
+    
     return df_out
 
+def plot_all_model_auc(subset, tools, n_runs=50):
+    models = [{'prob': subset.probability, 'model_name': 'NT'},
+              {'prob': abs(subset.E_norm), 'model_name': 'Intarna'}]
+    
+    for tool_name in tools:
+        models.append({'prob': abs(subset[tool_name]), 'model_name': tool_name})
+    
+    plot_roc_curves_with_undersampling(models, subset.ground_truth, n_runs) 
 
 #########
 def obtain_subset_from_task(res, task):

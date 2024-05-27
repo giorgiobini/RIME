@@ -665,3 +665,18 @@ def undersample_df(df, column='ground_truth'):
     df_balanced = df_balanced.sample(frac=1).reset_index(drop=True)
 
     return df_balanced
+
+def is_unbalanced(subset, column='ground_truth'):
+    class_counts = subset[column].value_counts()
+    return abs(class_counts[0] - class_counts[1]) > 0
+
+def obtain_majority_minority_class(subset):
+    class_0 = subset[subset.ground_truth == 0]
+    class_1 = subset[subset.ground_truth == 1]
+    if len(class_1)>len(class_0):
+        majority_class = class_1
+        minority_class = class_0
+    else:
+        majority_class = class_0
+        minority_class = class_1
+    return majority_class, minority_class

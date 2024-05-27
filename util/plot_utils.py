@@ -5,9 +5,9 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
-from sklearn.metrics import roc_curve, auc
-from sklearn.metrics import precision_recall_curve
-from .misc import balance_df, undersample_df
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
+from sklearn.utils import resample
+from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 from .colors import *
 
 
@@ -16,18 +16,55 @@ from .colors import *
 Result plots:
 '''
 
-def plot_roc_curves(models, ground_truth):
+def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50):
+    unbalanced = is_unbalanced(pd.DataFrame({'ground_truth': ground_truth}))
+    
     plt.figure(figsize=(10, 8))
     plt.plot([0, 1], [0, 1], 'k--')  # Plotting the random guessing line
 
     for model in models:
-        probabilities = model['prob']
-        model_name = model['model_name']
+        aucs = []
+        fprs = []
+        tprs = []
 
-        fpr, tpr, _ = roc_curve(ground_truth, probabilities)
-        roc_auc = auc(fpr, tpr)
+        if unbalanced:
+            for _ in range(n_runs):
+                majority_class, minority_class = obtain_majority_minority_class(
+                    pd.DataFrame(ground_truth).rename({0:'ground_truth'}, axis = 1)
+                )
 
-        plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.2f})')
+                # Undersample majority class
+                majority_undersampled_idx = resample(majority_class.index, 
+                                                     replace=False, 
+                                                     n_samples=len(minority_class), 
+                                                     random_state=np.random.randint(10000))
+
+                # Combine minority class with undersampled majority class
+                undersampled_idx = minority_class.index.union(majority_undersampled_idx)
+                balanced_subset = ground_truth.loc[undersampled_idx]
+                probabilities = model['prob'].loc[undersampled_idx]
+
+                fpr, tpr, _ = roc_curve(balanced_subset, probabilities)
+                fprs.append(fpr)
+                tprs.append(tpr)
+                roc_auc = auc(fpr, tpr)
+                aucs.append(roc_auc)
+            
+            # Average the FPR and TPR
+            mean_fpr = np.linspace(0, 1, 100)
+            mean_tpr = np.mean([np.interp(mean_fpr, fpr, tpr) for fpr, tpr in zip(fprs, tprs)], axis=0)
+            mean_auc = np.mean(aucs)
+        else:
+            fpr, tpr, _ = roc_curve(ground_truth, model['prob'])
+            mean_fpr = fpr
+            mean_tpr = tpr
+            mean_auc = auc(fpr, tpr)
+
+        # Ensure the ROC curve starts at (0, 0) and ends at (1, 1)
+        mean_fpr[0], mean_tpr[0] = 0.0, 0.0
+        mean_fpr[-1], mean_tpr[-1] = 1.0, 1.0
+        
+        plt.plot(mean_fpr, mean_tpr, label=f'{model["model_name"]} (AUC = {mean_auc:.2f})')
 
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')

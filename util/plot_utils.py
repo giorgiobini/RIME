@@ -1457,3 +1457,102 @@ def how_many_repeats_in_pred_pos_for_single_model(df, how = 'intarna', n_values 
         conf_space_list.append(str(np.round(confidence_space[i],2)))
             
     return conf_space_list, percentages
+
+def plot_tnr_based_on_distance_for_all_models(enhn, bins_distance, list_of_models_to_test, figsize, size_multiplier):
+    
+    models_tnr = []
+    distances_axis = []
+    percs = []
+
+    for (dist1, dist2) in bins_distance:
+        
+        subset = enhn[(enhn.distance_from_site >= dist1) & (enhn.distance_from_site <= dist2)].reset_index(drop = True)
+
+        perc_of_total_df = np.round(
+            (
+            subset.shape[0] / enhn.shape[0] 
+            ) * 100, 2)
+        percs.append(perc_of_total_df)
+        distances_axis.append(str(np.mean([dist1, dist2]).astype(int)))
+
+        models_for_this_bin = []
+        for model in list_of_models_to_test:
+            column = model if model!='nt' else 'probability'
+            tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
+            models_for_this_bin.append(tnr)
+        models_tnr.append(models_for_this_bin)
+   
+
+    models_tnr = list(map(list, zip(*models_tnr)))
+    
+    plt.figure(figsize=figsize)
+    plt.title('TNR of models in the task pathces based on distance interval')
+    for i, model_name in enumerate(list_of_models_to_test):
+        model_color = model_colors_dict[model_name]
+        plt.plot(distances_axis, models_tnr[i], label = model_name, color = model_color, linewidth=2)
+
+        for j, size in enumerate(percs):
+            plt.scatter(distances_axis[j], models_tnr[i][j], s=float(size)*size_multiplier, color=model_color)
+
+    plt.xlabel(f"Distance Interval")
+    plt.ylabel(f"TNR Patches task")
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.show()
+    
+def plot_tnr_for_all_models(list_of_models_to_test, subset, figsize, title_suffix = '', bar_width = 0.5):
+    tnrs = []
+    for model in list_of_models_to_test:
+        column = model if model!='nt' else 'probability'
+        tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
+        tnrs.append(tnr)
+
+    plt.figure(figsize=figsize)
+    for i, model in enumerate(list_of_models_to_test):
+        model_color = model_colors_dict[model]
+        plt.bar(i, tnrs[i], width=bar_width, label=model, color=model_color)
+
+    plt.xlabel('Models')
+    plt.ylabel('TRN Values')
+    plt.title(f'TRN Values for Different Models, {title_suffix}')
+    plt.xticks(range(len(list_of_models_to_test)), list_of_models_to_test)
+    plt.show()
+    
+def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_of_models_to_test, figsize):
+    
+    models_conifdence = []
+    distances_axis = []
+    regression_lines = []
+
+    for (dist1, dist2) in bins_distance:
+        
+        subset = enhn[(enhn.distance_from_site >= dist1) & (enhn.distance_from_site <= dist2)].reset_index(drop = True)
+
+        distances_axis.append(str(np.mean([dist1, dist2]).astype(int)))
+
+        models_for_this_bin = []
+        for model in list_of_models_to_test:
+            column = model if model!='nt' else 'probability'
+            model_conf = 0.5 - subset[column].mean()
+            models_for_this_bin.append(model_conf)
+        models_conifdence.append(models_for_this_bin)
+   
+
+    models_conifdence = list(map(list, zip(*models_conifdence)))
+    
+    
+    plt.figure(figsize=figsize)
+    plt.title('TNR of models in the task pathces based on distance interval')
+    for i, model_name in enumerate(list_of_models_to_test):
+        model_color = model_colors_dict[model_name]
+    
+        plt.plot(distances_axis, models_conifdence[i], label = model_name, color = model_color, linewidth=2)
+        
+        regression_line = obtain_regression_line(models_conifdence[i])
+        plt.plot(distances_axis, regression_line, label = model_name, color = model_color, linewidth=2, linestyle = '--')
+
+    plt.xlabel(f"Mean Distance Interval")
+    plt.ylabel(f"Confidence in the Mean Distance Interval")
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.show()

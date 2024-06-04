@@ -64,6 +64,8 @@ def load_paris_results(checkpoint_dir, test500, HOW, SPECIE, show_plot_map_signa
 
     # show only results for 1 specie
     res = res[res.specie == SPECIE]
+    
+    res = res.merge(test500.drop(['policy', 'g1', 'g2'], axis = 1).rename({'couples':'id_sample'}, axis = 1), on = 'id_sample').reset_index(drop = True)
 
     #-------------- -------------- -------------- -------------- -------------- -------------- --------------
     
@@ -184,6 +186,8 @@ def load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_t
 
     id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
     
+    
+    res = res.merge(test500.drop(['policy', 'g1', 'g2'], axis = 1).rename({'couples':'id_sample'}, axis = 1), on = 'id_sample').reset_index(drop = True)
     #-------------- -------------- -------------- -------------- -------------- -------------- --------------
     
     intarna = pd.read_csv(os.path.join(intarna_dir, f'{how}500_RANDOM', f'{how}.csv'), sep = ';')
@@ -204,6 +208,7 @@ def load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_t
     
     
     #-------------- -------------- -------------- -------------- -------------- -------------- --------------
+    
     
     intarna_treshold = -1.25
 
@@ -533,6 +538,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
     if dataset == 'paris':
         
         test500 = pd.read_csv(os.path.join(metadata_dir, f'test500.csv'))
+        test500['distance_from_site'] = ( (test500['distance_x'] ** 2) + (test500['distance_y']** 2) )**(0.5) #pitagora
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
         assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
         test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
@@ -548,10 +554,10 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
             else:
                 r = r.rename({'probability':f'nt{i}'}, axis = 1)
                 res = pd.concat([res, r[f'nt{i}']], axis = 1)
-                
         
     else:
         test500 = pd.read_csv(os.path.join(metadata_dir, f'{how}500.csv'))
+        test500['distance_from_site'] = ( (test500['distance_x'] ** 2) + (test500['distance_y']** 2) )**(0.5) #pitagora
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{how}.csv'))
         
         for i in range(len(checkpoint_dir)):
@@ -561,8 +567,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
             else:
                 r = r.rename({'probability':f'nt{i}'}, axis = 1)
                 res = pd.concat([res, r[f'nt{i}']], axis = 1)
-        
-
+    
     if enhn500:
         testenhn500 = pd.read_csv(os.path.join(metadata_dir, f'{how}ENHN500.csv'))
         testenhn500['distance_from_site'] = ( (testenhn500['distance_x'] ** 2) + (testenhn500['distance_y']** 2) )**(0.5) #pitagora
@@ -575,7 +580,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
                 r = r.rename({'probability':f'nt{i}'}, axis = 1)
                 enhn = pd.concat([enhn, r[f'nt{i}']], axis = 1)
                 
-        enhn = enhn.merge(testenhn500[['policy', 'couples']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample')
+        enhn = enhn.merge(testenhn500[['policy', 'couples', 'distance_from_site']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample')
         enhn.ground_truth = 0
         couples_to_keep = set(res.couples)
         enhn = enhn[enhn.couples.isin(couples_to_keep)].reset_index(drop = True)
@@ -584,7 +589,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
         enhn = enhn.merge(enhnintarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample')
         enhn['original_area'] = enhn.original_length1 * enhn.original_length2
 
-        res = enhn.copy()
+        res = enhn.copy()        
 
     res = res.drop_duplicates('id_sample').reset_index(drop = True)
     assert res.shape[0] == len(res.id_sample.unique())

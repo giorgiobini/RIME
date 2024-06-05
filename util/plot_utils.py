@@ -1556,3 +1556,50 @@ def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_o
     plt.legend()
     plt.grid(True, alpha=0.5)
     plt.show()
+    
+    
+def plot_features_vs_risearch2_confidence(res, based_on_percentile = True, n_values = 12, figsize = (10, 6)):
+    
+    if based_on_percentile:
+        thresholds_ricseq = np.percentile(res.risearch2, np.linspace(0, 100, n_values + 1))[:-1]
+        
+    else:
+        thresholds_ricseq = np.linspace(0, 1, n_values)
+
+    diz_res = {}
+    for threshold_ricseq_hq in thresholds_ricseq:
+        hq_pos = res[res.risearch2>threshold_ricseq_hq]
+        
+        features = ['perc both no protein_coding', 'perc both protein_coding']
+        
+        mean_values = [
+            ((hq_pos['gene1_pc'] == False) & (hq_pos['gene2_pc'] == False)).sum() / hq_pos.shape[0] * 100,
+            ((hq_pos['gene1_pc'] == True) & (hq_pos['gene2_pc'] == True)).sum() / hq_pos.shape[0] * 100
+        ]
+        
+        
+        
+        other_features_to_plot = ['original_area', 'n_reads', 'simple_repeats', 'sine_alu', 'low_complex']
+
+        for i in other_features_to_plot:
+            features.append(i)
+            mean_values.append(hq_pos[i].mean())
+
+        diz_res[str((threshold_ricseq_hq * 100).astype(int))] = mean_values
+
+    df_plot = pd.DataFrame.from_dict(diz_res, 'index')
+    df_plot.columns = features
+    df_plot = df_plot.reset_index().rename({'index':'confidence'}, axis = 1)
+
+    for feature in features:
+        plt.figure(figsize=figsize)
+        plt.title(f'{feature} based on risearch2 confidence')
+
+        model_color = model_colors_dict['risearch2']
+        plt.plot(df_plot['confidence'], df_plot[feature], label = feature, color = model_color, linewidth=2)
+
+        plt.xlabel(f"Risearch confidence")
+        plt.ylabel(f"{feature}")
+        plt.legend()
+        plt.grid(True, alpha=0.5)
+        plt.show()

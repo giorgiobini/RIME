@@ -1603,3 +1603,35 @@ def plot_features_vs_risearch2_confidence(res, based_on_percentile = True, n_val
         plt.legend()
         plt.grid(True, alpha=0.5)
         plt.show()
+        
+def plot_heatmap(correlation_df, highlight_labels = None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method = 'pearson'):
+    """
+    Plot a heatmap of the given correlation DataFrame.
+    
+    Parameters:
+    - correlation_df: DataFrame containing the correlation matrix.
+    - title: Title of the heatmap.
+    - cmap: Colormap to use for the heatmap.
+    - annot: Boolean indicating whether to annotate the heatmap with correlation values.
+    """
+    #cmap="coolwarm'
+    
+    plt.figure(figsize=(10, 8))
+    
+    if method == 'mutual_info':
+        sns.heatmap(correlation_df, annot=annot, cmap=cmap)
+    else:
+        sns.heatmap(correlation_df, annot=annot, cmap=cmap, vmin=-1, vmax=1, center=0)
+    
+    # Highlight specified labels
+    if highlight_labels:
+        ax = plt.gca()
+        labels = correlation_df.columns
+        for label in labels:
+            if label in highlight_labels:
+                ax.get_xticklabels()[labels.get_loc(label)].set_color('darkgreen')
+                ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
+    
+    
+    plt.title(title)
+    plt.show()

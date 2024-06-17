@@ -9,7 +9,9 @@ import sys
 import matplotlib.pyplot as plt
 from sklearn.utils import resample
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
-from .plot_utils import get_results_based_on_treshold, plot_roc_curves_with_undersampling, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models
+from scipy.stats import spearmanr, kendalltau
+from sklearn.metrics import mutual_info_score
+from .plot_utils import get_results_based_on_treshold, plot_roc_curves_with_undersampling, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models, plot_heatmap
 from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -816,3 +818,48 @@ def make_plot_kde_and_test_difference(x, y, label_x, label_y, title, figsize):
     print(f"Test di Mann-Whitney U:\nStatistiche U: {mwu_statistic}\nP-value: {mwu_p_value}")
     
     print('\n')
+    
+    
+def calculate_correlations(series_list, method='pearson', plot=False):
+    """
+    Calculate the correlations between all combinations of series in the list.
+    
+    Parameters:
+    - series_list: List of pandas Series.
+    - method: Correlation method ('pearson', 'spearman', 'kendall', 'mutual_info').
+    - plot: Boolean indicating whether to plot scatter plots of the correlations.
+    
+    Returns:
+    - DataFrame of correlation coefficients.
+    """
+    num_series = len(series_list)
+    series_names = [s.name for s in series_list]
+    correlations = pd.DataFrame(np.ones((num_series, num_series)), index=series_names, columns=series_names)
+
+    for i in range(num_series):
+        for j in range(i + 1, num_series):
+            if method == 'pearson':
+                corr = series_list[i].corr(series_list[j])
+            elif method == 'spearman':
+                corr, _ = spearmanr(series_list[i], series_list[j])
+            elif method == 'kendall':
+                corr, _ = kendalltau(series_list[i], series_list[j])
+            elif method == 'mutual_info':
+                corr = mutual_info_score(series_list[i], series_list[j])
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+
+            correlations.iloc[i, j] = corr
+            correlations.iloc[j, i] = corr
+
+            if plot:
+                plt.figure(figsize=(6, 4))
+                plt.scatter(series_list[i], series_list[j], alpha=0.75)
+                plt.title(f'{method.capitalize()} Correlation between {series_names[i]} and {series_names[j]}: {corr:.2f}')
+                plt.xlabel(series_names[i])
+                plt.ylabel(series_names[j])
+                plt.grid(True)
+                plt.tight_layout()
+                plt.show()
+
+    return correlations

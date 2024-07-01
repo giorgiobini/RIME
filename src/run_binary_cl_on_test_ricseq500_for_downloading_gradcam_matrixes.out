@@ -3,4 +3,4 @@ nohup: ignoring input
   warnings.warn("Initializing zero-element tensors is a no-op")
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
-Downlaoding time 0:42:12
+Downlaoding time 0:28:52

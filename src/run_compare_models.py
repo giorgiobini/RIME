@@ -21,8 +21,6 @@ from util.evaluation import load_results, map_signal_to_sigmoid_range, balance_d
 from util.xai import gradcam, interpolate_expl_matrix, plot_matrix
 from config import *
 from models.nt_classifier import build as build_model 
-from util.plot_utils import obtain_plot, plot_logs, plot_roc_curves, get_results_based_on_treshold
-from util.plot_utils import collect_results_based_on_confidence_level_based_on_percentile as collect_results_based_on_confidence_level
 
 def main():
 

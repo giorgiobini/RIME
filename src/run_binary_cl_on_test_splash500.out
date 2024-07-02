@@ -1,4 +1,2 @@
-Traceback (most recent call last):
-  File "/data01/giorgio/RNARNA-NT/src/run_binary_cl_on_test_500.py", line 7, in <module>
-    import torch
-ModuleNotFoundError: No module named 'torch'
+/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/init.py:388: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")

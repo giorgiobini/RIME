@@ -1675,3 +1675,49 @@ def create_augment_list(dataset, all_couples):
         })
         
     return augment_list
+
+
+def get_features1(row, df_repeats):
+    gene_id = row['g1']
+    row_x1, row_x2 = row['x1'] + row['start_embedding1'], row['x2'] + row['start_embedding1']
+    overlaps = df_repeats[(df_repeats['gene_id'] == gene_id) & ((df_repeats['start'] <= row_x2) & (df_repeats['end'] >= row_x1))]
+    if len(overlaps) > 0:
+        return ', '.join(overlaps['feature'])
+    elif gene_id in df_repeats['gene_id'].values:
+        return 'None'
+    else:
+        return 'Not present'
+
+def get_features2(row, df_repeats):
+    gene_id = row['g2']
+    row_y1, row_y2 = row['y1'] + row['start_embedding2'], row['y2'] + row['start_embedding2']
+    overlaps = df_repeats[(df_repeats['gene_id'] == gene_id) & ((df_repeats['start'] <= row_y2) & (df_repeats['end'] >= row_y1))]
+    if len(overlaps) > 0:
+        return ', '.join(overlaps['feature'])
+    elif gene_id in df_repeats['gene_id'].values:
+        return 'None'
+    else:
+        return 'Not present'
+
+
+def get_full_overlap_features1(row, df_repeats):
+    gene_id = row['g1']
+    row_x1, row_x2 = row['x1'] + row['start_embedding1'], row['x2'] + row['start_embedding1']
+    overlaps = df_repeats[(df_repeats['gene_id'] == gene_id) & ((df_repeats['start'] >= row_x1) & (df_repeats['end'] <= row_x2))]
+    if len(overlaps) > 0:
+        return ', '.join(overlaps['feature'])
+    elif gene_id in df_repeats['gene_id'].values:
+        return 'None'
+    else:
+        return 'Not present'
+
+def get_full_overlap_features2(row, df_repeats):
+    gene_id = row['g2']
+    row_y1, row_y2 = row['y1'] + row['start_embedding2'], row['y2'] + row['start_embedding2']
+    overlaps = df_repeats[(df_repeats['gene_id'] == gene_id) & ((df_repeats['start'] >= row_y1) & (df_repeats['end'] <= row_y2))]
+    if len(overlaps) > 0:
+        return ', '.join(overlaps['feature'])
+    elif gene_id in df_repeats['gene_id'].values:
+        return 'None'
+    else:
+        return 'Not present'

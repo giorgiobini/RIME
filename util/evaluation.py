@@ -37,15 +37,15 @@ def map_signal_to_sigmoid_range(signal, threshold):
 
 
 
-def load_paris_results(checkpoint_dir, test500, HOW, SPECIE, show_plot_map_signal = False):
+def load_paris_results(checkpoint_dir, test500, df_nt, HOW, SPECIE, show_plot_map_signal = False):
 
     file_train = os.path.join(rna_rna_files_dir, "gene_pairs_training.txt")
     with open(file_train, "rb") as fp:   # Unpickling
         gene_pairs_train_original = pickle.load(fp)
 
-    file_train = os.path.join(rna_rna_files_dir, "gene_pairs_training_nt_HQ.txt")
-    with open(file_train, "rb") as fp:   # Unpickling
-        gene_pairs_train = pickle.load(fp)
+    # file_train = os.path.join(rna_rna_files_dir, "gene_pairs_training_nt_HQ.txt")
+    # with open(file_train, "rb") as fp:   # Unpickling
+    #     gene_pairs_train = pickle.load(fp)
 
     file_test = os.path.join(rna_rna_files_dir, f"gene_pairs_{HOW}_nt_HQ.txt")
     with open(file_test, "rb") as fp:   # Unpickling
@@ -58,6 +58,9 @@ def load_paris_results(checkpoint_dir, test500, HOW, SPECIE, show_plot_map_signa
     assert test500.couples.isin(gene_pairs_test).all()
      
     #-------------- -------------- -------------- -------------- -------------- -------------- --------------
+    
+    assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
+    test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
     
     res = pd.read_csv(os.path.join(checkpoint_dir, f'{HOW}_results500.csv'))
 
@@ -83,7 +86,7 @@ def load_paris_results(checkpoint_dir, test500, HOW, SPECIE, show_plot_map_signa
 
     intarna = intarna.dropna()
 
-    res = res.merge(intarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample')
+    res = res.merge(intarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample', how = 'left').fillna(0)
     res['original_area'] = res.original_length1 * res.original_length2
     
     #-------------- -------------- -------------- -------------- -------------- -------------- --------------
@@ -185,8 +188,6 @@ def load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_t
         test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'experiment']].merge(test500, on = 'couples')
     else:
         raise NotImplementedError
-
-    id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
     
     
     res = res.merge(test500.drop(['policy', 'g1', 'g2'], axis = 1).rename({'couples':'id_sample'}, axis = 1), on = 'id_sample').reset_index(drop = True)
@@ -205,7 +206,7 @@ def load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_t
     intarna = intarna.dropna()
 
 
-    res = res.merge(intarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample')
+    res = res.merge(intarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample', how = 'left').fillna(0)
     res['original_area'] = res.original_length1 * res.original_length2
     
     
@@ -381,9 +382,7 @@ def otain_results(checkpoint_dir_paths, space, n_values, MIN_PERC, index_name = 
                 test500 = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
                 df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
                 assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
-                test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
-                id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
-                res = load_paris_results(checkpoint_dir, test500, HOW, SPECIE)
+                res = load_paris_results(checkpoint_dir, test500, df_nt, HOW, SPECIE)
 
             else:
                 test500 = pd.read_csv(os.path.join(metadata_dir, f'{how}500.csv'))
@@ -541,13 +540,11 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
         
         test500 = pd.read_csv(os.path.join(metadata_dir, f'test500.csv'))
         test500['distance_from_site'] = ( (test500['distance_x'] ** 2) + (test500['distance_y']** 2) )**(0.5) #pitagora
+        test500['distance_from_site_embedding'] = ( (test500['distance_embedding_x'] ** 2) + (test500['distance_embedding_y']** 2) )**(0.5) #pitagora
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
-        assert test500.shape[0] == df_nt[['couples', 'interacting']].merge(test500, on = 'couples').shape[0]
-        test500 = df_nt[['couples', 'interacting', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex']].merge(test500, on = 'couples')
-        id_cds_cds = set(test500[test500['where'] == 'CDS-CDS'].couples)
         
         for i in range(len(checkpoint_dir)):
-            r = load_paris_results(checkpoint_dir[i], test500, 'test', specie_paris)
+            r = load_paris_results(checkpoint_dir[i], test500, df_nt, 'test', specie_paris)
             if paris_hq:
                 r = filter_hq_data_by_interaction_length(r, test500, paris_hq_threshold)
                 
@@ -560,6 +557,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
     else:
         test500 = pd.read_csv(os.path.join(metadata_dir, f'{how}500.csv'))
         test500['distance_from_site'] = ( (test500['distance_x'] ** 2) + (test500['distance_y']** 2) )**(0.5) #pitagora
+        test500['distance_from_site_embedding'] = ( (test500['distance_embedding_x'] ** 2) + (test500['distance_embedding_y']** 2) )**(0.5) #pitagora
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{how}.csv'))
         
         for i in range(len(checkpoint_dir)):
@@ -573,6 +571,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
     if enhn500:
         testenhn500 = pd.read_csv(os.path.join(metadata_dir, f'{how}ENHN500.csv'))
         testenhn500['distance_from_site'] = ( (testenhn500['distance_x'] ** 2) + (testenhn500['distance_y']** 2) )**(0.5) #pitagora
+        testenhn500['distance_from_site_embedding'] = ( (testenhn500['distance_embedding_x'] ** 2) + (testenhn500['distance_embedding_y']** 2) )**(0.5) #pitagora
         
         for i in range(len(checkpoint_dir)):
             r = pd.read_csv(os.path.join(checkpoint_dir[i], f'{how}ENHN_results500.csv')).drop('policy', axis = 1)
@@ -582,13 +581,13 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
                 r = r.rename({'probability':f'nt{i}'}, axis = 1)
                 enhn = pd.concat([enhn, r[f'nt{i}']], axis = 1)
                 
-        enhn = enhn.merge(testenhn500[['policy', 'couples', 'distance_from_site']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample')
+        enhn = enhn.merge(testenhn500[['policy', 'couples', 'distance_from_site', 'distance_from_site_embedding']].rename({'couples':'id_sample'}, axis = 1), on = 'id_sample', how = 'left').fillna(0)
         enhn.ground_truth = 0
         couples_to_keep = set(res.couples)
         enhn = enhn[enhn.couples.isin(couples_to_keep)].reset_index(drop = True)
 
         enhnintarna = load_intarnaENHN500(how)
-        enhn = enhn.merge(enhnintarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample')
+        enhn = enhn.merge(enhnintarna[['E','E_norm', 'couples']].rename({'couples':'id_sample'}, axis =1), on = 'id_sample', how = 'left').fillna(0)
         enhn['original_area'] = enhn.original_length1 * enhn.original_length2
 
         res = enhn.copy()        
@@ -603,7 +602,7 @@ def load_res_and_tools(external_dataset_dir, checkpoint_dir, tools, dataset, how
         tool = pd.read_csv(os.path.join(external_dataset_dir, f'{tool_name}_{how}500.csv'), sep = ',').fillna(0)
         tool['value'] = tool['value'].astype(float)
         assert (tool.minimum == True).all()
-        res = res.merge(tool[['value', 'couples']].rename({'couples':'id_sample', 'value':tool_name}, axis =1), on = 'id_sample')
+        res = res.merge(tool[['value', 'couples']].rename({'couples':'id_sample', 'value':tool_name}, axis =1), on = 'id_sample', how = 'left').fillna(0)
     
     res = res.drop_duplicates('id_sample').reset_index(drop = True)
     assert res.shape[0] == len(res.id_sample.unique())

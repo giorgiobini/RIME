@@ -1304,9 +1304,9 @@ def plot_confidence_based_on_distance(test500, ephnen, bins_distance):
     plt.legend()
     plt.grid(True, alpha=0.5)
     plt.show()
+
     
-    
-def plot_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision', task_name = 'patches', size_multiplier = 10):
+def collect_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision'):
     
     
     auc_runs = []
@@ -1337,6 +1337,13 @@ def plot_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_
     
     auc_models=np.mean(auc_runs, axis = 0)
     perc_models=np.mean(perc_runs, axis = 0)
+    
+    return auc_models, perc_models, model_names
+    
+def plot_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision', task_name = 'patches', size_multiplier = 10):
+    
+    
+    auc_models, perc_models, model_names = collect_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values, n_run_undersampling, metric)
 
     plot_metric_confidence_for_all_models([str(perc) for perc in perc_models[0]], auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Percentage Data')
 

@@ -11,7 +11,7 @@ from sklearn.utils import resample
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
 from scipy.stats import spearmanr, kendalltau
 from sklearn.metrics import mutual_info_score
-from .plot_utils import get_results_based_on_treshold, plot_roc_curves_with_undersampling, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models, plot_heatmap
+from .plot_utils import get_results_based_on_treshold, plot_roc_curves_with_undersampling, plot_results_based_on_treshold_for_all_models, plot_results_based_on_topbottom_for_all_models, plot_heatmap, collect_results_based_on_topbottom_for_all_models
 from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

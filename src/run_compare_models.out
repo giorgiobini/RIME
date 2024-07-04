@@ -973,3 +973,7 @@ nohup: ignoring input
   recall = tps / tps[-1]
 /data01/giorgio/RNARNA-NT/src/../util/plot_utils.py:253: RuntimeWarning: invalid value encountered in double_scalars
   output = 2* (precision*recall)/(precision+recall)
+/data01/giorgio/RNARNA-NT/src/../util/plot_utils.py:253: RuntimeWarning: invalid value encountered in double_scalars
+  output = 2* (precision*recall)/(precision+recall)
+/data01/giorgio/RNARNA-NT/src/../util/plot_utils.py:253: RuntimeWarning: invalid value encountered in double_scalars
+  output = 2* (precision*recall)/(precision+recall)

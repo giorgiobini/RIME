@@ -67,7 +67,6 @@ def main(args):
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
 
-
     
     device = torch.device(args.device)
     model = build_model(args)

@@ -123,7 +123,7 @@ Run these scripts from the src directory in the following order:
 
 
 
-## 5. Inference
+## 5. Inference Old (drop)
 Put your files inside the directory dataset/external_dataset/your_folder/
 You must have these files inside your_folder:
 
@@ -148,3 +148,33 @@ ENSFAKE003_ENSFAKE004
 Run these scripts from the src directory in the following order:
 - nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/embeddings &> download_embeddings_inference.out &
 - run_inference.ipynb
+
+
+## 5. Inference New
+Put your files inside the directory dataset/external_dataset/your_folder/
+You must have these files inside your_folder:
+
+```
+embedding_query.csv
+
+id_query,cdna
+ENSFAKE001,CGUUUCGCUAAACUCUG
+ENSFAKE002,UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
+ENSFAKE003,GUGAACGUCGCGAUAGGCGGAACAA
+ENSFAKE004,AGUAACAACGCUAGGUGCGAGUGUCGUC
+
+
+
+pairs.csv
+id, embedding1name,embedding2name,start_window1,end_window1,start_window2,end_window2
+0,ENSFAKE001,ENSFAKE002,0,500,300,800
+1,ENSFAKE001,ENSFAKE002,100,600,0,500
+2,ENSFAKE001,ENSFAKE003,100,600,0,500
+3,ENSFAKE003,ENSFAKE004,0,500,0,500
+```
+
+##### TODO: rendi run_inference_new.ipynb uno script python, aggiungi la possibilita di scaricare la matrice gradcam, aggiungi la possibilita di lavorare in batch
+
+Run these scripts from the src directory in the following order:
+- nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/embeddings &> download_embeddings_inference.out &
+- run_inference_new.ipynb

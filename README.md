@@ -166,7 +166,7 @@ ENSFAKE004,AGUAACAACGCUAGGUGCGAGUGUCGUC
 
 
 pairs.csv
-id, embedding1name,embedding2name,start_window1,end_window1,start_window2,end_window2
+id_pair, embedding1name,embedding2name,start_window1,end_window1,start_window2,end_window2
 0,ENSFAKE001,ENSFAKE002,0,500,300,800
 1,ENSFAKE001,ENSFAKE002,100,600,0,500
 2,ENSFAKE001,ENSFAKE003,100,600,0,500
@@ -176,5 +176,5 @@ id, embedding1name,embedding2name,start_window1,end_window1,start_window2,end_wi
 ##### TODO: rendi run_inference_new.ipynb uno script python, aggiungi la possibilita di scaricare la matrice gradcam, aggiungi la possibilita di lavorare in batch
 
 Run these scripts from the src directory in the following order:
-- nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/embeddings &> download_embeddings_inference.out &
+- nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset/embeddings &> download_embeddings_inference.out &
 - run_inference_new.ipynb

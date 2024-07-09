@@ -180,7 +180,7 @@ def load_ricseq_splash_mario_results(checkpoint_dir, test500, df_nt, how, only_t
 
     if how == 'ricseq':
         test500 = df_nt[['couples', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex', 'n_reads']].merge(test500, on = 'couples')
-        ids_to_keep = set(test500[test500.n_reads >= MIN_N_READS_RICSEQ].couples).union(test500[test500.interacting==False].couples)
+        ids_to_keep = set(test500[test500.n_reads >= MIN_N_READS_RICSEQ].couples).union(test500[test500.policy.isin(['hardneg', 'easyneg', 'smartneg'])].couples)
         res = res[res.id_sample.isin(ids_to_keep)].reset_index(drop = True)
     elif how == 'mario':
         test500 = df_nt[['couples', 'where', 'where_x1', 'where_y1', 'simple_repeats', 'sine_alu', 'low_complex', 'n_reads']].merge(test500, on = 'couples')

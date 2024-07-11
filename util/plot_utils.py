@@ -1330,7 +1330,8 @@ def collect_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_mode
             perc_models.append(percentages)
             model_names.append(model_name)
 
-        assert perc_models[0] == perc_models[1]
+        if len(list_of_models_to_test)>1:
+            assert perc_models[0] == perc_models[1]
         
         auc_runs.append(auc_models)
         perc_runs.append(perc_models)

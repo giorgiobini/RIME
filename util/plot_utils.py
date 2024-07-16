@@ -1358,7 +1358,9 @@ def get_results_based_on_topbottom_for_all_models(subset, MIN_PERC, how = 'nt', 
     
     return metric_model, percentages
     
-def collect_results_based_on_confidence_level_based_on_topbottom_for_single_model(df, how = 'intarna', n_values = 15, n_run_undersampling = 30, MIN_PERC = 0.05, metric = 'precision'):
+    
+    
+def collect_results_based_on_confidence_level_based_on_topbottom_for_single_model(df, how='intarna', n_values=15, n_run_undersampling=30, MIN_PERC=0.05, metric='precision'):
     
     metric_model = []
     percentages = []
@@ -1367,6 +1369,7 @@ def collect_results_based_on_confidence_level_based_on_topbottom_for_single_mode
     
     percs_data = np.linspace(MIN_PERC, 100, n_values)[::-1]
 
+    # Determine the correct column based on the 'how' parameter
     if how == 'intarna':
         column = 'E_norm_conf'
     elif how == 'nt':
@@ -1375,30 +1378,49 @@ def collect_results_based_on_confidence_level_based_on_topbottom_for_single_mode
         column = 'ensemble_score'
     else:
         column = how
-
+    
+    # Ensure the column exists in the dataframe
+    if column not in df.columns:
+        raise ValueError(f"Column {column} not found in the dataframe")
         
-    pred_pos = df[df[column]>0.5].reset_index(drop = True)
-    pred_neg = df[df[column]<0.5].reset_index(drop = True)
+    pred_pos = df[df[column] > 0.5].reset_index(drop=True)
+    pred_neg = df[df[column] < 0.5].reset_index(drop=True)
     
     for i in range(n_values):
-
-        n_to_sample = int(math.ceil(percs_data[i]/100 * pred_pos.shape[0]))
+        n_to_sample = int(math.ceil(percs_data[i] / 100 * pred_pos.shape[0]))
         
         if metric == 'precision':
-            subset = pred_pos.sort_values(column, ascending = False).head(n_to_sample)
+            subset = pred_pos.sort_values(column, ascending=False).head(n_to_sample)
+            result_metric = calc_metric(subset, column, metric=metric)
             
         elif metric == 'npv':
-            subset = pred_neg.sort_values(column, ascending = False).tail(n_to_sample)
+            subset = pred_neg.sort_values(column, ascending=False).tail(n_to_sample)
+            result_metric = calc_metric(subset, column, metric=metric)
             
         elif metric in ['f1', 'recall', 'specificity', 'precision_recall_curve']:
             subset = pd.concat([
-                pred_pos.sort_values(column, ascending = False).head(n_to_sample),
-                pred_neg.sort_values(column, ascending = False).tail(n_to_sample)
-            ], axis = 0).reset_index(drop = True)
+                pred_pos.sort_values(column, ascending=False).head(n_to_sample),
+                pred_neg.sort_values(column, ascending=False).tail(n_to_sample)
+            ], axis=0).reset_index(drop=True)
+            result_metric = calc_metric(subset, column, metric=metric)
             
+        elif metric == 'TP':
+            subset = pred_pos.sort_values(column, ascending=False).head(n_to_sample)
+            result_metric = subset[subset.ground_truth == 1].shape[0]
+            
+        elif metric == 'TN':
+            subset = pred_neg.sort_values(column, ascending=False).tail(n_to_sample)
+            result_metric = subset[subset.ground_truth == 0].shape[0]
+            
+        elif metric == 'FP':
+            subset = pred_pos.sort_values(column, ascending=False).head(n_to_sample)
+            result_metric = subset[subset.ground_truth == 0].shape[0]
+            
+        elif metric == 'FN':
+            subset = pred_neg.sort_values(column, ascending=False).tail(n_to_sample)
+            result_metric = subset[subset.ground_truth == 1].shape[0]
         
-        metric_model.append(calc_metric(subset, column, metric = metric))
-        
+        metric_model.append(result_metric)
         percentages.append(np.round(percs_data[i], 2))
         
     return percentages, metric_model
@@ -1508,23 +1530,41 @@ def plot_tnr_based_on_distance_for_all_models(enhn, bins_distance, list_of_model
     plt.grid(True, alpha=0.5)
     plt.show()
     
-def plot_tnr_for_all_models(list_of_models_to_test, subset, figsize, title_suffix = '', bar_width = 0.5):
-    tnrs = []
-    for model in list_of_models_to_test:
-        column = model if model!='nt' else 'probability'
-        tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
-        tnrs.append(tnr)
+    
+def calculate_tnr(subset, model):
+    column = model if model != 'nt' else 'probability'
+    tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
+    return tnr
+
+def calculate_recall(subset, model):
+    column = model if model != 'nt' else 'probability'
+    true_positives = ((subset.ground_truth == 1) & (subset[column] > 0.5)).sum()
+    actual_positives = (subset.ground_truth == 1).sum()
+    recall = true_positives / actual_positives if actual_positives > 0 else 0
+    return recall
+
+def plot_metrics_for_all_models(metric_function, ylabel, list_of_models_to_test, subset, figsize, title_suffix='', bar_width=0.5):
+    metric_values = [metric_function(subset, model) for model in list_of_models_to_test]
 
     plt.figure(figsize=figsize)
-    for i, model in enumerate(list_of_models_to_test):
-        model_color = model_colors_dict[model]
-        plt.bar(i, tnrs[i], width=bar_width, label=model, color=model_color)
+    for i, (model, value) in enumerate(zip(list_of_models_to_test, metric_values)):
+        model_color = model_colors_dict.get(model, 'black')
+        plt.bar(i, value, width=bar_width, label=model, color=model_color)
+        plt.text(i, value, f'{value:.2f}', ha='center', va='bottom')
 
     plt.xlabel('Models')
-    plt.ylabel('TRN Values')
-    plt.title(f'TRN Values for Different Models, {title_suffix}')
+    plt.ylabel(ylabel)
+    plt.title(f'{ylabel} for Different Models, {title_suffix}')
     plt.xticks(range(len(list_of_models_to_test)), list_of_models_to_test)
+    plt.legend()
     plt.show()
+
+def plot_tnr_for_all_models(list_of_models_to_test, subset, figsize, title_suffix='', bar_width=0.5):
+    plot_metrics_for_all_models(calculate_tnr, 'TNR Values', list_of_models_to_test, subset, figsize, title_suffix, bar_width)
+
+def plot_recall_for_all_models(list_of_models_to_test, subset, figsize, title_suffix='', bar_width=0.5):
+    plot_metrics_for_all_models(calculate_recall, 'Recall Values', list_of_models_to_test, subset, figsize, title_suffix, bar_width)
+
     
 def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_of_models_to_test, figsize):
     

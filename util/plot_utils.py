@@ -1061,7 +1061,7 @@ def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_mod
     """
     
     for i, model_name in enumerate(model_names):
-        model_color = model_colors_dict[model_name]
+        model_color = model_colors_dict.get(model_name, 'black')
         
         plt.plot(confidence_level, auc_models[i], marker='o', label=model_name, color = model_color)
         #print(model_name, perc_models[i])
@@ -1518,7 +1518,7 @@ def plot_tnr_based_on_distance_for_all_models(enhn, bins_distance, list_of_model
     plt.figure(figsize=figsize)
     plt.title('TNR of models in the task pathces based on distance interval')
     for i, model_name in enumerate(list_of_models_to_test):
-        model_color = model_colors_dict[model_name]
+        model_color = model_colors_dict.get(model_name, 'black')
         plt.plot(distances_axis, models_tnr[i], label = model_name, color = model_color, linewidth=2)
 
         for j, size in enumerate(percs):
@@ -1592,7 +1592,7 @@ def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_o
     plt.figure(figsize=figsize)
     plt.title('TNR of models in the task pathces based on distance interval')
     for i, model_name in enumerate(list_of_models_to_test):
-        model_color = model_colors_dict[model_name]
+        model_color = model_colors_dict.get(model_name, 'black')
     
         plt.plot(distances_axis, models_conifdence[i], label = model_name, color = model_color, linewidth=2)
         

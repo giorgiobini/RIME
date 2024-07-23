@@ -9,6 +9,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from sklearn.utils import resample
 from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 from .colors import *
+from .model_names_map import map_model_names
 
 
 '''
@@ -1063,7 +1064,7 @@ def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_mod
     for i, model_name in enumerate(model_names):
         model_color = model_colors_dict.get(model_name, 'black')
         
-        plt.plot(confidence_level, auc_models[i], marker='o', label=model_name, color = model_color)
+        plt.plot(confidence_level, auc_models[i], marker='o', label=map_model_names(model_name), color = model_color)
         #print(model_name, perc_models[i])
         # Opzionalmente, variare la dimensione dei punti in base alla numerosità
         for _, size in enumerate(perc_models[i]):
@@ -1519,7 +1520,7 @@ def plot_tnr_based_on_distance_for_all_models(enhn, bins_distance, list_of_model
     plt.title('TNR of models in the task pathces based on distance interval')
     for i, model_name in enumerate(list_of_models_to_test):
         model_color = model_colors_dict.get(model_name, 'black')
-        plt.plot(distances_axis, models_tnr[i], label = model_name, color = model_color, linewidth=2)
+        plt.plot(distances_axis, models_tnr[i], label = map_model_names(model_name), color = model_color, linewidth=2)
 
         for j, size in enumerate(percs):
             plt.scatter(distances_axis[j], models_tnr[i][j], s=float(size)*size_multiplier, color=model_color)
@@ -1549,7 +1550,7 @@ def plot_metrics_for_all_models(metric_function, ylabel, list_of_models_to_test,
     plt.figure(figsize=figsize)
     for i, (model, value) in enumerate(zip(list_of_models_to_test, metric_values)):
         model_color = model_colors_dict.get(model, 'black')
-        plt.bar(i, value, width=bar_width, label=model, color=model_color)
+        plt.bar(i, value, width=bar_width, label=map_model_names(model), color=model_color)
         plt.text(i, value, f'{value:.2f}', ha='center', va='bottom')
 
     plt.xlabel('Models')
@@ -1565,6 +1566,81 @@ def plot_tnr_for_all_models(list_of_models_to_test, subset, figsize, title_suffi
 def plot_recall_for_all_models(list_of_models_to_test, subset, figsize, title_suffix='', bar_width=0.5):
     plot_metrics_for_all_models(calculate_recall, 'Recall Values', list_of_models_to_test, subset, figsize, title_suffix, bar_width)
 
+    
+def autolabel(ax, bars):
+    """Attach a text label above each bar in *bars*, displaying its height."""
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'{height:.2f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom')
+
+def plot_tnr_recall_for_all_models(list_of_models_to_test, subset, figsize, bar_width=0.35):
+    tnr = [calculate_tnr(subset, model) for model in list_of_models_to_test]
+    recall = [calculate_recall(subset, model) for model in list_of_models_to_test]
+
+    list_of_models_to_test = map_model_names(list_of_models_to_test)
+    
+    x = np.arange(len(list_of_models_to_test))  # the label locations
+
+    fig, ax = plt.subplots(figsize=figsize)
+    bars1 = ax.bar(x - bar_width/2, tnr, bar_width, label='TNR', color='skyblue')
+    bars2 = ax.bar(x + bar_width/2, recall, bar_width, label='Recall', color='lightcoral')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_xlabel('Models')
+    ax.set_ylabel('Scores')
+    ax.set_title('TNR and Recall for Different Models')
+    ax.set_xticks(x)
+    ax.set_xticklabels(list_of_models_to_test)
+    ax.legend()
+
+    autolabel(ax, bars1)
+    autolabel(ax, bars2)
+
+    fig.tight_layout()
+    plt.show()
+
+    
+def plot_trn_recall_for_all_models(list_of_models_to_test, subset, figsize):
+
+    tnr = [calculate_tnr(subset, model) for model in list_of_models_to_test]
+    recall = [calculate_recall(subset, model) for model in list_of_models_to_test]
+
+    x = np.arange(len(list_of_models_to_test))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig, ax = plt.subplots(figsize=figsize)
+    bars1 = ax.bar(x - width/2, tnr, width, label='TNR', color='skyblue')
+    bars2 = ax.bar(x + width/2, recall, width, label='Recall', color='lightcoral')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_xlabel('Models')
+    ax.set_ylabel('Scores')
+    ax.set_title('TNR and Recall for Different Models')
+    ax.set_xticks(x)
+    ax.set_xticklabels(models)
+    ax.legend()
+
+    # Attach a text label above each bar in *bars*, displaying its height.
+    def autolabel(bars):
+        """Attach a text label above each bar in *bars*, displaying its height."""
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:.2f}',
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom')
+
+    autolabel(bars1)
+    autolabel(bars2)
+
+    fig.tight_layout()
+
+    plt.show()
     
 def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_of_models_to_test, figsize):
     
@@ -1594,10 +1670,10 @@ def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_o
     for i, model_name in enumerate(list_of_models_to_test):
         model_color = model_colors_dict.get(model_name, 'black')
     
-        plt.plot(distances_axis, models_conifdence[i], label = model_name, color = model_color, linewidth=2)
+        plt.plot(distances_axis, models_conifdence[i], label = map_model_names(model_name), color = model_color, linewidth=2)
         
         regression_line = obtain_regression_line(models_conifdence[i])
-        plt.plot(distances_axis, regression_line, label = model_name, color = model_color, linewidth=2, linestyle = '--')
+        plt.plot(distances_axis, regression_line, label = map_model_names(model_name), color = model_color, linewidth=2, linestyle = '--')
 
     plt.xlabel(f"Mean Distance Interval")
     plt.ylabel(f"Confidence in the Mean Distance Interval")
@@ -1652,17 +1728,23 @@ def plot_features_vs_risearch2_confidence(res, based_on_percentile = True, n_val
         plt.grid(True, alpha=0.5)
         plt.show()
         
-def plot_heatmap(correlation_df, highlight_labels = None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method = 'pearson'):
+def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method='pearson'):
     """
     Plot a heatmap of the given correlation DataFrame.
     
     Parameters:
     - correlation_df: DataFrame containing the correlation matrix.
+    - highlight_labels: List of labels to highlight on the heatmap.
     - title: Title of the heatmap.
     - cmap: Colormap to use for the heatmap.
     - annot: Boolean indicating whether to annotate the heatmap with correlation values.
+    - method: Correlation method to use.
     """
-    #cmap="coolwarm'
+    
+    # Map column names
+    mapped_columns = map_model_names(correlation_df.columns.tolist())
+    correlation_df.columns = mapped_columns
+    correlation_df.index = mapped_columns
     
     plt.figure(figsize=(10, 8))
     
@@ -1679,7 +1761,6 @@ def plot_heatmap(correlation_df, highlight_labels = None, title="Correlation Hea
             if label in highlight_labels:
                 ax.get_xticklabels()[labels.get_loc(label)].set_color('darkgreen')
                 ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
-    
     
     plt.title(title)
     plt.show()

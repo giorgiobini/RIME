@@ -1,3 +1,5 @@
+from .model_names_map import map_model_names
+
 #COLORS##
 COLOR_NT_AUC = '#3C00FF'
 COLOR_NT_PREC = '#747DC6'
@@ -34,18 +36,37 @@ COLOR_ASSA = 'cyan'
 model_colors_dict = {
     
     'priblast': COLOR_PRIBLAST,
+    map_model_names('priblast'): COLOR_PRIBLAST,
+    
     'RNAup': COLOR_RNAUP,
+    map_model_names('RNAup'): COLOR_RNAUP,
+    
     'RNAplex': COLOR_RNAPLEX,
+    map_model_names('RNAplex'): COLOR_RNAPLEX,
+    
     'RNAhybrid': COLOR_RNAHYBRID,
+    map_model_names('RNAhybrid'): COLOR_RNAHYBRID,
+    
     'rnacofold': COLOR_RNACOFOLD,
+    map_model_names('rnacofold'): COLOR_RNACOFOLD,
+    
     'risearch2': COLOR_RISEARCH2,
+    map_model_names('risearch2'): COLOR_RISEARCH2,
+    
     'assa': COLOR_ASSA,
+    map_model_names('assa'): COLOR_ASSA,
     
     'E_norm': COLOR_INTARNA_AUC,
+    map_model_names('E_norm'): COLOR_INTARNA_AUC,
+    
     'INTARNA': COLOR_INTARNA_AUC,
+    map_model_names('INTARNA'): COLOR_INTARNA_AUC,
     
     'NT': COLOR_NT_AUC,
+    map_model_names('NT'): COLOR_NT_AUC,
+    
     'nt': COLOR_NT_AUC,
+    map_model_names('nt'): COLOR_NT_AUC,
     
     'nt1': COLOR_NT1,
     'nt2': COLOR_NT2,
@@ -57,5 +78,8 @@ model_colors_dict = {
     'nt8': COLOR_NT8,
     
     'ensemble': COLOR_ENS_AUC,
+    map_model_names('ensemble'): COLOR_ENS_AUC,
+    
     'ensemble_score': COLOR_ENS_AUC,
+    map_model_names('ensemble_score'): COLOR_ENS_AUC,
 }

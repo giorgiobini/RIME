@@ -177,4 +177,4 @@ id_pair, embedding1name,embedding2name,start_window1,end_window1,start_window2,e
 
 Run these scripts from the src directory in the following order:
 - nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset/embeddings &> download_embeddings_inference.out &
-- run_inference_new.ipynb
+- nohup python run_inference_new.py --pairs_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_predictions &> run_inference_new.out &

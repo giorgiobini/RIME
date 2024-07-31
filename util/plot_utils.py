@@ -1070,7 +1070,7 @@ def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_mod
         for _, size in enumerate(perc_models[i]):
             plt.scatter(confidence_level[_], auc_models[i][_], s=float(size)*size_multiplier, color=model_color)
             
-    plt.title(f'{metric} based on respective {string_label}, task: {task_name}')
+    plt.title(f'{metric} based on {string_label}, task: {task_name}')
     plt.xlabel(f'{string_label} %')
     plt.ylabel(f'{metric}')
     plt.legend()
@@ -1445,7 +1445,7 @@ def plot_results_how_many_repeats_in_pred_pos_for_all_models(subset, MIN_PERC, l
         if len(c_l)>len(confidence_level):
             confidence_level = c_l
     
-    plot_metric_confidence_for_all_models(confidence_level, perc_models, [[0 for i in range(len(perc_models[0]))] for j in range(len(perc_models))], model_names, feature_to_search, 0, 'Percentage of positive predictions', string_label = 'Confidence Level')
+    plot_metric_confidence_for_all_models(confidence_level, perc_models, [[0 for i in range(len(perc_models[0]))] for j in range(len(perc_models))], model_names, feature_to_search, 0, f'Percentage of {feature_to_search} in positive predictions', string_label = 'Confidence Level')
 
 def how_many_repeats_in_pred_pos_for_single_model(df, how = 'intarna', n_values = 15, MIN_PERC = 0.05, both_sr = False, feature_to_search = 'Simple_repeat'):
 
@@ -1603,6 +1603,54 @@ def plot_tnr_recall_for_all_models(list_of_models_to_test, subset, figsize, bar_
     fig.tight_layout()
     plt.show()
 
+def plot_tnr_based_on_distance_for_our_model(ephnen, enhn500, bins_distance, figsize, size_multiplier):
+    
+    plt.figure(figsize=figsize)
+    plt.title('TNR of models in the task pathces based on distance interval')
+    
+    for _, enhn in enumerate([ephnen, enhn500]):
+        
+        models_tnr = []
+        distances_axis = []
+        percs = []
+
+        for (dist1, dist2) in bins_distance:
+
+            subset = enhn[(enhn.distance_from_site >= dist1) & (enhn.distance_from_site <= dist2)].reset_index(drop = True)
+
+            perc_of_total_df = np.round(
+                (
+                subset.shape[0] / enhn.shape[0] 
+                ) * 100, 2)
+            percs.append(perc_of_total_df)
+            distances_axis.append(str([dist1, dist2]))
+
+            models_for_this_bin = []
+            column = 'probability'
+            tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
+            models_for_this_bin.append(tnr)
+            models_tnr.append(models_for_this_bin)
+
+
+        models_tnr = list(map(list, zip(*models_tnr)))
+
+        model_name = 'nt'
+
+        model_color = model_colors_dict.get(model_name, 'black')
+        
+        label = 'Interacting region present within embedding' if _ == 0 else 'No interacting region within embedding'
+        linestyle = '--' if _ == 0 else 'dotted'
+        
+        plt.plot(distances_axis, models_tnr[0], label = label, color = model_color, linewidth=2, linestyle = linestyle)
+        
+        for j, size in enumerate(percs):
+            plt.scatter(distances_axis[j], models_tnr[0][j], s=float(size)*size_multiplier, color=model_color)
+
+        plt.xlabel(f"Distance Interval")
+        plt.ylabel(f"TNR Patches task")
+        plt.legend()
+        plt.grid(True, alpha=0.5)
+    plt.show()
     
 def plot_trn_recall_for_all_models(list_of_models_to_test, subset, figsize):
 
@@ -1642,6 +1690,8 @@ def plot_trn_recall_for_all_models(list_of_models_to_test, subset, figsize):
 
     plt.show()
     
+
+    
 def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_of_models_to_test, figsize):
     
     models_conifdence = []
@@ -1673,7 +1723,7 @@ def plot_confidence_based_on_distance_for_all_models(enhn, bins_distance, list_o
         plt.plot(distances_axis, models_conifdence[i], label = map_model_names(model_name), color = model_color, linewidth=2)
         
         regression_line = obtain_regression_line(models_conifdence[i])
-        plt.plot(distances_axis, regression_line, label = map_model_names(model_name), color = model_color, linewidth=2, linestyle = '--')
+        plt.plot(distances_axis, regression_line, color = model_color, linewidth=2, linestyle = '--')
 
     plt.xlabel(f"Mean Distance Interval")
     plt.ylabel(f"Confidence in the Mean Distance Interval")

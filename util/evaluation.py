@@ -727,6 +727,66 @@ def obtain_all_model_auc_patches(res, tools, n_runs=50):
     
     return df_out
 
+def obtain_all_model_auc_patches(res, tools, n_runs=50):
+    # Separate the dataset into positive and two types of negative samples
+    pos = res[(res.policy == 'easypos')].reset_index(drop=True)
+    neg_close = res[((res.distance_from_site_embedding == 0) & (res.policy.isin(['hardneg', 'easyneg'])))].reset_index(drop=True)
+    neg_far = res[((res.distance_from_site_embedding > 0) & (res.policy.isin(['hardneg', 'easyneg'])))].reset_index(drop=True)
+    
+    # Initialize dictionary to store AUCs
+    aucs_dict = {tool_name: [] for tool_name in ['NT', 'INTARNA'] + tools}
+    
+    if not (pos.shape[0] == neg_close.shape[0] == neg_far.shape[0]):
+        for _ in range(n_runs):
+            # Find the minimum size among the datasets
+            min_size = min(pos.shape[0], neg_close.shape[0], neg_far.shape[0])
+            
+            # Undersample each dataset to the minimum size
+            pos_sample = pos.sample(n=min_size, random_state=np.random.randint(0, 10000))
+            neg_close_sample = neg_close.sample(n=min_size, random_state=np.random.randint(0, 10000))
+            neg_far_sample = neg_far.sample(n=min_size, random_state=np.random.randint(0, 10000))
+            
+            # Combine the undersampled datasets
+            balanced_subset = pd.concat([pos_sample, neg_close_sample, neg_far_sample])
+            
+            # Calculate AUC for each model/tool
+            fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, balanced_subset['probability'])
+            aucs_dict['NT'].append(auc(fpr, tpr))
+            
+            fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, abs(balanced_subset['E_norm']))
+            aucs_dict['INTARNA'].append(auc(fpr, tpr))
+            
+            for tool_name in tools:
+                fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, abs(balanced_subset[tool_name]))
+                aucs_dict[tool_name].append(auc(fpr, tpr))
+        
+        # Calculate mean AUC for each model/tool
+        mean_aucs = {tool_name: np.mean(aucs_dict[tool_name]) for tool_name in aucs_dict}
+    else:
+        balanced_subset = pd.concat([pos, neg_close, neg_far])
+        
+        # Calculate AUC for each model/tool
+        fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, balanced_subset['probability'])
+        aucs_dict['NT'].append(auc(fpr, tpr))
+        
+        fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, abs(balanced_subset['E_norm']))
+        aucs_dict['INTARNA'].append(auc(fpr, tpr))
+        
+        for tool_name in tools:
+            fpr, tpr, _ = roc_curve(balanced_subset.ground_truth, abs(balanced_subset[tool_name]))
+            aucs_dict[tool_name].append(auc(fpr, tpr))
+        
+        # Calculate mean AUC for each model/tool
+        mean_aucs = {tool_name: np.mean(aucs_dict[tool_name]) for tool_name in aucs_dict}
+    
+    # Create DataFrame with results
+    df_out = pd.DataFrame({
+        'model_name': list(mean_aucs.keys()),
+        'auc': [round(auc, 2) for auc in mean_aucs.values()]
+    })
+    
+    return df_out
+
 
 def plot_all_model_auc(subset, tools, n_runs=50):
     models = [{'prob': subset.probability, 'model_name': 'NT'},
@@ -836,8 +896,8 @@ def plot_results_of_all_models(external_dataset_dir, checkpoint_dir, tools, logi
 def filter_hq_data_by_interaction_length(res, test500, hq_threshold):
     
     condition_1 = test500.policy.isin(['easypos', 'smartneg'])
-    condition_2 = abs(test500.seed_x1 - test500.seed_x2) > hq_threshold
-    condition_3 = abs(test500.seed_y1 - test500.seed_y2) > hq_threshold
+    condition_2 = abs(test500.seed_x1 - test500.seed_x2) >= hq_threshold
+    condition_3 = abs(test500.seed_y1 - test500.seed_y2) >= hq_threshold
     condition_4 = test500.policy.isin(['easyneg', 'hardneg'])
     condition_final = (condition_1 & condition_2 & condition_3) | condition_4
 

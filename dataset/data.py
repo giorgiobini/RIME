@@ -769,6 +769,11 @@ class HardNegAugment(AugmentPolicy):
             
         reduced = False
         for _ in range(HardNegAugment._NUM_TRIES):
+            #TODO:
+            # Qui il problmea e che se gene1_length<target_width, partiro sempre da zero
+            # x1 dovrebbe partire anche da target_width e arrivare a gene1_length senno il rischio e che partono sempre da zero. Vedi quello che ho fatto in check_predictions_with_adri.ipynb, funzione find_hardneg_window
+            
+            
             x1 = np.random.randint(low=0, high=gene1_length - (target_width-1))
             y1 = np.random.randint(low=0, high=gene2_length - (target_height-1))
 

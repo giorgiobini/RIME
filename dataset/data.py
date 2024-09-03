@@ -699,6 +699,57 @@ class EasyNegAugment(AugmentPolicy):
             interacting=False,
         )
 
+def find_possible_interval(rna1_coords, len_rna1):
+    max_interval_length = len_rna1  # min(5970, len_rna1)
+
+    # Add boundaries to the list of coordinates
+    extended_coords = [(0, -1)] + sorted(rna1_coords) + [(len_rna1, len_rna1 + 1)]
+
+    # Initialize variables to keep track of the largest interval
+    largest_interval_start = 0
+    largest_interval_end = 0
+    largest_interval_length = 0
+
+    # Iterate through the sorted coordinates to find the gaps
+    for i in range(len(extended_coords) - 1):
+        current_end = extended_coords[i][1]
+        next_start = extended_coords[i + 1][0]
+
+        # Calculate the gap between the current end and the next start
+        gap_start = current_end + 1
+        gap_end = next_start - 1
+        gap_length = gap_end - gap_start + 1
+
+        # Check if this gap is the largest found so far and within the max limit
+        if gap_length > largest_interval_length and gap_length <= max_interval_length:
+            largest_interval_start = gap_start
+            largest_interval_end = gap_end
+            largest_interval_length = gap_length
+
+    # The interval should be [largest_interval_start, largest_interval_end]
+    # But to ensure it is within the allowed maximum length
+    if largest_interval_length > max_interval_length:
+        largest_interval_end = largest_interval_start + max_interval_length - 1
+
+    largest_interval = (largest_interval_start, largest_interval_end)
+    return largest_interval
+
+def find_random_interval(start, end, max_length):
+    # Calculate the length of the input interval
+    length_of_input_interval = end - start
+    # Calculate the maximum possible length for the random interval
+    max_interval_length = min(max_length, length_of_input_interval)
+    
+    # Generate a random starting point
+    random_start = random.randint(start, end - max_interval_length)
+    # Calculate the ending point of the interval
+    random_end = random_start + max_interval_length
+    
+    return (random_start, random_end)
+
+def find_hardneg_window(rna_coords, len_rna, max_length):
+    interval = find_possible_interval(rna_coords, len_rna)
+    return find_random_interval(interval[0], interval[1], max_length)
 
 class HardNegAugment(AugmentPolicy):
 
@@ -756,53 +807,25 @@ class HardNegAugment(AugmentPolicy):
             probabilities=self.height_probabilities,
             max_size=min(gene2_length, self.max_size),
         )
-
-        full_matrix = torch.zeros(gene2_length, gene1_length)
         
+        rna1_coords = []
+        rna2_coords = []
         for interaction in couple_interactions:
             assert interaction["interacting"]
             interaction_bbox: BBOX = BBOX.from_interaction(interaction)
-            full_matrix[
-                interaction_bbox.y1 : interaction_bbox.y2,
-                interaction_bbox.x1 : interaction_bbox.x2,
-            ] = 1
+            rna1_coords.append((interaction_bbox.x1, interaction_bbox.x2))
+            rna2_coords.append((interaction_bbox.y1, interaction_bbox.y2))
+        
             
-        reduced = False
-        for _ in range(HardNegAugment._NUM_TRIES):
-            #TODO:
-            # Qui il problmea e che se gene1_length<target_width, partiro sempre da zero
-            # x1 dovrebbe partire anche da target_width e arrivare a gene1_length senno il rischio e che partono sempre da zero. Vedi quello che ho fatto in check_predictions_with_adri.ipynb, funzione find_hardneg_window
+        rna1_interval = find_hardneg_window(rna1_coords, gene1_length, target_width)
+        rna2_interval = find_hardneg_window(rna2_coords, gene2_length, target_height)
             
-            
-            x1 = np.random.randint(low=0, high=gene1_length - (target_width-1))
-            y1 = np.random.randint(low=0, high=gene2_length - (target_height-1))
-
-            try:
-                if (_ > HardNegAugment._NUM_TRIES/2)&(reduced == False):
-                    target_width = target_width//5 #it should be easier to find under these conditions
-                    target_height = target_height//5 #it should be easier to find under these conditions
-                    reduced = True
-                    
-                sample_interaction: torch.Tensor = full_matrix[
-                    y1 : y1 + target_height, x1 : x1 + target_width
-                ]
-                if (
-                    sample_interaction.sum() > 0
-                ):  # if there's any 1, we are including part of an interaction
-                    continue
-            except IndexError:
-                continue
-            
-            return dict(
-                bbox=BBOX(x1=x1, x2=x1 + target_width, y1=y1, y2=y1 + target_height),
-                gene1=gene1,
-                gene2=gene2,
-                interacting=False,
-            )
-        else:
-            raise RuntimeError(
-                f"Couldn't find a non-interacting region with {HardNegAugment._NUM_TRIES} tries for genes {gene1}, {gene2}, that interacts here {interaction_bbox}"
-            )
+        return dict(
+            bbox=BBOX(x1=rna1_interval[0], x2=rna1_interval[1], y1=rna2_interval[0], y2=rna2_interval[1]),
+            gene1=gene1,
+            gene2=gene2,
+            interacting=False,
+        )
 
 
 class RegionSpecNegAugment(AugmentPolicy):

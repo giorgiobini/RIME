@@ -177,3 +177,193 @@ def get_dataset(ep_per_sample, sn_per_sample, en_persample, hn_per_sample, df_ge
             augment_policies=pol,
     )
     return dataset 
+
+def estimate_time_and_space(n_samples):
+    
+    print('# sequences:', n_samples)
+    
+    #TIME
+    minutes = 3219*n_samples/(228278)
+    hours = minutes/60
+    days = hours/24
+    print('estimated # hours:', np.round(hours, 2))
+    print('estimated # days:', np.round(days, 2))
+
+    mb = 10.2*n_samples
+    gb = mb/1000
+    tb = gb/1000
+    print('estimated terabytes (pessimistic):', np.round(tb, 2))
+    mb = 1995*n_samples/(300)
+    gb = mb/1000
+    tb = gb/1000
+    print('estimated terabytes (realistic):', np.round(tb, 2))
+
+def get_directory_size(directory):
+    total_size = 0
+    n_files = 0
+    # Walk through all the files and subdirectories in the directory
+    for path, dirs, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(path, file)
+            total_size += os.stat(file_path).st_size
+            n_files+=1
+
+    # Convert the size to a human-readable format
+    size_in_bytes = total_size
+    size_in_kilobytes = total_size / 1000
+    size_in_megabytes = size_in_kilobytes / 1000
+    size_in_gigabytes = size_in_megabytes / 1000
+    size_in_terabytes = size_in_gigabytes / 1000
+
+    return {
+        "n_files":n_files,
+        # "bytes": size_in_bytes,
+        # "kilobytes": size_in_kilobytes,
+        # "megabytes": size_in_megabytes,
+        "gigabytes": size_in_gigabytes, 
+        "terabytes": size_in_terabytes, 
+    }
+
+
+
+def swap_if_needed(df):
+    df['actual_couples'] = df.gene1 + '_' + df.gene2
+    df['need_to_swap'] = df.couples!=df.actual_couples
+    where = df.need_to_swap
+    df.loc[where, ['gene1', 'gene2']] = (df.loc[where, ['gene2', 'gene1']].values)
+    df.loc[where, ['length_1', 'length_2']] = (df.loc[where, ['length_2', 'length_1']].values)
+    df.loc[where, ['protein_coding_1', 'protein_coding_2']] = (df.loc[where, ['protein_coding_2', 'protein_coding_1']].values)
+    df.loc[where, ['x1', 'y1']] = (df.loc[where, ['y1', 'x1']].values)
+    df.loc[where, ['x2', 'y2']] = (df.loc[where, ['y2', 'x2']].values)
+    df.loc[where, ['cdna1', 'cdna2']] = (df.loc[where, ['cdna2', 'cdna1']].values)
+    df.loc[where, ['original_x1', 'original_y1']] = (df.loc[where, ['original_y1', 'original_x1']].values)
+    df.loc[where, ['original_x2', 'original_y2']] = (df.loc[where, ['original_y2', 'original_x2']].values)
+    df.loc[where, ['window_x1', 'window_y1']] = (df.loc[where, ['window_y1', 'window_x1']].values)
+    df.loc[where, ['window_x2', 'window_y2']] = (df.loc[where, ['window_y2', 'window_x2']].values)
+    df.loc[where, ['original_length1', 'original_length2']] = (df.loc[where, ['original_length2', 'original_length1']].values)
+    df.loc[where, ['id_gene1_sample', 'id_gene2_sample']] = (df.loc[where, ['id_gene2_sample', 'id_gene1_sample']].values)
+    if ('diff1' in df.columns)&('diff2' in df.columns):
+        df.loc[where, ['diff1', 'diff2']] = (df.loc[where, ['diff2', 'diff1']].values)
+    df['actual_couples'] = df.gene1 + '_' + df.gene2
+    assert (df.couples==df.actual_couples).all()
+    return df.drop(['need_to_swap', 'actual_couples'], axis = 1)
+
+def create_fake_interaction_region(df, interaction_size=16):
+    subset = df[df.policy.isin(['hardneg', 'easyneg'])]
+    
+    length1_values = subset['length_1'].values - interaction_size
+    length2_values = subset['length_2'].values - interaction_size
+
+    # Generate random indices within the length1 range
+    x1_indices = np.random.randint(0, length1_values, size=len(subset))
+    x2_indices = x1_indices + interaction_size  # Ensure a distance of interaction_size between x1 and x2
+
+    # Generate random indices within the length2 range
+    y1_indices = np.random.randint(0, length2_values, size=len(subset))
+    y2_indices = y1_indices + interaction_size  # Ensure a distance of interaction_size between y1 and y2
+    
+    df.loc[df.policy.isin(['hardneg', 'easyneg']), 'x1'] = x1_indices
+    df.loc[df.policy.isin(['hardneg', 'easyneg']), 'x2'] = x2_indices
+    df.loc[df.policy.isin(['hardneg', 'easyneg']), 'y1'] = y1_indices
+    df.loc[df.policy.isin(['hardneg', 'easyneg']), 'y2'] = y2_indices
+    return df
+
+
+def clean_df_nt(df_nt):    
+    
+    df_nt = df_nt.rename({'gene1':'gene1_id', 'gene2':'gene2_id'}, axis = 1)
+    df_nt = df_nt.rename({'id_gene1_sample':'gene1', 'id_gene2_sample':'gene2'}, axis = 1)
+
+
+    df_nt['w'] = df_nt['x2'] - df_nt['x1']
+    df_nt['h'] = df_nt['y2'] - df_nt['y1']
+    
+    column_order = ['couples','gene1','gene2','interacting',
+                    'length_1','length_2','protein_coding_1','protein_coding_2',
+                    'x1','y1','w','h', 'policy',
+                    'original_x1','original_x2',
+                    'original_y1','original_y2',
+                    'id_gene1_sample','id_gene2_sample', 'couples_id',
+                   ]
+    df_nt = df_nt.drop_duplicates(subset = [
+        'couples','gene1','gene2','interacting',
+        'length_1','length_2','protein_coding_1',
+        'protein_coding_2','x1','y1','w','h',
+        'policy','original_x1','original_x2',
+        'original_y1','original_y2','couples_id'
+    ]).reset_index(drop = True)
+    
+    df_nt = df_nt.filter(column_order, axis = 1)
+    
+    return df_nt
+
+def create_df_genes_nt(df_full):
+    
+    df_full = df_full.rename({'gene1':'gene1_id', 'gene2':'gene2_id'}, axis = 1)
+    df_full = df_full.rename({'id_gene1_sample':'gene1', 'id_gene2_sample':'gene2'}, axis = 1)
+    
+    column_order = [
+        'gene1','gene2','id_gene1_sample','id_gene2_sample',
+        'original_length1','original_length2', 'cdna1', 'cdna2',
+        'window_x1','window_x2','window_y1','window_y2', 
+        'gene1_id', 'gene2_id', 'protein_coding_1',  'protein_coding_2'
+    ]
+    
+    df_g = df_full.filter(column_order, axis = 1)
+
+    df_g1 = df_g.filter(
+        [
+        'gene1', 
+        'id_gene1_sample', 
+        'cdna1', 
+        'window_x1',
+        'window_x2', 
+        'gene1_id',
+        'protein_coding_1', 
+        'length_1',
+        'original_length1', 
+        ]
+    ).rename(
+        {
+        'gene1':'gene_id',
+        'cdna1':'cdna', 
+        'length_1':'length',
+        'window_x1':'window_c1',
+        'window_x2':'window_c2',
+        'gene1_id':'original_gene_id', 
+        'protein_coding_1':'protein_coding', 
+        'original_length1':'original_length'
+        }, 
+        axis = 1)
+    df_g2 = df_g.filter(
+        [
+        'gene2', 
+        'id_gene2_sample', 
+        'cdna2', 
+        'window_y1',
+        'window_y2', 
+        'gene2_id',
+        'protein_coding_2', 
+        'length_2',
+        'original_length2', 
+        ]
+    ).rename(
+        {
+        'gene2':'gene_id',
+        'cdna2':'cdna', 
+        'length_2':'length',
+        'window_y1':'window_c1',
+        'window_y2':'window_c2',
+        'gene2_id':'original_gene_id', 
+        'protein_coding_2':'protein_coding', 
+        'original_length2':'original_length'
+        }, 
+        axis = 1)
+
+    df_genes_nt = pd.concat([df_g1, df_g2], axis = 0).drop_duplicates().reset_index(drop = True)
+
+    df_genes_nt['UTR5'] = 0
+    df_genes_nt['CDS'] = 0
+    df_genes_nt['UTR3'] = 0
+    
+    return df_genes_nt

@@ -7,6 +7,7 @@ import pickle
 import math
 import torch
 from tqdm.notebook import tqdm
+import random
 import seaborn as sns
 import sys
 
@@ -367,3 +368,168 @@ def create_df_genes_nt(df_full):
     df_genes_nt['UTR3'] = 0
     
     return df_genes_nt
+
+
+
+def map_coordinates(window_c1, window_c2, actual_window_c1, actual_window_c2, actual_interaction_c1, actual_interaction_c2):
+    real_c1 = actual_window_c1 + window_c1
+    real_c2 = actual_window_c2 + window_c1
+    real_interaction_c1 = actual_interaction_c1 + window_c1
+    real_interaction_c2 = actual_interaction_c2 + window_c1
+    return real_c1, real_c2, real_interaction_c1, real_interaction_c2
+
+
+def plot_relative_kernel_density_for_each_class(relative_start1, relative_end1, relative_start2, relative_end2, sample_class):
+    
+    # Define color map for each class
+    colors = {'hardneg': 'blue', 'easyneg': 'orange', 'easypos': 'green', 'smartneg': 'red'}
+
+    # Create empty lists to store rectangle points for each class
+    rect_points = {'hardneg': [], 'easyneg': [], 'easypos': [], 'smartneg': []}
+
+    # Define valid colors for each class for KDE plots
+    valid_colors = {'hardneg': 'Blues', 'easyneg': 'Oranges', 'easypos': 'Greens', 'smartneg': 'Reds'}
+
+    # Collect points for each rectangle
+    for x1, x2, y1, y2, cls in zip(relative_start1, relative_end1, relative_start2, relative_end2, sample_class):
+        # Collect points for kernel density estimation
+        num_points = 500  # More points will give smoother KDE
+        x_points = np.random.uniform(x1, x2, num_points)
+        y_points = np.random.uniform(y1, y2, num_points)
+        rect_points[cls].extend(list(zip(x_points, y_points)))
+
+    # Create individual plots for each class
+    fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+    axes = axes.flatten()
+
+    for idx, cls in enumerate(['hardneg', 'easyneg', 'easypos', 'smartneg']):
+        ax = axes[idx]
+
+        # Set the 1x1 square
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+        if rect_points[cls]:
+            points = np.array(rect_points[cls])
+            sns.kdeplot(x=points[:, 0], y=points[:, 1], ax=ax, cmap=valid_colors[cls], shade=True, alpha=0.6, label=f'Class {cls}', bw_adjust=0.5)
+
+        ax.set_title(f'Kernel Density Estimation for Class {cls}')
+        ax.legend()
+        ax.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+    
+
+def plot_embedding_lengths_based_on_policy(df_nt):
+    for policy in ['hardneg', 'easyneg', 'easypos', 'smartneg']:
+
+        colors = {'hardneg': 'blue', 'easyneg': 'orange', 'easypos': 'green', 'smartneg': 'red'}
+
+        subset = df_nt[df_nt.policy == policy].reset_index(drop = True)
+
+        length = list(pd.concat([subset.length_1, subset.length_2], axis = 0))
+        
+        if len(subset)>0:
+            if len(set(length))>1:
+                sns.kdeplot(length, color = colors[policy], label = policy)
+
+                plt.title(f'Length distribution of emebddings for policy: {policy}')
+                plt.legend()
+                plt.show()
+            else:
+                print(f'All the embedding lengths for policy {policy} are equal to {length[0]}')
+    
+    
+def plot_embeddings_position_based_on_policy(df_nt, df_genes_nt, n_to_sample_from_each_class = 1_000):
+    
+    df_nt = df_genes_nt[['gene_id', 'original_length']].rename({'gene_id':'gene1'}, axis = 1).merge(df_nt, on = 'gene1').rename({'original_length':'original_length1'}, axis = 1)
+    df_nt = df_genes_nt[['gene_id', 'original_length']].rename({'gene_id':'gene2'}, axis = 1).merge(df_nt, on = 'gene2').rename({'original_length':'original_length2'}, axis = 1)
+    
+    dfs = []
+    for policy in ['hardneg', 'easyneg', 'easypos', 'smartneg']:
+
+        colors = {'hardneg': 'blue', 'easyneg': 'orange', 'easypos': 'green', 'smartneg': 'red'}
+
+        s = df_nt[df_nt.policy == policy].reset_index(drop = True)
+        subset = s.sample(min(s.shape[0], n_to_sample_from_each_class)).reset_index(drop = True)
+
+        if len(subset)>0:
+            g1 = subset.gene1.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)
+            g2 = subset.gene2.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)
+
+            relative_start1 = list(g1[1].astype(int)/subset['original_length1'])
+            relative_end1 = list(g1[2].astype(int)/subset['original_length1'])
+            relative_start2 = list(g2[1].astype(int)/subset['original_length2'])
+            relative_end2 = list(g2[2].astype(int)/subset['original_length2'])
+
+
+            assert (np.array(relative_start1) < 1).all()
+            assert (np.array(relative_start2) < 1).all()
+            assert (np.array(relative_start1) < np.array(relative_end1)).all()
+            assert (np.array(relative_start2) < np.array(relative_end2)).all()
+
+            color_map = colors[policy]
+            plot_relative_kernel_density_for_one_class(relative_start1, relative_end1, relative_start2, relative_end2, policy, color_map)
+
+def plot_relative_kernel_density_for_one_class(relative_start1, relative_end1, relative_start2, relative_end2, class_name, color_map):
+    # Create empty list to store rectangle points for the given class
+    rect_points = []
+
+    valid_colors = {'red':'Reds', 'green':'Greens', 'blue':'Blues', 'orange': 'Oranges'}
+    
+    # Collect points for the specific class
+    for x1, x2, y1, y2 in zip(relative_start1, relative_end1, relative_start2, relative_end2):
+        # Collect points for kernel density estimation
+        num_points = 500  # More points will give smoother KDE
+        x_points = np.random.uniform(x1, x2, num_points)
+        y_points = np.random.uniform(y1, y2, num_points)
+        rect_points.extend(list(zip(x_points, y_points)))
+
+    # Create the figure for one class
+    plt.figure(figsize=(6, 6))
+    ax = plt.gca()
+
+    # Set the 1x1 square
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+
+    if rect_points:
+        points = np.array(rect_points)
+        sns.kdeplot(x=points[:, 0], y=points[:, 1], ax=ax, cmap=valid_colors[color_map], shade=True, alpha=0.6, label=f'Class {class_name}', bw_adjust=0.5)
+
+    ax.set_title(f'Kernel Density Estimation for Class {class_name}')
+    ax.legend()
+    ax.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+    
+    
+def min_distance(interval1, interval2):
+    # Sorting intervals to make sure interval1[0] is less than interval2[0]
+    interval1, interval2 = sorted([interval1, interval2], key=lambda x: x[0])
+
+    # Case where intervals overlap
+    if interval1[1] >= interval2[0]:
+        return 0
+
+    # Minimum distance between non-overlapping intervals
+    return interval2[0] - interval1[1]
+
+def get_test_policy(emb_policy, sample_policy):
+    if emb_policy == 'hardneg':
+        assert sample_policy in ['easyneg', 'smartneg']
+        return 'hardneg'
+
+    elif emb_policy == 'easyneg':
+        assert sample_policy in ['easyneg', 'smartneg']
+        return 'easyneg'
+    
+    elif emb_policy == 'smartneg':
+        assert sample_policy in ['easyneg', 'smartneg']
+        return sample_policy
+    
+    elif emb_policy == 'easypos':
+        assert sample_policy in ['easypos', 'hardneg']
+        return sample_policy

@@ -533,3 +533,122 @@ def get_test_policy(emb_policy, sample_policy):
     elif emb_policy == 'easypos':
         assert sample_policy in ['easypos', 'hardneg']
         return sample_policy
+
+    
+def plot_testset_position_based_on_policy(test, df_genes_nt, n_to_sample_from_each_class = 1_000):
+    
+    test = df_genes_nt[['gene_id', 'original_length']].rename({'gene_id':'gene1'}, axis = 1).merge(test, on = 'gene1').rename({'original_length':'original_length1'}, axis = 1)
+    test = df_genes_nt[['gene_id', 'original_length']].rename({'gene_id':'gene2'}, axis = 1).merge(test, on = 'gene2').rename({'original_length':'original_length2'}, axis = 1)
+    
+    dfs = []
+    for policy in ['hardneg', 'easyneg', 'easypos', 'smartneg']:
+
+        colors = {'hardneg': 'blue', 'easyneg': 'orange', 'easypos': 'green', 'smartneg': 'red'}
+
+        s = test[test.policy == policy].reset_index(drop = True)
+        subset = s.sample(min(s.shape[0], n_to_sample_from_each_class)).reset_index(drop = True)
+
+        if len(subset)>0:
+            g1 = subset.gene1.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)
+            g2 = subset.gene2.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)
+            
+            start1 = g1[1].astype(int) + subset.x1
+            end1 = g1[1].astype(int) + subset.x2
+            start2 = g2[1].astype(int) + subset.y1
+            end2 = g2[1].astype(int) + subset.y2
+            
+            
+            relative_start1 = list(start1/subset['original_length1'])
+            relative_end1 = list(end1/subset['original_length1'])
+            relative_start2 = list(start2/subset['original_length2'])
+            relative_end2 = list(end2/subset['original_length2'])
+
+
+            assert (np.array(relative_start1) < 1).all()
+            assert (np.array(relative_start2) < 1).all()
+            assert (np.array(relative_start1) < np.array(relative_end1)).all()
+            assert (np.array(relative_start2) < np.array(relative_end2)).all()
+
+            color_map = colors[policy]
+            plot_relative_kernel_density_for_one_class(relative_start1, relative_end1, relative_start2, relative_end2, policy, color_map)
+
+            
+def control_over_test_set(test500, df_nt, df_genes_nt, df, df_genes, df_repeats, MAX_RNA_SIZE_TEST):
+    assert (test500.seed_x1 <= test500.seed_x2).all()
+    assert (test500.seed_y1 <= test500.seed_y2).all()
+
+    assert set(test500.g1 + '_' + test500.g2).intersection(set(df.couples)) == set(test500.g1 + '_' + test500.g2)
+    assert (test500.x2 - test500.x1).max() == MAX_RNA_SIZE_TEST
+    assert (test500.y2 - test500.y1).max() == MAX_RNA_SIZE_TEST
+    assert test500.apply(lambda x: len(x.cdna1) == (x.x2 - x.x1), axis = 1).all()
+    assert test500.apply(lambda x: len(x.cdna2) == (x.y2 - x.y1), axis = 1).all()
+
+
+    pos = test500[test500.policy.isin(['easypos'])]
+
+    assert (pos.x1 <= pos.seed_x1).all()
+    assert (pos.seed_x2 <= pos.x2).all()
+    assert (pos.y1 <= pos.seed_y1).all()
+    assert (pos.seed_y2 <= pos.y2).all()
+    
+    test500['start_embedding1'] = test500.gene1.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)[1].astype(int)
+    test500['end_embedding1'] = test500.gene1.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)[2].astype(int)
+    test500['start_embedding2'] = test500.gene2.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)[1].astype(int)
+    test500['end_embedding2'] = test500.gene2.str.extractall('(.*)_(.*)_(.*)').reset_index(drop = True)[2].astype(int)
+
+    test500['real_start1'] = test500.start_embedding1 + test500.x1
+    test500['real_end1'] = test500.start_embedding1 + test500.x2
+    test500['real_start2'] = test500.start_embedding2 + test500.y1
+    test500['real_end2'] = test500.start_embedding2 + test500.y2
+
+    test500['real_start_interaction1'] = test500.start_embedding1 + test500.seed_x1
+    test500['real_end_interaction1'] = test500.start_embedding1 + test500.seed_x2
+    test500['real_start_interaction2'] = test500.start_embedding2 + test500.seed_y1
+    test500['real_end_interaction2'] = test500.start_embedding2 + test500.seed_y2
+    
+    
+    for _, row in tqdm(test500.iterrows(), total = test500.shape[0]):
+    
+        couple = row.g1 + '_' + row.g2
+
+        assert row.cdna1 == df_genes[df_genes.gene_id == row.g1].iloc[0].cdna[row.real_start1:row.real_end1]
+        assert row.cdna2 == df_genes[df_genes.gene_id == row.g2].iloc[0].cdna[row.real_start2:row.real_end2]
+
+
+        if row.policy == 'easypos':
+
+            assert  df[df.couples == couple].iloc[0].interacting
+
+            r_x1, r_x2, r_y1, r_y2 = row.real_start_interaction1, row.real_end_interaction1, row.real_start_interaction2, row.real_end_interaction2
+            r_w = r_x2 - r_x1
+            r_h = r_y2 - r_y1
+            assert len(
+                df[
+                    (df.couples == couple) & (df.x1 == r_x1) & (df.w == r_w) & (df.y1 == r_y1) & (df.h == r_h)
+                ]
+            ) > 0
+
+        elif row.policy == 'hardneg':
+            assert  df[df.couples == couple].iloc[0].interacting
+
+        else:
+            assert df[df.couples == couple].iloc[0].interacting == False
+
+
+        if 'Simple_repeat' in row.full_feature1:
+
+            condition = False
+            for _, row_repeat in df_repeats[(df_repeats.gene_id == row.g1)].iterrows():        
+                if min_distance((row.real_start1, row.real_end1), (row_repeat.start, row_repeat.end)) == 0:
+                    condition = True
+
+            assert condition
+
+        if 'Simple_repeat' in row.full_feature2:
+
+            condition = False
+            for _, row_repeat in df_repeats[(df_repeats.gene_id == row.g2)].iterrows():        
+                if min_distance((row.real_start2, row.real_end2), (row_repeat.start, row_repeat.end)) == 0:
+                    condition = True
+
+            assert condition

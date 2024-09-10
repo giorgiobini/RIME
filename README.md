@@ -116,10 +116,9 @@ Run these scripts from the src directory in the following order:
 - Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets) [rnarna]
 - download_embeddings.py [rnarna]
 - nohup python download_embeddings.py --batch_size 19 &> download_embeddings.out & [rnarna]
+- Decide_hyperparameters_dataloader.ipynb [rnarna]
 - train_binary_cl.py [rnarna]
-- train_binary_cl2_finetuning.py [rnarna]
-- run_binary_cl_on_test2.py OR run_binary_cl_on_test2_500.py [rnarna]
-- plot_test2_results.ipynb [rnarna]
+- run_binary_cl_on_test_500.py
 
 
 

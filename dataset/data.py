@@ -27,7 +27,7 @@ from torch.utils.data import DataLoader
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import ROOT_DIR, MAX_RNA_SIZE, MAX_RNA_SIZE_BERT
+from config import ROOT_DIR, MAX_RNA_SIZE, MAX_RNA_SIZE_BERT, MIN_RNA_SIZE_DATALOADER
 
 MAX_RNA_SIZE = MAX_RNA_SIZE#keep this line like this even if it seems unuseful
 
@@ -143,6 +143,7 @@ class AugmentPolicy:
             Mapping[float, float], Mapping[Tuple[int, int], float]
         ],
         interacting: Collection[bool],
+        min_size: int = MIN_RNA_SIZE_DATALOADER,
         max_size: int = MAX_RNA_SIZE,
     ):
         """
@@ -166,6 +167,7 @@ class AugmentPolicy:
         self.height_probabilities = torch.tensor(list(height_probabilities.values()))
         self.interacting: Set[bool] = set(interacting)
 
+        self.min_size: int = min_size
         self.max_size: int = max_size
 
     @property
@@ -332,12 +334,14 @@ class EasyPosAugment(AugmentPolicy):
         target_width: int = _sample_target_dimension_multiplier(
             bins=self.width_bins,
             probabilities=self.width_probabilities,
+            min_size=min(gene1_length, self.min_size),
             max_size=min(gene1_length, self.max_size),
             starting_dim=interaction["w"],
         )
         target_height: int = _sample_target_dimension_multiplier(
             bins=self.height_bins,
             probabilities=self.height_probabilities,
+            min_size=min(gene2_length, self.min_size),
             max_size=min(gene2_length, self.max_size),
             starting_dim=interaction["h"],
         )
@@ -345,7 +349,7 @@ class EasyPosAugment(AugmentPolicy):
         # We can now crop each dimension separately.
         interaction_x1: int = int(interaction["x1"])
         interaction_x2: int = int(interaction_x1 + interaction["w"])
-        
+
         target_x1 = _compute_target(
             interaction_p1=interaction_x1,
             interaction_p2=interaction_x2,
@@ -379,6 +383,7 @@ class EasyPosAugment(AugmentPolicy):
             gene2=gene2,
             interacting=True,
         )
+            
 
 
 class SmartNegAugment(AugmentPolicy):
@@ -459,12 +464,14 @@ class SmartNegAugment(AugmentPolicy):
         target_width: int = _sample_target_dimension_multiplier(
             bins=self.width_bins,
             probabilities=self.width_probabilities,
+            min_size=min(gene1_length,self.min_size),
             max_size=min(gene1_length, self.max_size),
             starting_dim=interaction["w"],
         )
         target_height: int = _sample_target_dimension_multiplier(
             bins=self.height_bins,
             probabilities=self.height_probabilities,
+            min_size=min(gene2_length,self.min_size),
             max_size=min(gene2_length, self.max_size),
             starting_dim=interaction["h"],
         )
@@ -587,12 +594,14 @@ class HardPosAugment(AugmentPolicy):
         target_width: int = _sample_target_dimension_multiplier(
             bins=self.width_bins,
             probabilities=self.width_probabilities,
+            min_size=min(gene1_length,self.min_size),
             max_size=min(gene1_length, self.max_size),
             starting_dim=interaction["w"],
         )
         target_height: int = _sample_target_dimension_multiplier(
             bins=self.height_bins,
             probabilities=self.height_probabilities,
+            min_size=min(gene2_length,self.min_size),
             max_size=min(gene2_length, self.max_size),
             starting_dim=interaction["h"],
         )
@@ -673,11 +682,13 @@ class EasyNegAugment(AugmentPolicy):
         target_width: int = _sample_target_dimension_window(
             bins=self.width_bins,
             probabilities=self.width_probabilities,
+            min_size=min(gene1_length,self.min_size),
             max_size=min(gene1_length, self.max_size),
         )
         target_height: int = _sample_target_dimension_window(
             bins=self.height_bins,
             probabilities=self.height_probabilities,
+            min_size=min(gene2_length,self.min_size),
             max_size=min(gene2_length, self.max_size),
         )
 
@@ -800,11 +811,13 @@ class HardNegAugment(AugmentPolicy):
         target_width: int = _sample_target_dimension_window(
             bins=self.width_bins,
             probabilities=self.width_probabilities,
+            min_size=min(gene1_length,self.min_size),
             max_size=min(gene1_length, self.max_size),
         )
         target_height: int = _sample_target_dimension_window(
             bins=self.height_bins,
             probabilities=self.height_probabilities,
+            min_size=min(gene2_length,self.min_size),
             max_size=min(gene2_length, self.max_size),
         )
         
@@ -900,6 +913,7 @@ class RegionSpecNegAugment(AugmentPolicy):
         target_width: int = _sample_target_dimension_multiplier(
             bins=self.width_bins,
             probabilities=self.width_probabilities,
+            min_size=min(gene1_length,self.min_size),
             max_size=min(gene1_length, self.max_size),
             starting_dim=int(x2 - x1),
         )
@@ -974,6 +988,7 @@ class RegionSpecNegAugment(AugmentPolicy):
                 target_height: int = _sample_target_dimension_window(
                     bins=self.height_bins,
                     probabilities=self.height_probabilities,
+                    min_size=min(gene2_length, self.min_size),
                     max_size=min(gene2_length, self.max_size),
                 )
 
@@ -992,6 +1007,7 @@ class RegionSpecNegAugment(AugmentPolicy):
                 target_height: int = _sample_target_dimension_window(
                     bins=self.height_bins,
                     probabilities=self.height_probabilities,
+                    min_size=min(gene2_length, self.min_size),
                     max_size=min(gene2_length, self.max_size),
                 )
 
@@ -1028,6 +1044,7 @@ class RegionSpecNegAugment(AugmentPolicy):
                 target_height: int = _sample_target_dimension_window(
                     bins=self.height_bins,
                     probabilities=self.height_probabilities,
+                    min_size=min(gene2_length, self.min_size),
                     max_size=min(gene2_length, self.max_size),
                 )
 
@@ -1067,6 +1084,7 @@ class RegionSpecNegAugment(AugmentPolicy):
                 target_height: int = _sample_target_dimension_window(
                     bins=self.height_bins,
                     probabilities=self.height_probabilities,
+                    min_size=min(gene2_length, self.min_size),
                     max_size=min(gene2_length, self.max_size),
                 )
 
@@ -1311,7 +1329,7 @@ class RNADataset(Dataset):
         return len(self.augment_specs)
 
 
-def _sample_target_dimension_window(bins, probabilities, max_size: int) -> int:
+def _sample_target_dimension_window(bins, probabilities, min_size: int, max_size: int) -> int:
     target_bin_index: torch.Tensor = torch.multinomial(
         torch.as_tensor(probabilities),
         num_samples=1,
@@ -1321,11 +1339,11 @@ def _sample_target_dimension_window(bins, probabilities, max_size: int) -> int:
     target_low, target_high = bins[target_bin_index]
     target: int = torch.randint(target_low, target_high, (1,)).item()
 
-    return min(target, max_size)
+    return max(min(target, max_size), min_size)
 
 
 def _sample_target_dimension_multiplier(
-    bins, probabilities, starting_dim: int, max_size: int
+    bins, probabilities, starting_dim: int, min_size:int, max_size: int
 ) -> int:
     target_bin_index: torch.Tensor = torch.multinomial(
         torch.as_tensor(probabilities),
@@ -1334,8 +1352,11 @@ def _sample_target_dimension_multiplier(
     )
     target_multiplier = bins[target_bin_index]
     target: int = int(starting_dim * target_multiplier)
+    
+    dimension = min(max(target, starting_dim), max_size)
+    dimension = max(dimension, min_size)
 
-    return min(max(target, starting_dim), max_size)
+    return dimension
 
 
 

@@ -2,6 +2,9 @@ import os
 
 MAX_RNA_SIZE = 5970 #other accepted sequence length (without N) are the ones <= 5974, and also 5976, 5977, 5978, 5979, 5982, 5983, 5984, 5988, 5989, 5994
 
+MIN_RNA_SIZE_DATALOADER = 100 # I will not sample with the dataloader rna lengths < MIN_RNA_SIZE_POS_SAMPLES_TRAINING, with the exception of smaller RNAs
+
+
 MAX_RNA_SIZE_BERT = 500
 
 EMBEDDING_DIM_BERT = 768 #bert-transformer embedding (number of features for each token)

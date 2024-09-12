@@ -33,23 +33,27 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     parser.add_argument('--how', default='test',
                         help='Can be test or val')
+    parser.add_argument('--hq', type=str_to_bool, nargs='?', const=True, default=False,
+                        help="If True and if dataset = 'paris', I will calculate the HQ test set")
     parser.add_argument('--dataset', default='paris',
                         help='Can be paris, mario, ricseq, splash')
     parser.add_argument('--folder', default='binary_cl2',
                         help='Default is binary_cl2')
-    parser.add_argument('--enhn', type=str_to_bool, nargs='?', const=True, default=False,
-                        help="If True, I will calculate the EN, HN results (test set of 500 X 500 matrixes where the embedding is containing interacting regions - easypos in the case of HN, smartneg in the case of EN -)")
+    parser.add_argument('--dimension', default='200',
+                        help='The lengths of the rna in the contact matrix.')
     return parser
 
 def main(args):
     
-    if ENHN:
-        enhn_suffix = 'ENHN'
+    if HQ:
+        hq_suffix = '_HQ'
     else:
-        enhn_suffix = ''
+        hq_suffix = ''
 
     dataset = args.dataset
+    
     assert dataset in ['paris', 'mario', 'ricseq', 'splash']
+    
     if dataset == 'paris':
         paris = True
     else:
@@ -58,12 +62,12 @@ def main(args):
     start_time = time.time() 
 
     if paris:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW + enhn_suffix}500.csv'))
-        df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt_HQ.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW + hq_suffix}{DIMENSION}.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt{hq_suffix}.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt{hq_suffixv}.csv'))
 
     else:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{dataset + enhn_suffix}500.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, f'{dataset}{DIMENSION}.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
         df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
 
@@ -98,7 +102,7 @@ def main(args):
         assert df_nt_row.gene2 == gene2
 
         id_sample = id_couple
-        policy_sample = df_nt_row.policy
+        policy_sample = row.policy
         couple_id_sample = df_nt_row.couples_id
         
         x1_emb, x2_emb, y1_emb, y2_emb = row.x1//6, row.x2//6, row.y1//6, row.y2//6
@@ -175,9 +179,9 @@ def main(args):
     res['gene1_original'], res['gene2_original'] = g12[0], g12[1]
 
     if paris:
-        res.to_csv(os.path.join(checkpoint_dir, f'{HOW + enhn_suffix}_results500.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results{DIMENSION}.csv'))
     else:
-        res.to_csv(os.path.join(checkpoint_dir, f'{dataset + enhn_suffix}_results500.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{dataset}_results{DIMENSION}.csv'))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -193,9 +197,8 @@ if __name__ == '__main__':
     #nohup python run_binary_cl_on_test_500.py --dataset=ricseq &> run_binary_cl_on_test_ricseq500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=splash &> run_binary_cl_on_test_splash500.out &
     
-    #For ENHN, add --enhn argument, like:
-    #nohup python run_binary_cl_on_test_500.py --how=test --enhn &> run_binary_cl_on_test_500.out &
-    #nohup python run_binary_cl_on_test_500.py --dataset=mario --enhn &> run_binary_cl_on_test_mario500.out &
+    #For HQ results, add --hq argument, like:
+    #nohup python run_binary_cl_on_test_500.py --how=test --hq &> run_binary_cl_on_test_HQ_500.out &
      
 
 
@@ -203,7 +206,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     HOW = args.how 
     DATASET = args.dataset
-    ENHN = args.enhn
+    DIMENSION = args.dimension
+    HQ = args.hq
     
     
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', args.folder)

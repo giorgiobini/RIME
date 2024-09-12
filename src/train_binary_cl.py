@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, '..')
 from util.engine import train_one_epoch
 from util.engine import evaluate
+from torch.utils.data import DataLoader, ConcatDataset, Dataset
 from models.nt_classifier import build as build_model 
 import util.misc as utils
 from util.params_dataloader import load_windows_and_multipliers
@@ -41,6 +42,21 @@ def str_to_bool(value):
     elif value.lower() in {'true', 't', '1', 'yes', 'y'}:
         return True
     raise ValueError(f'{value} is not a valid boolean value')
+    
+class MergedDataset(Dataset):
+    def __init__(self, datasets):
+        self.datasets = datasets
+        self.lengths = [len(dataset) for dataset in datasets]
+        self.total_length = sum(self.lengths)
+
+    def __len__(self):
+        return self.total_length
+
+    def __getitem__(self, index):
+        for i, length in enumerate(self.lengths):
+            if index < length:
+                return self.datasets[i][index]
+            index -= length
 
 def undersample_df(df, random_state = 23):
     neg = df[df.interacting == False]
@@ -55,6 +71,8 @@ def undersample_df(df, random_state = 23):
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     
+    # hyperparameters
+    parser.add_argument('--class_1_weight', default=1.0, type=float, help="The higher is the lower will be the false positives. For instance, a value of 2.5 (penalizes class 1 errors 2.5 times more than class 0 errors).")
     parser.add_argument('--lr', default=5e-5, type=float)
     parser.add_argument('--lr_backbone', default=5e-5, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
@@ -88,7 +106,7 @@ def get_args_parser():
 
     # * Model
     parser.add_argument('--modelarch', default=2, type=int,
-                        help="Can be 1, 2. Architecture 1 has convolution projection on each branch and then contact matrix. Architecture 1 has mlp concatenation for each token combination and the contact matrix is built from this concat.")
+                        help="Can be 1, 2. Architecture 1 has convolution projection on each branch and then contact matrix. Architecture 2 has mlp concatenation for each token combination and the contact matrix is built from this concat.")
     parser.add_argument('--dropout_prob', default=0.01, type=float,
                          help="Dropout in the MLP model")
     parser.add_argument('--args.mini_batch_size', default=32, type=int,
@@ -327,49 +345,44 @@ def obtain_val_dataset_paris(dimension, finetuning, min_n_groups_val, max_n_grou
     return dataset_val, 'dataset500'
     
 
+def obtain_train_splash_mario_ricseq_dataset(dataset, dimension, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, scaling_factor = 5):
+    assert dataset in ['mario', 'ricseq', 'splash']
+    df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
+    df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
+    df_nt, df_genes_nt = clean_nt_dataframes_before_class_input(df_nt, df_genes_nt)
+    data_dir = os.path.join(rna_rna_files_dir, f'{dataset}')
+
+    pos_multipliers, neg_windows = load_windows_and_multipliers(dimension, 'splash', np.nan, np.nan, np.nan)
+    neg_multipliers = pos_multipliers
+
+    vc_train = df_nt.interacting.value_counts()
+    unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
+    
+    data_dir = os.path.join(rna_rna_files_dir, f'{dataset}')
+    file_training = os.path.join(data_dir, 'gene_pairs_training.txt')
+    with open(file_training, "rb") as fp:   # Unpickling
+        train_couples = pickle.load(fp)
+
+    train_nt = df_nt[df_nt.couples_id.isin(train_couples)]
+
+    sn_per_sample, hn_per_sample, en_per_sample = get_per_sample_from_proportion(per_sample_p, unbalance_factor, proportion_sn, proportion_hn, proportion_en)
+
+    policies_train = obtain_policies_object(per_sample_p, sn_per_sample, hn_per_sample, en_per_sample, pos_multipliers, neg_multipliers, neg_windows)
+
+    dataset_train  = obtain_dataset_object(policies_train, df_genes_nt, df_nt, '', scaling_factor, min_n_groups_train, max_n_groups_train)
+    return dataset_train, policies_train
+
 def obtain_train_dataset(dataset, dimension, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor = 5):
     if dataset == 'paris':
         dataset_train, policies_train = obtain_train_dataset_paris(dimension, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
+    elif dataset == 'psoralen':
+        dataset_paris, policies_train = obtain_train_dataset_paris(dimension, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
+        dataset_splash, _ = obtain_train_splash_mario_ricseq_dataset('splash', dimension, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, scaling_factor)
+        dataset_train = MergedDataset([dataset_splash, dataset_paris])
     else:
-        raise NotImplementedError #I have to correct everything below
-        assert False
-        assert dataset in ['mario', 'ricseq', 'splash']
-        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
-        df_nt, df_genes_nt = clean_nt_dataframes_before_class_input(df_nt, df_genes_nt)
-        data_dir = os.path.join(rna_rna_files_dir, f'{dataset}')
-        file_training = os.path.join(data_dir, 'gene_pairs_training.txt')
-        with open(file_training, "rb") as fp:   # Unpickling
-            train_couples = pickle.load(fp)
-
-        train_nt = df_nt[df_nt.couples_id.isin(train_couples)]
-        
-        scaling_factor = 5
-
-        if dataset == 'splash':
-            pos_multipliers = {2:0.7, 8:0.1, 15:0.1, 50:0.1, 100:0.1}
-            neg_multipliers = {7:0.5, 15:0.3, 50:0.15, 100:0.15}
-
-        elif dataset == 'mario':
-            pos_multipliers = {5:0.7, 15:0.2, 50:0.1, 100:0.1}
-            neg_multipliers = {5:0.1, 6:0.35, 15:0.2, 50:0.15, 100:0.2}
-
-        elif dataset == 'ricseq':
-            pos_multipliers = {3:0.8, 40:0.15, 100:0.05}
-            neg_multipliers = {6:0.73, 70:0.13, 100:0.13}
-
-        vc_train = train_nt.interacting.value_counts()
-        if vc_train[False]>vc_train[True]:
-            unbalance_factor = 1 - (vc_train[False] - vc_train[True]) / vc_train[False]
-            policies_train = obtain_policies_object(per_sample_p, per_sample_p*unbalance_factor, 0, 0, pos_multipliers, neg_multipliers, {})
-        elif vc_train[False]<vc_train[True]:
-            unbalance_factor = 1 - (vc_train[True] - vc_train[False]) / vc_train[True]
-            policies_train = obtain_policies_object(per_sample_p*unbalance_factor, per_sample_p, 0, 0, pos_multipliers, neg_multipliers, {})
-        elif vc_train[True]==vc_train[True]:
-            unbalance_factor = 1
-
-        dataset_train = obtain_dataset_object(policies_train, df_genes_nt, train_nt, '', scaling_factor, min_n_groups_train, max_n_groups_train)
+        dataset_train, policies_train = obtain_train_splash_mario_ricseq_dataset(dataset, dimension, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, scaling_factor)
     return dataset_train, policies_train
+
 
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
@@ -413,7 +426,8 @@ def main(args):
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    criterion = torch.nn.CrossEntropyLoss()
+    weights = torch.tensor([1.0, args.class_1_weight])
+    criterion = torch.nn.CrossEntropyLoss(weight=weights)
     
     if args.resume:
         if args.resume.startswith('https'):
@@ -501,6 +515,8 @@ if __name__ == '__main__':
     #run me with: -> 
 
     #nohup python train_binary_cl.py &> train_binary_cl.out &
+    
+    #nohup python train_binary_cl.py --class_1_weight=1.5 &> train_binary_cl.out &
 
     #nohup python train_binary_cl.py --finetuning &> train_binary_cl_finetuning.out &
     #nohup python train_binary_cl.py --train_hq &> train_binary_cl_hq.out &

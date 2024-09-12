@@ -220,7 +220,7 @@ class BinaryClassifierNT2(nn.Module):
             rna2 = self.nt_projection_module(rna2)
             # shapes rna1, rna2 -> torch.Size([batch_size, d, len_rna1]) torch.Size([batch_size, d, len_rna2])
 
-        output_contact_matrix = self.obtain_mlp_output_reduced_memory(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
+        output_contact_matrix = self.obtain_mlp_output(rna1, rna2) #obtain_mlp_output, obtain_mlp_output_reduced_memory
         binary_output = self.small_cnn(output_contact_matrix)
         return binary_output
 

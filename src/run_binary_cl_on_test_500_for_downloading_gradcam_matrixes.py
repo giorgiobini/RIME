@@ -82,7 +82,9 @@ def main(args):
         
         df_nt_row = df_nt[df_nt.couples == id_couple].iloc[0]
         
-        interacting = df_nt_row.interacting
+        policy_sample = row.policy
+        interacting = True if policy_sample == 'easypos' else False
+        
         assert df_nt_row.gene1 == gene1
         assert df_nt_row.gene2 == gene2
 

@@ -64,7 +64,7 @@ def main(args):
     if paris:
         df = pd.read_csv(os.path.join(metadata_dir, f'{HOW + hq_suffix}{DIMENSION}.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt{hq_suffix}.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt{hq_suffixv}.csv'))
+        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt{hq_suffix}.csv'))
 
     else:
         df = pd.read_csv(os.path.join(metadata_dir, f'{dataset}{DIMENSION}.csv'))
@@ -93,16 +93,16 @@ def main(args):
 
     for _, row in df.iterrows():
 
-        gene1, gene2, id_couple, l1, l2 = row['gene1'], row['gene2'], row['couples'], row['len1'], row['len2']
+        gene1, gene2, id_couple, id_couple_nt, l1, l2 = row['gene1'], row['gene2'], row['couples'], row['df_nt_id'], row['len1'], row['len2']
         
-        df_nt_row = df_nt[df_nt.couples == id_couple].iloc[0]
+        df_nt_row = df_nt[df_nt.couples == id_couple_nt].iloc[0]
         
-        interacting = df_nt_row.interacting
         assert df_nt_row.gene1 == gene1
         assert df_nt_row.gene2 == gene2
 
         id_sample = id_couple
         policy_sample = row.policy
+        interacting = True if policy_sample == 'easypos' else False
         couple_id_sample = df_nt_row.couples_id
         
         x1_emb, x2_emb, y1_emb, y2_emb = row.x1//6, row.x2//6, row.y1//6, row.y2//6
@@ -118,14 +118,14 @@ def main(args):
         
         outputs = model(rna1, rna2)
 
-        if interacting:
-            outputs[:, 1].backward()
-            x1 = int(row.seed_x1-row.x1)
-            x2 = int(row.seed_x2-row.x1)
-            y1 = int(row.seed_y1-row.y1)
-            y2 = int(row.seed_y2-row.y1)
-            width = row.len1
-            height = row.len2
+        # if interacting:
+        #     outputs[:, 1].backward()
+        #     x1 = int(row.seed_x1-row.x1)
+        #     x2 = int(row.seed_x2-row.x1)
+        #     y1 = int(row.seed_y1-row.y1)
+        #     y2 = int(row.seed_y2-row.y1)
+        #     width = row.len1
+        #     height = row.len2
 
         probability += outputs.softmax(-1)[:, 1].tolist()
 
@@ -179,7 +179,7 @@ def main(args):
     res['gene1_original'], res['gene2_original'] = g12[0], g12[1]
 
     if paris:
-        res.to_csv(os.path.join(checkpoint_dir, f'{HOW}_results{DIMENSION}.csv'))
+        res.to_csv(os.path.join(checkpoint_dir, f'{HOW + hq_suffix}_results{DIMENSION}.csv'))
     else:
         res.to_csv(os.path.join(checkpoint_dir, f'{dataset}_results{DIMENSION}.csv'))
 

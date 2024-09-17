@@ -426,7 +426,7 @@ def main(args):
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    weights = torch.tensor([1.0, args.class_1_weight])
+    weights = torch.tensor([1.0, args.class_1_weight]).to(device)
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     
     if args.resume:

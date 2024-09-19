@@ -1,6 +1,6 @@
 #!/bin/bash
 
-folders=('arch2_PARIStrained_PARISval0071')
+folders=('arch2_PARIStrained_PARISval0016' 'arch2_PARIStrained_PARISval0024' 'arch2_PARIStrained_PARISval0027' 'arch2_PARIStrained_PARISval0037' 'arch2_PARIStrained_PARISval0039' 'arch2_PARIStrained_PARISval0045' 'arch2_PARIStrained_PARISval0047' 'arch2_PARIStrained_PARISval0050' 'arch2_PARIStrained_PARISval0053' 'arch2_PARIStrained_PARISval0056' 'arch2_PARIStrained_PARISval0057' 'arch2_PARIStrained_PARISval0058' 'arch2_PARIStrained_PARISval0070' 'arch2_PARIStrained_PARISval0075' 'arch2_PARIStrained_PARISval0077' 'arch2_PARIStrained_PARISval0078' 'arch2_PARIStrained_PARISval0085' 'arch2_PARIStrained_PARISval0094')
 
 for folder in "${folders[@]}"; do
 

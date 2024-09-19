@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from sklearn.utils import resample
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.stats import pearsonr
 from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 from .colors import *
 from .model_names_map import map_model_names
@@ -1813,4 +1815,168 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
                 ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
     
     plt.title(title)
+    plt.show()
+    
+    
+def plot_sr_distributions(df_sr, label_x, figsize = (16, 8)):
+    
+    #map model_names
+    df_sr['Model'] = df_sr['Model'].apply(map_model_names)
+
+    # Create the violin plot without the inner box plot
+    plt.figure(figsize=figsize)
+    ax = sns.violinplot(x='Model', y='Normalized Score', hue='Category', data=df_sr, split=True, palette=['#FF9999', '#99FF99'], inner=None)
+
+    # Add the mean points with custom horizontal lines
+    mean_line_length = 0.3  # Adjust this value to control the length of the horizontal lines
+
+    # Calculate means
+    mean_points = df_sr.groupby(['Model', 'Category'])['Normalized Score'].mean().reset_index()
+
+    # Get the positions of each category for plotting
+    positions = {category: idx for idx, category in enumerate(df_sr['Model'].unique())}
+
+    # Plot mean lines manually
+    for i, model in enumerate(mean_points['Model'].unique()):
+        for j, category in enumerate(mean_points['Category'].unique()):
+            mean_val = mean_points[(mean_points['Model'] == model) & (mean_points['Category'] == category)]['Normalized Score'].values[0]
+            pos = positions[model]
+            # Add offset for split violin
+            if category == label_x:
+                pos -= mean_line_length / 2
+            else:
+                pos += mean_line_length / 2
+            plt.plot([pos - mean_line_length / 2, pos + mean_line_length / 2], [mean_val, mean_val], color=['#A26565', '#568E56'][j], lw=2)
+
+    # Adjust the legend to prevent duplication
+    handles, labels = plt.gca().get_legend_handles_labels()
+    plt.legend(handles[:2], labels[:2], title='Category')
+
+    plt.title('Violin Plot with Two Distributions per Category')
+    plt.show()
+    
+    
+def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1):
+    
+    model_names = map_model_names(model_names)
+    
+    assert precision_data.shape == npv_data.shape
+    
+    num_modelli, n_points =  precision_data.shape[0], precision_data.shape[1]
+    
+    percentuali_neg = np.linspace(min_perc, 100, num=n_points).astype(int)
+    percentuali_pos = np.linspace(min_perc, 100, num=n_points).astype(int)[::-1]
+
+    percentuali = np.concatenate((percentuali_neg, percentuali_pos))
+    
+    # Unione dei dati di precisione e NPV in un unico array per l'asse Y
+    combined_data = np.hstack((npv_data, precision_data))
+
+    # Creiamo un array per la combinazione delle due colormap
+    combined_image = np.zeros((num_modelli, 2*n_points, 3))
+
+    # Applichiamo la colormap 'Oranges' alla parte sinistra (NPV)
+    norm = plt.Normalize(vmin=0, vmax=1)
+    npv_colored = plt.cm.Oranges(norm(npv_data))[:, :, :3]  # Consideriamo solo i primi tre canali (RGB)
+    combined_image[:, :n_points, :] = npv_colored
+
+    # Applichiamo la colormap 'Blues' alla parte destra (Precision)
+    precision_colored = plt.cm.Blues(norm(precision_data))[:, :, :3]  # Consideriamo solo i primi tre canali (RGB)
+    combined_image[:, n_points:, :] = precision_colored
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Creiamo il grafico principale
+    im = ax.imshow(combined_image, aspect='auto', interpolation='nearest')
+    plt.xlabel('Percentage of bottom / top predictions (%)')
+    plt.ylabel('Model')
+    plt.axvline(x=n_points-0.5, color='black', linestyle='--', label='Threshold between positive and negative predictions')
+    plt.title('NPV over bottom predictions (left), Precision over top predictions (right)')
+    plt.xticks(np.arange(len(percentuali)), percentuali)
+    plt.yticks(np.arange(num_modelli), model_names)
+
+    # Divider per le due colorbar
+    divider = make_axes_locatable(ax)
+    cax1 = divider.append_axes("right", size="5%", pad=0.1)
+    cax2 = divider.append_axes("right", size="5%", pad=0.7)
+
+    # Colorbar per NPV
+    cb1 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Oranges'), cax=cax1)
+    cb1.set_label('NPV Score')
+
+    # Colorbar per Precision
+    cb2 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), cax=cax2)
+    cb2.set_label('Precision Score')
+
+    # Aggiungiamo i numeri alle celle del grafico
+    for i in range(num_modelli):
+        for j in range(n_points):
+            text = ax.text(j, i, f"{npv_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold')
+            text = ax.text(j + n_points, i, f"{precision_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold')
+
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+    
+    
+def plot_correlation_nreads_prob_intsize(modelRM, PARIS_FINETUNED_MODEL):
+
+    res = modelRM.get_experiment_data(
+            experiment = 'paris', 
+            paris_test = True, 
+            paris_finetuned_model = PARIS_FINETUNED_MODEL, 
+            specie_paris = 'all',
+            paris_hq = False,
+            paris_hq_threshold = 1,
+            n_reads_paris = 1,
+            splash_trained_model = False,
+            only_test_splash_ricseq_mario = np.nan,
+            n_reads_ricseq = np.nan,
+            logistic_regression_models = {},
+    )
+
+    pos = res[res.interacting]
+
+
+    # Calculate the mean size of interaction
+    mean_size_interaction = np.log( ((pos.seed_x2 - pos.seed_x1) + (pos.seed_y2 - pos.seed_y1)) / 2 )
+
+    # Calculate Pearson correlation coefficients
+    corr_size_reads, _ = pearsonr(mean_size_interaction, pos.n_reads)
+    corr_size_prob, _ = pearsonr(mean_size_interaction, pos.probability)
+    corr_reads_prob, _ = pearsonr(pos.n_reads, pos.probability)
+
+    # Display correlation coefficients
+    print(f"Correlation between log(interaction size) and n_reads: {corr_size_reads:.2f}")
+    print(f"Correlation between log(interaction size) and probability: {corr_size_prob:.2f}")
+    print(f"Correlation between n_reads and probability: {corr_reads_prob:.2f}")
+
+    # Set up a grid for subplots
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Plot size vs n_reads
+    sns.scatterplot(x=mean_size_interaction, y=pos.n_reads, ax=ax[0])
+    sns.regplot(x=mean_size_interaction, y=pos.n_reads, ax=ax[0], scatter=False, color='red')
+    ax[0].set_title(f"Size vs n_reads\nCorr: {corr_size_reads:.2f}")
+    ax[0].set_xlabel('Log Mean Size Interaction')
+    ax[0].set_ylabel('n_reads')
+
+    # Plot size vs probability
+    sns.scatterplot(x=mean_size_interaction, y=pos.probability, ax=ax[1])
+    sns.regplot(x=mean_size_interaction, y=pos.probability, ax=ax[1], scatter=False, color='red')
+    ax[1].set_title(f"Size vs Probability\nCorr: {corr_size_prob:.2f}")
+    ax[1].set_xlabel('Log Mean Size Interaction')
+    ax[1].set_ylabel('Probability')
+
+    # Plot n_reads vs probability
+    sns.scatterplot(x=pos.n_reads, y=pos.probability, ax=ax[2])
+    sns.regplot(x=pos.n_reads, y=pos.probability, ax=ax[2], scatter=False, color='red')
+    ax[2].set_title(f"n_reads vs Probability\nCorr: {corr_reads_prob:.2f}")
+    ax[2].set_xlabel('n_reads')
+    ax[2].set_ylabel('Probability')
+
+    # Show plot
+    plt.tight_layout()
     plt.show()

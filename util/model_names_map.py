@@ -1,8 +1,14 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import MODEL_NAME
+
 def map_model_names(model_names):
     model_name_map = {
-        'probability': 'RNARNet',
-        'nt': 'RNARNet',
-        'NT': 'RNARNet',
+        'probability': MODEL_NAME,
+        'nt': MODEL_NAME,
+        'NT': MODEL_NAME,
         'E_norm': 'IntaRNA',
         'INTARNA': 'IntaRNA',
         'intarna': 'IntaRNA',

@@ -73,9 +73,10 @@ def get_args_parser():
     
     # hyperparameters
     parser.add_argument('--class_1_weight', default=1.0, type=float, help="The higher is the lower will be the false positives. For instance, a value of 2.5 (penalizes class 1 errors 2.5 times more than class 0 errors).")
-    parser.add_argument('--lr', default=5e-5, type=float)
+    parser.add_argument('--lr', default=5e-5, type=float) #5e-5 con batch_size = 32, 1e-4 con batch_size = 8
     parser.add_argument('--lr_backbone', default=5e-5, type=float)
     parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--grad_accumulate', default=1, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=1000, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
@@ -262,7 +263,7 @@ def obtain_val_dataset(dataset, dimension, finetuning, min_n_groups_val, max_n_g
     if dataset == 'paris':
         dataset_val, policies_val = obtain_val_dataset_paris(dimension, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor)
     else:
-        raise NotImplementedError #I have to correct everything below
+        raise NotImplementedError #I have to correct everything below. Remember that now we have 'df_nt_id' not anymore 'couples' on df500.
         assert False
         assert dataset in ['mario', 'ricseq', 'splash']
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
@@ -302,13 +303,6 @@ def obtain_val_dataset(dataset, dimension, finetuning, min_n_groups_val, max_n_g
 
 def obtain_val_dataset_paris(dimension, finetuning, min_n_groups_val, max_n_groups_val, specie, scaling_factor = 5):
     
-    if specie in ['human', 'mouse']:
-        paris = pd.read_csv(os.path.join(processed_files_dir, f'paris.csv'))
-        couples_to_keep = set(paris[paris.specie == SPECIE].couples)
-
-    df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_HQ.csv'))
-    df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
-    
     if finetuning:
         subset_val_nt = os.path.join(rna_rna_files_dir, f"gene_pairs_test_sampled_nt_HQ.txt") # gene_pairs_test_sampled_nt.txt it is also HQ
         df500 = pd.read_csv(os.path.join(metadata_dir, f'test_HQ{dimension}.csv'))
@@ -320,15 +314,15 @@ def obtain_val_dataset_paris(dimension, finetuning, min_n_groups_val, max_n_grou
         list_val = pickle.load(fp)
 
     if specie in ['human', 'mouse']:
-        df_nt = df_nt[df_nt.couples_id.isin(couples_to_keep)]
-    elif specie == 'all':
-        assert df500.shape[0] == df_nt[['couples', 'interacting']].merge(df500, on = 'couples').shape[0]
-        
-        
+        paris = pd.read_csv(os.path.join(processed_files_dir, f'paris.csv'))
+        couples_to_keep = set(paris[paris.specie == SPECIE].couples)
+        df500 = df500[(df500.g1 + '_' + df500.g2).isin(couples_to_keep)].reset_index()
+    
+
     df500['interacting'] = False
     df500.loc[df500['policy'] == 'easypos', 'interacting'] = True
-    
-    df500 = df500[df500.couples.isin(list_val)] # in questo modo ho quasi bilanciato del tutto, ma per avere un bilanciamento al 100% devo fare undersampling
+
+    df500 = df500[df500.df_nt_id.isin(list_val)] # in questo modo ho quasi bilanciato del tutto, ma per avere un bilanciamento al 100% devo fare undersampling
     df500 = undersample_df(df500) #bilanciamento al 100%.
 
     df500 = df500.sample(frac=1, random_state=23).reset_index(drop = True)
@@ -450,7 +444,7 @@ def main(args):
                                 best_model_epoch = utils.best_model_epoch(output_dir / "log.txt")):
             break
             
-        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = 1)
+        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, grad_accumulate = args.grad_accumulate)
         lr_scheduler.step()
         
         #manually difine data_loader_val at each epoch such that the validation set is fixed
@@ -475,14 +469,10 @@ def main(args):
             f.write(json.dumps(log_stats) + "\n")
                 
         best_model_epoch = utils.best_model_epoch(os.path.join(output_dir, "log.txt"), metric = 'accuracy', maximize = True)
-
-        best_loss = utils.best_model_epoch(log_path = os.path.join(output_dir, "log.txt"), metric = 'loss', maximize = False)
-        best_recall = utils.best_model_epoch(log_path = os.path.join(output_dir, "log.txt"), metric = 'recall', maximize = True)
-        best_specificty = utils.best_model_epoch(log_path = os.path.join(output_dir, "log.txt"), metric = 'specificity', maximize = True)
-        
+               
         checkpoint_paths = [output_dir / 'checkpoint.pth']
-        # extra checkpoint before LR drop and every 100 epochs
-        if (best_loss == epoch)|(best_recall == epoch)|(best_specificty == epoch)|(best_model_epoch == epoch):
+        
+        if save_this_epoch(log_path, metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 5):
             checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             
         if best_model_epoch == epoch:

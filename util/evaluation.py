@@ -249,6 +249,7 @@ class ModelResultsManager:
         specie_paris: str,
         paris_hq: bool, 
         paris_hq_threshold: int, 
+        n_reads_paris: int, 
         splash_trained_model: bool,
         only_test_splash_ricseq_mario: bool, 
         n_reads_ricseq: int
@@ -270,6 +271,11 @@ class ModelResultsManager:
                 res = res[res.specie == specie_paris].reset_index(drop = True)
                 
             res = filter_hq_data_by_interaction_length(res, paris_hq_threshold)
+            
+            res = res[
+                    (res.policy.isin(['hardneg', 'easyneg', 'smartneg'])) |
+                    ((res.n_reads >= n_reads_paris) & (res.policy == 'easypos'))
+                ].reset_index(drop = True)
         
         elif experiment in ['splash', 'ricseq', 'mario']:
             
@@ -306,6 +312,7 @@ class ModelResultsManager:
         specie_paris: str,
         paris_hq: bool, 
         paris_hq_threshold: int, 
+        n_reads_paris: int,
         splash_trained_model: bool,
         only_test_splash_ricseq_mario: bool,
         n_reads_ricseq: int,
@@ -320,9 +327,11 @@ class ModelResultsManager:
         paris_finetuned_model (bool): If True, I will drop all the pairs that are inside the validation set
         specie_paris (str): 'all', 'human' or 'mouse'.
         paris_hq (bool): If True, I load the paris HQ results (with region of interaction > 20)
+        paris_hq_threshold (int): minimum length of the region of interaction supporting positive or smartneg data
+        n_reads_paris (int): minimum number of reads (included) supporting paris data
         splash_trained_model (bool): If true, I will exclude from all the test set results the couple inside the splash training set.
         only_test_splash_ricseq_mario (bool): If true, I will keep only the data of the test set (this is valid only for 'splash', 'ricseq', 'mario' since paris is a test set).
-        n_reads_ricseq (int): minimum number of reads (included) of ricseq data
+        n_reads_ricseq (int): minimum number of reads (included) supporting ricseq data
         
         Returns:
         pd.DataFrame: The dataframe for the requested experiment.
@@ -331,12 +340,14 @@ class ModelResultsManager:
         assert experiment in ['paris', 'splash', 'ricseq', 'mario', 'psoralen']
         
         if experiment == 'psoralen':
-            paris = self._load_single_experiment_data('paris', paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
-            splash = self._load_single_experiment_data('splash', paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
+            paris = self._load_single_experiment_data('paris', paris_test, paris_finetuned_model, specie_paris, paris_hq, paris_hq_threshold, n_reads_paris, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
+            splash = self._load_single_experiment_data('splash', paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
+            splash['n_reads'] = np.nan
             assert set(paris.columns) == set(splash.columns)
+            splash = splash.filter(list(paris.columns), axis = 1) # so that they have the same order
             res = pd.concat([paris, splash], axis = 0).reset_index(drop=True)
         else:
-            res = self._load_single_experiment_data(experiment, paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
+            res = self._load_single_experiment_data(experiment, paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
             
         if logistic_regression_models:
             res = map_thermodynamic_columns(res, self.other_tools, logistic_regression_models)
@@ -500,71 +511,75 @@ def map_thermodynamic_columns(res, energy_columns, logistic_regression_models):
         res[model_column] = pd.Series(y_pred.flatten()) #modify column according to the model mapping
     return res
 
-def obtain_df_auc(model, energy_columns, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
+def map_dataset_to_hp(dataset):
+    assert dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash']
+    
+    if dataset == 'parisHQ':
+        experiment = 'paris'
+        specie_paris = 'human'
+        paris_hq_threshold = 35
+        n_reads_ricseq = np.nan
+
+    elif dataset == 'paris_mouse_HQ':
+        experiment = 'paris'
+        specie_paris = 'mouse'
+        paris_hq_threshold = 35
+        n_reads_ricseq = np.nan
+
+    elif dataset == 'ricseqHQ':
+        experiment = 'ricseq'
+        specie_paris = np.nan
+        paris_hq_threshold = np.nan
+        n_reads_ricseq = 5
+
+    elif dataset == 'psoralen':
+        experiment = 'psoralen'
+        specie_paris = 'all'
+        paris_hq_threshold = 1
+        n_reads_ricseq = np.nan
+
+    elif dataset == 'paris_mouse':
+        experiment = 'paris'
+        specie_paris = 'mouse'
+        paris_hq_threshold = 1
+        n_reads_ricseq = np.nan
+
+    else:
+        experiment = dataset
+        specie_paris = 'human'
+        paris_hq_threshold = 1
+        n_reads_ricseq = 1
+        
+    return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq
+
+def obtain_df_auc(model, paris_finetuned_model, energy_columns, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
     assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'])) == set(list_of_datasets)
     
 
     dfs = [] 
     for dataset in tqdm(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash']):
 
-        if dataset == 'parisHQ':
-            experiment = 'paris'
-            specie_paris = 'human'
-            paris_hq_threshold = 40
-            n_reads_ricseq = np.nan
-
-        elif dataset == 'paris_mouse_HQ':
-            experiment = 'paris'
-            specie_paris = 'mouse'
-            paris_hq_threshold = 35
-            n_reads_ricseq = np.nan
-
-        elif dataset == 'ricseqHQ':
-            experiment = 'ricseq'
-            specie_paris = np.nan
-            paris_hq_threshold = np.nan
-            n_reads_ricseq = 5
-
-        elif dataset == 'psoralen':
-            experiment = 'psoralen'
-            specie_paris = 'all'
-            paris_hq_threshold = 1
-            n_reads_ricseq = np.nan
-
-        elif dataset == 'paris_mouse':
-            experiment = 'paris'
-            specie_paris = 'mouse'
-            paris_hq_threshold = 1
-            n_reads_ricseq = np.nan
-
-        else:
-            experiment = dataset
-            specie_paris = 'human'
-            paris_hq_threshold = 1
-            n_reads_ricseq = 1
-
-
+        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq = map_dataset_to_hp(dataset)
+        
         res = model.get_experiment_data(
             experiment = experiment, 
             paris_test = True, 
-            paris_finetuned_model = False, 
+            paris_finetuned_model = paris_finetuned_model, 
             specie_paris = specie_paris,
             paris_hq = False,
             paris_hq_threshold = paris_hq_threshold,
+            n_reads_paris = 1,
             splash_trained_model = False,
             only_test_splash_ricseq_mario = False,
             n_reads_ricseq = n_reads_ricseq,
             logistic_regression_models = logistic_regression_models
         )
 
-
         easypos_smartneg = res[res.policy.isin(['easypos', 'smartneg'])].reset_index(drop = True)
         enhn = res[res.policy.isin(['easypos', 'easyneg', 'hardneg'])].reset_index(drop = True)
 
         dfs.append(obtain_all_model_auc(easypos_smartneg, energy_columns).rename({'auc': f'auc_interactors_{dataset}'}, axis = 1))
-
         dfs.append(obtain_all_model_auc(enhn, energy_columns).rename({'auc': f'auc_patches_{dataset}'}, axis = 1))
-
 
 
     df_auc = pd.concat(dfs, axis = 1)
@@ -577,3 +592,28 @@ def obtain_df_auc(model, energy_columns, list_of_datasets = ['parisHQ', 'paris_m
 def log_func(i, c, x):
     z = i + np.dot(x, c.T)  # Compute the linear combination
     return 1 / (1 + np.exp(-z))  # Apply the logistic function
+
+def replace_outliers_with_nan_and_make_positive(df, columns):
+    for column in columns:
+        df[column] = df[column].abs()
+        # Calculate the z-scores
+        z_scores = (df[column] - df[column].mean()) / df[column].std()
+        # Set a threshold for z-score
+        threshold = 4
+        # Replace outliers with NaN
+        df.loc[np.abs(z_scores) > threshold, column] = np.nan
+    return df
+
+def obtain_sr_nosr(res, both_sr_condition, filtered_policies):
+
+    if both_sr_condition:
+        sr = res[res['simple_repeat1'] & res['simple_repeat2']]
+    else:
+        sr = res[res['simple_repeat1'] | res['simple_repeat2']]
+
+    no_sr = res[(res['simple_repeat1'] == False) & (res['simple_repeat2'] == False)] #res[res['none1'] & res['none2']] #res[(res['simple_repeat1'] == False) & (res['simple_repeat2'] == False)]
+
+    sr = sr[sr.policy.isin(filtered_policies)].reset_index(drop = True)
+    no_sr = no_sr[no_sr.policy.isin(filtered_policies)].reset_index(drop = True)
+
+    return sr, no_sr

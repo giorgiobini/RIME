@@ -623,6 +623,31 @@ def best_model_epoch(log_path, metric = 'accuracy', maximize = True):
             return log.iloc[log['test_{}'.format(metric)].argmin()].epoch
     else:
         return 0
+    
+def save_this_epoch(log_path, metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 5):
+    
+    if os.path.exists(log_path):
+        log = pd.read_json(Path(log_path), lines=True)
+    
+    save = False
+
+    for i in range(len(metrics)):
+        variable = metrics[i]
+        maximize = maximize_list[i]
+
+        column = f'test_{variable}'
+        current_epoch_value = log.loc[log.epoch.argmax()][column]
+        if maximize:
+            threshold_value = log.sort_values(column, ascending = False).iloc[n_top-1][column]
+            if current_epoch_value > threshold_value:
+                save = True
+                
+        elif maximize == False:
+            threshold_value = log.sort_values(column, ascending = True).iloc[n_top-1][column]
+            if current_epoch_value < threshold_value:
+                save = True
+                
+    return save
 
 def early_stopping(n_epochs, current_epoch, best_model_epoch):
     interrupt = False

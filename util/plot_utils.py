@@ -1206,56 +1206,6 @@ def plot_length_embeddings_and_rnas(res):
     plt.show()
     
     
-def plot_tnr_based_on_distance(test500, ephnen, bins_distance):
-    
-    tnrs_nt = []
-    tnrs_intarna = []
-    distances_axis = []
-    percs = []
-
-    for (dist1, dist2) in bins_distance:
-        subset = test500[(test500.distance_from_site >= dist1) & (test500.distance_from_site <= dist2)].reset_index(drop = True)
-        subset = subset[(subset.policy.isin(['hardneg', 'easyneg']))].reset_index(drop = True)
-
-        perc_of_total_df = np.round(
-            (
-            subset.shape[0] / test500[test500.policy.isin(['hardneg', 'easyneg'])].shape[0] 
-            ) * 100, 2)
-        percs.append(perc_of_total_df)
-
-        couples_to_keep = set(subset.couples)
-        subset = ephnen[ephnen.id_sample.isin(couples_to_keep)].reset_index(drop = True)
-
-        #NT
-        tnr = (subset.ground_truth == (subset.probability > 0.5).astype(int)).sum() / subset.shape[0]
-        tnrs_nt.append(tnr)
-
-        #INTARNA
-        tnr = (subset.ground_truth == (subset.E_norm_conf > 0.5).astype(int)).sum() / subset.shape[0]
-        tnrs_intarna.append(tnr)
-
-        distances_axis.append(str(np.mean([dist1, dist2]).astype(int)))
-   
-
-    plt.figure(figsize=(10, 6))
-    size_multiplier = 20
-    plt.title('TNR of models in the task pathces based on distance interval')
-    plt.plot(distances_axis, tnrs_nt, label = 'nt', color = COLOR_NT_AUC, linewidth=2)
-    plt.plot(distances_axis, tnrs_intarna, label = 'intarna', color = COLOR_INTARNA_AUC, linewidth=2)
-
-    for i, size in enumerate(percs):
-        plt.scatter(distances_axis[i], tnrs_nt[i], s=float(size)*size_multiplier, color=COLOR_NT_AUC)
-
-    for i, size in enumerate(percs):
-        plt.scatter(distances_axis[i], tnrs_intarna[i], s=float(size)*size_multiplier, color=COLOR_INTARNA_AUC)
-
-
-    plt.xlabel(f"Distance Interval")
-    plt.ylabel(f"TNR Patches task")
-    plt.legend()
-    plt.grid(True, alpha=0.5)
-    plt.show()
-    
 def quantile_bins(series, num_bins):
     # Compute quantiles
     quantiles = pd.qcut(series, q=num_bins, duplicates='drop')
@@ -1510,8 +1460,7 @@ def plot_tnr_based_on_distance_for_all_models(enhn, bins_distance, list_of_model
 
         models_for_this_bin = []
         for model in list_of_models_to_test:
-            column = model if model!='nt' else 'probability'
-            tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
+            tnr = calculate_tnr(subset, model)
             models_for_this_bin.append(tnr)
         models_tnr.append(models_for_this_bin)
    
@@ -1536,14 +1485,39 @@ def plot_tnr_based_on_distance_for_all_models(enhn, bins_distance, list_of_model
     
 def calculate_tnr(subset, model):
     column = model if model != 'nt' else 'probability'
-    tnr = (subset.ground_truth == (subset[column] > 0.5).astype(int)).sum() / subset.shape[0]
+    
+    # Filter for negative ground truth
+    subset = subset[subset.ground_truth == 0]
+    
+    # Count the number of True Negatives and False Positives
+    vc = (subset[column] < 0.5).value_counts()
+    
+    # Ensure vc[True] and vc[False] exist, handle possible edge cases
+    true_negatives = vc.get(True, 0)
+    false_positives = vc.get(False, 0)
+    
+    # Avoid division by zero
+    if true_negatives + false_positives == 0:
+        return None  # or return 0, depending on your use case
+    
+    # Compute TNR
+    tnr = true_negatives / (true_negatives + false_positives)
+    
     return tnr
+
 
 def calculate_recall(subset, model):
     column = model if model != 'nt' else 'probability'
+    
+    # Count true positives (ground_truth is 1 and prediction > 0.5)
     true_positives = ((subset.ground_truth == 1) & (subset[column] > 0.5)).sum()
+    
+    # Count actual positives (ground_truth is 1)
     actual_positives = (subset.ground_truth == 1).sum()
-    recall = true_positives / actual_positives if actual_positives > 0 else 0
+    
+    # Calculate recall and handle the case of zero actual positives
+    recall = true_positives / actual_positives if actual_positives > 0 else None  # Could return 0 instead of None
+    
     return recall
 
 def plot_metrics_for_all_models(metric_function, ylabel, list_of_models_to_test, subset, figsize, title_suffix='', bar_width=0.5):

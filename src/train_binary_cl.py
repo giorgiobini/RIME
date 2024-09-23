@@ -472,7 +472,7 @@ def main(args):
                
         checkpoint_paths = [output_dir / 'checkpoint.pth']
         
-        if save_this_epoch(log_path, metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 5):
+        if utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 5):
             checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             
         if best_model_epoch == epoch:

@@ -552,7 +552,7 @@ def map_dataset_to_hp(dataset):
         
     return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq
 
-def obtain_df_auc(model, paris_finetuned_model, energy_columns, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
+def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_model, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
     assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'])) == set(list_of_datasets)
     
 
@@ -569,7 +569,7 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, list_of_datasets
             paris_hq = False,
             paris_hq_threshold = paris_hq_threshold,
             n_reads_paris = 1,
-            splash_trained_model = False,
+            splash_trained_model = splash_trained_model,
             only_test_splash_ricseq_mario = False,
             n_reads_ricseq = n_reads_ricseq,
             logistic_regression_models = logistic_regression_models

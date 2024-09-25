@@ -624,7 +624,7 @@ def best_model_epoch(log_path, metric = 'accuracy', maximize = True):
     else:
         return 0
     
-def save_this_epoch(log_path, metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 5):
+def save_this_epoch(log_path, metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 8):
     
     if os.path.exists(log_path):
         log = pd.read_json(Path(log_path), lines=True)

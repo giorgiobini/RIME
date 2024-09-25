@@ -1080,6 +1080,160 @@ def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_mod
     plt.show()
     
     
+def collect_results_based_on_topbottom_for_all_models_perc_neg(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision'):
+    
+    auc_runs = []
+    perc_runs = []
+    
+    perc_sn = []
+    perc_hn = []
+    perc_en = []
+
+    
+    for run in range(n_run_undersampling):
+        
+        subset = undersample_df(df) #undersampling at each run
+        
+        auc_models = []
+        perc_models = []
+        model_names = []
+
+        perc_sn_run = []
+        perc_hn_run = []
+        perc_en_run = []
+
+        confidence_level = []
+
+        for model_name in list_of_models_to_test:
+            
+            percentages, metric_model, sn, hn, en = collect_results_based_on_confidence_level_based_on_topbottom_for_single_model_with_perc_neg(
+                subset, how = model_name, n_values = n_values, n_run_undersampling = n_run_undersampling, MIN_PERC = MIN_PERC, metric = metric
+            )
+            
+            auc_models.append(metric_model)
+            perc_models.append(percentages)
+            model_names.append(model_name)
+            
+            perc_sn_run.append(sn)
+            perc_hn_run.append(hn)
+            perc_en_run.append(en)
+
+        if len(list_of_models_to_test)>1:
+            assert perc_models[0] == perc_models[1]
+        
+        auc_runs.append(auc_models)
+        perc_runs.append(perc_models)
+        
+        perc_sn.append(perc_sn_run)
+        perc_hn.append(perc_hn_run)
+        perc_en.append(perc_en_run)
+    
+    auc_models=np.mean(auc_runs, axis = 0)
+    perc_models=np.mean(perc_runs, axis = 0)
+    
+    perc_sn=np.mean(perc_sn, axis = 0)
+    perc_hn=np.mean(perc_hn, axis = 0)
+    perc_en=np.mean(perc_en, axis = 0)
+    
+    return auc_models, perc_models, model_names, perc_sn, perc_hn, perc_en
+
+def calc_perc_en_hn_sn(df):
+    if df.shape[0]>0:
+        perc_sn = df[df.policy == 'smartneg'].shape[0]/df.shape[0]
+        perc_en = df[df.policy == 'easyneg'].shape[0]/df.shape[0]
+        perc_hn = df[df.policy == 'hardneg'].shape[0]/df.shape[0]
+    else: 
+        perc_sn = 0
+        perc_en = 0
+        perc_hn = 0
+    return perc_sn, perc_hn, perc_en
+
+def collect_results_based_on_confidence_level_based_on_topbottom_for_single_model_with_perc_neg(df, how='nt', n_values=15, n_run_undersampling=30, MIN_PERC=0.05, metric='precision'):
+    
+    metric_model = []
+    percentages = []
+    sn = []
+    hn = []
+    en = []
+    
+    n_total = df.shape[0]
+    
+    percs_data = np.linspace(MIN_PERC, 100, n_values)[::-1]
+
+    if how == 'nt':
+        column = 'probability'
+    else:
+        column = how
+        
+    pred_pos = df[df[column] > 0.5].reset_index(drop=True)
+    pred_neg = df[df[column] < 0.5].reset_index(drop=True)
+    
+    for i in range(n_values):
+        n_to_sample = int(math.ceil(percs_data[i] / 100 * pred_pos.shape[0]))
+        
+        if metric == 'precision':
+            subset = pred_pos.sort_values(column, ascending=False).head(n_to_sample)
+            result_metric = calc_metric(subset, column, metric=metric)
+            perc_sn, perc_hn, perc_en = calc_perc_en_hn_sn(subset)
+            
+        elif metric == 'npv':
+            subset = pred_neg.sort_values(column, ascending=False).tail(n_to_sample)
+            result_metric = calc_metric(subset, column, metric=metric)
+            perc_sn, perc_hn, perc_en = calc_perc_en_hn_sn(subset)
+        
+        metric_model.append(result_metric)
+        percentages.append(np.round(percs_data[i], 2))
+        sn.append(perc_sn)
+        hn.append(perc_hn)
+        en.append(perc_en)
+        
+    return percentages, metric_model, sn, hn, en
+
+def perc_neg_npv_precision(perc_sn_prec, perc_hn_prec, perc_en_prec, perc_sn_npv, perc_hn_npv, perc_en_npv, model_names, model_name, figsize, min_perc = 1):
+    
+    idx = int(np.where(np.array(model_names) == model_name)[0])
+    model_names = map_model_names(model_names)
+    
+    perc_sn_prec = perc_sn_prec[idx]
+    perc_hn_prec = perc_hn_prec[idx]
+    perc_en_prec = perc_en_prec[idx]
+    
+    perc_sn_npv = perc_sn_npv[idx]
+    perc_hn_npv = perc_hn_npv[idx]
+    perc_en_npv = perc_en_npv[idx]
+    
+    n_points =  perc_sn_prec.shape[0]
+    
+    percentuali_neg = np.linspace(min_perc, 100, num=n_points).astype(int)
+    percentuali_pos = np.linspace(min_perc, 100, num=n_points).astype(int)[::-1]
+
+    percentuali = np.concatenate((percentuali_neg, percentuali_pos))
+    
+    combined_sn = np.hstack((perc_sn_npv, perc_sn_prec))
+    combined_hn = np.hstack((perc_hn_npv, perc_hn_prec))
+    combined_en = np.hstack((perc_en_npv, perc_en_prec))           
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=figsize)
+
+    x_axis = np.arange(len(percentuali))
+    
+    plt.plot(x_axis, combined_sn, label = 'smartneg', linewidth=2)
+    plt.plot(x_axis, combined_en, label = 'easyneg', linewidth=2)
+    plt.plot(x_axis, combined_hn, label = 'hardneg', linewidth=2)        
+    
+    plt.axvline(x=n_points-0.5, color='black', linestyle='--', label='Threshold between positive and negative predictions')
+    
+    plt.xlabel('Percentage of bottom / top predictions (%)')
+    plt.ylabel('Percentage of negatives')
+    plt.title(f'Percentage of negatives in bottom predictions (left), and in top predictions (right) for model {map_model_names(model_name)}')
+    plt.xticks(x_axis, percentuali)
+                       
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+    
     
 def obtain_df_concatenated(pred_pos, pred_neg):
     if len(pred_pos) > len(pred_neg):

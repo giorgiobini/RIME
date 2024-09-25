@@ -1,6 +1,6 @@
 #!/bin/bash
 
-folders=('arch2_PARIStrained_PARISval0016' 'arch2_PARIStrained_PARISval0024' 'arch2_PARIStrained_PARISval0027' 'arch2_PARIStrained_PARISval0037' 'arch2_PARIStrained_PARISval0039' 'arch2_PARIStrained_PARISval0045' 'arch2_PARIStrained_PARISval0047' 'arch2_PARIStrained_PARISval0050' 'arch2_PARIStrained_PARISval0053' 'arch2_PARIStrained_PARISval0056' 'arch2_PARIStrained_PARISval0057' 'arch2_PARIStrained_PARISval0058' 'arch2_PARIStrained_PARISval0070' 'arch2_PARIStrained_PARISval0075' 'arch2_PARIStrained_PARISval0077' 'arch2_PARIStrained_PARISval0078' 'arch2_PARIStrained_PARISval0085' 'arch2_PARIStrained_PARISval0094')
+folders=('arch2_PARISfinetuned_PARIStest0013' 'arch2_PARISfinetuned_PARIStest0016' 'arch2_PARISfinetuned_PARIStest0023' 'arch2_PARISfinetuned_PARIStest0026' 'arch2_PARISfinetuned_PARIStest0033' 'arch2_PARISfinetuned_PARIStest0035' 'arch2_PARISfinetuned_PARIStest0043' 'arch2_PARISfinetuned_PARIStest0047' 'arch2_PARISfinetuned_PARIStest0050' 'arch2_PARISfinetuned_PARIStest0055' 'arch2_PARISfinetuned_PARIStest0057' 'arch2_PARISfinetuned_PARIStest0061' 'arch2_PARISfinetuned_PARIStest0068' 'arch2_PARISfinetuned_PARIStest0078' 'arch2_PARISfinetuned_PARIStest0080' 'arch2_PARISfinetuned_PARIStest0097' 'arch2_PARISfinetuned_PARIStest0092' 'arch2_PARISfinetuned_PARIStest0089')
 
 for folder in "${folders[@]}"; do
 

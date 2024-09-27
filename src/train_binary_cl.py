@@ -420,7 +420,7 @@ def main(args):
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    weights = torch.tensor([1.0, args.class_1_weight]).to(device)
+    weights = torch.tensor([args.class_1_weight, 1.0]).to(device)
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     
     if args.resume:
@@ -472,7 +472,15 @@ def main(args):
                
         checkpoint_paths = [output_dir / 'checkpoint.pth']
         
-        if utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['accuracy', 'loss'], maximize_list = [True, False], n_top = 8):
+        if args.class_1_weight == 1:
+            save_this_epoch = utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['accuracy', 'F2', 'loss'], maximize_list = [True, True, False], n_top = 10)
+
+        elif args.class_1_weight > 1:
+            save_this_epoch = utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['F2', 'precision', 'specificity', 'loss'], maximize_list = [True, True, True, False], n_top = 10)
+        else:
+            raise NotImplementedError
+
+        if save_this_epoch:
             checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             
         if best_model_epoch == epoch:
@@ -507,16 +515,14 @@ if __name__ == '__main__':
     #nohup python train_binary_cl.py &> train_binary_cl.out &
     
     #nohup python train_binary_cl.py --class_1_weight=1.5 &> train_binary_cl.out &
+    #nohup python train_binary_cl.py --class_1_weight=1.5 --finetuning &> train_binary_cl_finetuning.out &
 
     #nohup python train_binary_cl.py --finetuning &> train_binary_cl_finetuning.out &
-    #nohup python train_binary_cl.py --train_hq &> train_binary_cl_hq.out &
 
-    #nohup python train_binary_cl.py --train_dataset=ricseq --val_dataset=ricseq &> train_binary_cl_ricseq.out &
-    #nohup python train_binary_cl.py --train_dataset=splash --val_dataset=splash &> train_binary_cl_splash.out &
-    #nohup python train_binary_cl.py --finetuning --val_dataset=splash &> train_binary_cl_finetuning_valsplash.out &
-    #nohup python train_binary_cl.py --train_dataset=ricseq --val_dataset=splash &> train_binary_cl_finetuning_valricseq.out &
-    #nohup python train_binary_cl.py --train_dataset=splash --val_dataset=ricseq &> train_binary_cl_splash.out &
-    #nohup python train_binary_cl.py --train_hq --val_dataset=splash &> train_binary_cl_splash.out &
+    #nohup python train_binary_cl.py --train_dataset=psoralen &> train_binary_cl_psoralen.out &
+    #nohup python train_binary_cl.py --train_dataset=psoralen --finetuning &> train_binary_cl_finetuning_psoralen.out &
+    
+    #nohup python train_binary_cl.py --train_hq &> train_binary_cl_hq.out & # TODO train_hq
 
     parser = argparse.ArgumentParser('Training', parents=[get_args_parser()])
     args = parser.parse_args()

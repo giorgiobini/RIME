@@ -19,6 +19,14 @@ from .model_names_map import map_model_names
 Result plots:
 '''
 
+def plot_all_model_auc(subset, tools, n_runs=50):
+    models = [{'prob': subset.probability, 'model_name': 'NT'}]
+    
+    for tool_name in tools:
+        models.append({'prob': abs(subset[tool_name]), 'model_name': tool_name})
+    
+    plot_roc_curves_with_undersampling(models, subset.ground_truth, n_runs) 
+
 def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50):
     unbalanced = is_unbalanced(pd.DataFrame({'ground_truth': ground_truth}))
     
@@ -32,6 +40,7 @@ def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50):
 
         if unbalanced:
             for _ in range(n_runs):
+                
                 majority_class, minority_class = obtain_majority_minority_class(
                     pd.DataFrame(ground_truth).rename({0:'ground_truth'}, axis = 1)
                 )
@@ -67,7 +76,7 @@ def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50):
         mean_fpr[0], mean_tpr[0] = 0.0, 0.0
         mean_fpr[-1], mean_tpr[-1] = 1.0, 1.0
         
-        plt.plot(mean_fpr, mean_tpr, label=f'{model["model_name"]} (AUC = {mean_auc:.2f})')
+        plt.plot(mean_fpr, mean_tpr, label=f'{map_model_names(model["model_name"])} (AUC = {mean_auc:.2f})', color = model_colors_dict.get(model["model_name"], 'black'))
 
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')

@@ -637,13 +637,16 @@ def save_this_epoch(log_path, metrics = ['accuracy', 'loss'], maximize_list = [T
 
         column = f'test_{variable}'
         current_epoch_value = log.loc[log.epoch.argmax()][column]
+
+        idx = min(n_top-1, log.shape[0]-1)
+
         if maximize:
-            threshold_value = log.sort_values(column, ascending = False).iloc[n_top-1][column]
+            threshold_value = log.sort_values(column, ascending = False).iloc[idx][column]
             if current_epoch_value > threshold_value:
                 save = True
                 
         elif maximize == False:
-            threshold_value = log.sort_values(column, ascending = True).iloc[n_top-1][column]
+            threshold_value = log.sort_values(column, ascending = True).iloc[idx][column]
             if current_epoch_value < threshold_value:
                 save = True
                 

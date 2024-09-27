@@ -5,7 +5,3 @@ nohup: ignoring input
 <class 'transformers.tokenization_dna.DNATokenizer'>
 number of params: 4189214
 Start training
-Epoch: [0], (Time: 1:02:26)
-Averaged stats: {'accuracy': 0.5356923341751099, 'precision': 0.5701822638511658, 'recall': 0.28984397649765015, 'F2': 0.32145342230796814, 'specificity': 0.7815235257148743, 'NPV': 0.5239392518997192, 'loss': 0.6867006421089172}
-Test (Time: 0:08:44)
-Averaged stats: {'accuracy': 0.5715574622154236, 'precision': 0.6494699716567993, 'recall': 0.3109281659126282, 'F2': 0.34711557626724243, 'specificity': 0.832186758518219, 'NPV': 0.5470383167266846, 'loss': 0.6737807989120483}

@@ -18,7 +18,6 @@ from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_min
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
 
-
 def calculate_correlations(series_list, method='pearson', plot=False):
     """
     Calculate the correlations between all combinations of series in the list.
@@ -557,7 +556,7 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_m
     
 
     dfs = [] 
-    for dataset in tqdm(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash']):
+    for dataset in tqdm(list_of_datasets):
 
         experiment, specie_paris, paris_hq_threshold, n_reads_ricseq = map_dataset_to_hp(dataset)
         

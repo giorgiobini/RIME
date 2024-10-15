@@ -1,5 +1,32 @@
 nohup: ignoring input
 Model loaded
-47 sequences to download
-0.0% done in 0.2207785646120707 minutes
-Total time to process batch: 2.72 minutes, 0.05 hours, 0.0 days
+5597 sequences to download
+0.0% done in 0.20755472977956135 minutes
+3.57% done in 11.137157022953033 minutes
+7.15% done in 21.55543966293335 minutes
+10.72% done in 31.77985669374466 minutes
+14.29% done in 41.5629740913709 minutes
+17.87% done in 51.50641547838847 minutes
+21.44% done in 61.362639327843986 minutes
+25.01% done in 71.0632215221723 minutes
+28.59% done in 81.01980608304342 minutes
+32.16% done in 90.28983982006709 minutes
+35.73% done in 100.26766389211019 minutes
+39.31% done in 110.09976158539455 minutes
+42.88% done in 119.68695947329203 minutes
+46.45% done in 129.43313078482944 minutes
+50.03% done in 139.15522491137187 minutes
+53.6% done in 148.81519151131312 minutes
+57.17% done in 158.43747655550638 minutes
+60.75% done in 168.17485825220743 minutes
+64.32% done in 177.85576658646266 minutes
+67.89% done in 187.47965414524077 minutes
+71.47% done in 196.86757080554963 minutes
+75.04% done in 206.49278180201847 minutes
+78.61% done in 216.10856703122457 minutes
+82.19% done in 225.68294780254365 minutes
+85.76% done in 234.71295199394226 minutes
+89.33% done in 244.1878600994746 minutes
+92.91% done in 253.6113334774971 minutes
+96.48% done in 263.2669342358907 minutes
+Total time to process batch: 272.71 minutes, 4.55 hours, 0.19 days

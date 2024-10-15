@@ -423,10 +423,10 @@ def get_gradcam_results(model, id_couple, swapped_genes, outputs, rna1, rna2, he
     "intensity_rand":intensity_rand,
     }
 
-def download_gradcam_matrixes(model, id_couple, rna1, rna2, height, width, x1, x2, y1, y2, probability, savepath = ''):
+def download_gradcam_matrixes(model, id_couple, rna1, rna2, height, width, x1, x2, y1, y2, probability, normalize, savepath = ''):
     
     expl_matrix = gradcam(model, rna1, rna2, counterfactual = False, cnn_layer = 2)
-    expl_matrix_reshaped = interpolate_expl_matrix(expl_matrix, height, width)
+    expl_matrix_reshaped = interpolate_expl_matrix(expl_matrix, height, width, normalize)
     to_save = [expl_matrix_reshaped, id_couple, height, width, x1, x2, y1, y2, probability]
     save_pickle_results(to_save, savepath)
 

@@ -37,12 +37,16 @@ def get_args_parser():
                         help='Can be paris, mario, ricseq, splash')
     parser.add_argument('--folder', default='binary_cl2',
                         help='Default is binary_cl2')
+    parser.add_argument('--dimension', default='200',
+                        help='The lengths of the rna in the contact matrix.')
     return parser
 
 def main(args):
 
     dataset = args.dataset
+
     assert dataset in ['paris', 'mario', 'ricseq', 'splash']
+
     if dataset == 'paris':
         paris = True
     else:
@@ -51,14 +55,12 @@ def main(args):
     start_time = time.time() 
 
     if paris:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}500.csv'))
-        df_nt = pd.read_csv(os.path.join(metadata_dir, 'df_nt_HQ.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_HQ.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, f'{HOW}{DIMENSION}.csv'))
+        df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt.csv'))
 
     else:
-        df = pd.read_csv(os.path.join(metadata_dir, f'{dataset}500.csv'))
+        df = pd.read_csv(os.path.join(metadata_dir, f'{dataset}{DIMENSION}.csv'))
         df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_{dataset}.csv'))
-        df_genes_nt = pd.read_csv(os.path.join(metadata_dir, f'df_genes_nt_{dataset}.csv'))
 
 
     
@@ -72,23 +74,24 @@ def main(args):
     model.eval()
 
     folder_path = os.path.join(checkpoint_dir, f'gradcam_matrix_{dataset}')
+
     if not os.path.exists(folder_path):
         # Create the directory
         os.makedirs(folder_path)
 
     for _, row in df.iterrows():
 
-        gene1, gene2, id_couple, l1, l2 = row['gene1'], row['gene2'], row['couples'], row['len1'], row['len2']
+        gene1, gene2, id_couple, id_couple_nt, l1, l2 = row['gene1'], row['gene2'], row['couples'], row['df_nt_id'], row['len1'], row['len2']
         
-        df_nt_row = df_nt[df_nt.couples == id_couple].iloc[0]
-        
-        policy_sample = row.policy
-        interacting = True if policy_sample == 'easypos' else False
+        df_nt_row = df_nt[df_nt.couples == id_couple_nt].iloc[0]
         
         assert df_nt_row.gene1 == gene1
         assert df_nt_row.gene2 == gene2
 
         id_sample = id_couple
+        policy_sample = row.policy
+        interacting = True if policy_sample == 'easypos' else False
+        couple_id_sample = df_nt_row.couples_id
 
         if interacting:
 
@@ -117,7 +120,7 @@ def main(args):
             probability = outputs.softmax(-1)[:, 1].tolist()[0]
             savepath = os.path.join(folder_path, str(id_sample) + '.pkl')
 
-            xai.download_gradcam_matrixes(model, id_sample, rna1, rna2, height, width, x1, x2, y1, y2, probability, savepath = savepath)
+            xai.download_gradcam_matrixes(model, id_sample, rna1, rna2, height, width, x1, x2, y1, y2, probability, normalize = False, savepath = savepath)
 
 
         else:
@@ -146,6 +149,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     HOW = args.how 
     DATASET = args.dataset
+    DIMENSION = args.dimension
 
     checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', args.folder)
 

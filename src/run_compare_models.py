@@ -61,7 +61,7 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
             row[f'auc_interactors_{dataset}'] = df_auc[df_auc['model_name'] == MODEL_NAME][f'auc_interactors_{dataset}'].iloc[0]
             row[f'auc_patches_{dataset}'] = df_auc[df_auc['model_name'] == MODEL_NAME][f'auc_patches_{dataset}'].iloc[0]
             
-            experiment, specie_paris, paris_hq_threshold, n_reads_ricseq = map_dataset_to_hp(dataset)
+            experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris = map_dataset_to_hp(dataset)
     
             if dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'mario', 'splash']:
                 n_run_undersampling = 50 
@@ -75,7 +75,8 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
                 specie_paris = specie_paris,
                 paris_hq = paris_hq_threshold,
                 paris_hq_threshold = 1,
-                n_reads_paris = 1,
+                n_reads_paris = n_reads_paris,
+                interlen_OR_nreads_paris = interlen_OR_nreads_paris,
                 splash_trained_model = SPLASH_TRAINED_MODEL,
                 only_test_splash_ricseq_mario = False,
                 n_reads_ricseq = n_reads_ricseq,

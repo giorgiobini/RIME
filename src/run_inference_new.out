@@ -3,5 +3,171 @@ nohup: ignoring input
   warnings.warn("Initializing zero-element tensors is a no-op")
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
-13192442 sequences to download
-Testing time 1 day, 1:27:05
+1404 sequences to download
+0 circHIPK3_ex2_1 ENST00000471181_1 0 200 0 200
+0 33 0 33
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+1 circHIPK3_ex2_1 ENST00000471181_1 0 200 100 300
+0 33 16 50
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+2 circHIPK3_ex2_1 ENST00000471181_1 0 200 200 400
+0 33 33 66
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+3 circHIPK3_ex2_1 ENST00000471181_1 0 200 300 500
+0 33 50 83
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+4 circHIPK3_ex2_1 ENST00000471181_1 0 200 400 600
+0 33 66 100
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+5 circHIPK3_ex2_1 ENST00000471181_1 0 200 500 700
+0 33 83 116
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+6 circHIPK3_ex2_1 ENST00000471181_1 0 200 600 800
+0 33 100 133
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+7 circHIPK3_ex2_1 ENST00000471181_1 0 200 700 900
+0 33 116 150
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+8 circHIPK3_ex2_1 ENST00000471181_1 0 200 800 1000
+0 33 133 166
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+9 circHIPK3_ex2_1 ENST00000471181_1 0 200 900 1100
+0 33 150 183
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+10 circHIPK3_ex2_1 ENST00000471181_1 0 200 1000 1200
+0 33 166 200
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+11 circHIPK3_ex2_1 ENST00000471181_1 0 200 1100 1300
+0 33 183 216
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+12 circHIPK3_ex2_1 ENST00000471181_1 0 200 1200 1400
+0 33 200 233
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+13 circHIPK3_ex2_1 ENST00000471181_1 0 200 1300 1500
+0 33 216 250
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+14 circHIPK3_ex2_1 ENST00000471181_2 0 200 2600 2800
+0 33 433 466
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+15 circHIPK3_ex2_1 ENST00000471181_1 0 200 1400 1600
+0 33 233 266
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+16 circHIPK3_ex2_1 ENST00000471181_2 0 200 2700 2900
+0 33 450 483
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+17 circHIPK3_ex2_1 ENST00000471181_1 0 200 1500 1700
+0 33 250 283
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+18 circHIPK3_ex2_1 ENST00000471181_2 0 200 2800 3000
+0 33 466 500
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+19 circHIPK3_ex2_1 ENST00000471181_1 0 200 1600 1800
+0 33 266 300
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+20 circHIPK3_ex2_1 ENST00000471181_2 0 200 2900 3100
+0 33 483 516
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+21 circHIPK3_ex2_1 ENST00000471181_1 0 200 1700 1900
+0 33 283 316
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+22 circHIPK3_ex2_1 ENST00000471181_2 0 200 3000 3200
+0 33 500 533
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+23 circHIPK3_ex2_1 ENST00000471181_1 0 200 1800 2000
+0 33 300 333
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+24 circHIPK3_ex2_1 ENST00000471181_2 0 200 3100 3300
+0 33 516 550
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+25 circHIPK3_ex2_1 ENST00000471181_1 0 200 1900 2100
+0 33 316 350
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+26 circHIPK3_ex2_1 ENST00000471181_2 0 200 3200 3400
+0 33 533 566
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+27 circHIPK3_ex2_1 ENST00000471181_1 0 200 2000 2200
+0 33 333 366
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+28 circHIPK3_ex2_1 ENST00000471181_2 0 200 3300 3500
+0 33 550 583
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+29 circHIPK3_ex2_1 ENST00000471181_1 0 200 2100 2300
+0 33 350 383
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+30 circHIPK3_ex2_1 ENST00000471181_2 0 200 3400 3600
+0 33 566 600
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+31 circHIPK3_ex2_1 ENST00000471181_1 0 200 2200 2400
+0 33 366 400
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+32 circHIPK3_ex2_1 ENST00000471181_2 0 200 3500 3700
+0 33 583 616
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+33 circHIPK3_ex2_1 ENST00000471181_1 0 200 2300 2500
+0 33 383 416
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+34 circHIPK3_ex2_1 ENST00000471181_2 0 200 3600 3800
+0 33 600 633
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+35 circHIPK3_ex2_1 ENST00000471181_1 0 200 2400 2600
+0 33 400 433
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+36 circHIPK3_ex2_1 ENST00000471181_2 0 200 3700 3900
+0 33 616 650
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+37 circHIPK3_ex2_1 ENST00000471181_1 0 200 2500 2700
+0 33 416 450
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+38 circHIPK3_ex2_1 ENST00000471181_2 0 200 3800 4000
+0 33 633 666
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+39 circHIPK3_ex2_1 ENST00000471181_1 0 200 2600 2800
+0 33 433 466
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+40 circHIPK3_ex2_1 ENST00000471181_2 0 200 3900 4100
+0 33 650 683
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+41 circHIPK3_ex2_1 ENST00000471181_1 0 200 2700 2900
+0 33 450 483
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+42 circHIPK3_ex2_1 ENST00000471181_2 0 200 4000 4200
+0 33 666 700
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+43 circHIPK3_ex2_1 ENST00000471181_1 0 200 2800 3000
+0 33 466 500
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 34])
+44 circHIPK3_ex2_1 ENST00000471181_2 0 200 4100 4300
+0 33 683 716
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 32])
+45 circHIPK3_ex2_1 ENST00000471181_1 0 200 2900 3100
+0 33 483 516
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+46 circHIPK3_ex2_1 ENST00000471181_2 0 200 4200 4400
+0 33 700 733
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 15])
+47 circHIPK3_ex2_1 ENST00000471181_1 0 200 3000 3200
+0 33 500 533
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 33])
+48 circHIPK3_ex2_1 ENST00000471181_2 0 200 4300 4500
+0 33 716 750
+torch.Size([1, 2560, 33]) torch.Size([1, 2560, 0])
+Traceback (most recent call last):
+  File "/data01/giorgio/RNARNA-NT/src/run_inference_new.py", line 123, in <module>
+    main(args, device)
+  File "/data01/giorgio/RNARNA-NT/src/run_inference_new.py", line 76, in main
+    outputs = model(rna1, rna2)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/data01/giorgio/RNARNA-NT/src/../models/nt_classifier.py", line 224, in forward
+    binary_output = self.small_cnn(output_contact_matrix)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/data01/giorgio/RNARNA-NT/src/../models/nt_classifier.py", line 37, in forward
+    x = self.conv1(x)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/modules/conv.py", line 443, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "/data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/modules/conv.py", line 439, in _conv_forward
+    return F.conv2d(input, weight, bias, self.stride,
+RuntimeError: Calculated padded input size per channel: (33 x 0). Kernel size: (2 x 2). Kernel size can't be greater than actual input size

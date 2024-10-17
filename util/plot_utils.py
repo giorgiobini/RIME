@@ -2068,6 +2068,7 @@ def plot_correlation_nreads_prob_intsize(modelRM, PARIS_FINETUNED_MODEL):
             paris_hq = False,
             paris_hq_threshold = 1,
             n_reads_paris = 1,
+            interlen_OR_nreads_paris = False,
             splash_trained_model = False,
             only_test_splash_ricseq_mario = np.nan,
             n_reads_ricseq = np.nan,

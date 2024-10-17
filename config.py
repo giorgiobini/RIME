@@ -5,7 +5,7 @@ MAX_RNA_SIZE = 5970 #other accepted sequence length (without N) are the ones <= 
 MIN_RNA_SIZE_DATALOADER = 100 # I will not sample with the dataloader rna lengths < MIN_RNA_SIZE_POS_SAMPLES_TRAINING, with the exception of smaller RNAs
 
 
-MODEL_NAME = 'RRINet'
+MODEL_NAME = 'RIME'
 
 
 MAX_RNA_SIZE_BERT = 500

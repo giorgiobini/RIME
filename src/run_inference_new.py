@@ -56,10 +56,9 @@ def main(args, device):
     probability = []
     for _, row in df.iterrows():
         id_pair, embedding1name, embedding2name, x1, x2, y1, y2 = row['id_pair'], row['embedding1name'], row['embedding2name'], row['start_window1'], row['end_window1'], row['start_window2'], row['end_window2']
-        print(id_pair, embedding1name, embedding2name, x1, x2, y1, y2)
+        print(id_pair)
         if (x2-x1 >= 12)&(y2-y1 >= 12):
             x1_emb, x2_emb, y1_emb, y2_emb = x1//6, x2//6, y1//6, y2//6
-            print(x1_emb, x2_emb, y1_emb, y2_emb)
 
             embedding1_path = os.path.join(embedding_dir, embedding1name+'.npy')
             embedding2_path = os.path.join(embedding_dir, embedding2name+'.npy')
@@ -70,8 +69,6 @@ def main(args, device):
             rna1, rna2 =  torch.as_tensor(embedding1).unsqueeze(0), torch.as_tensor(embedding2).unsqueeze(0)
             rna1, rna2 = torch.transpose(rna1, 1, 2), torch.transpose(rna2, 1, 2)
             rna1, rna2 = rna1.to(device), rna2.to(device)
-
-            print(rna1.shape, rna2.shape)
 
             outputs = model(rna1, rna2)
 

@@ -18,6 +18,46 @@ from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_min
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
 
+
+def calc_corr_perf_conf(prec_dri_list, npv_dri_list, prec_drp_list, npv_drp_list, list_of_datasets, corr = 'pearson'):
+    n_values = len(prec_dri_list[0])
+    values = pd.Series(np.arange(n_values), name = 'top_values')
+    diz_res = {}
+    for i in range(len(list_of_datasets)):
+        dataset = list_of_datasets[i]
+        prec_dri = pd.Series(prec_dri_list[i], name = 'prec_DRI')
+        npv_dri = pd.Series(npv_dri_list[i], name = 'npv_DRI')
+        prec_drp = pd.Series(prec_drp_list[i], name = 'prec_DRP')
+        npv_drp = pd.Series(npv_drp_list[i], name = 'npv_DRP')
+        diz_res[dataset] = calculate_correlations([prec_dri, npv_dri, prec_drp, npv_drp, values], corr)
+    return diz_res
+
+def calc_corr_quality_conf(pos_score, set_name, list_of_n_reads, corr = 'pearson'):
+    mean_pos_score = []
+    for i in range(len(pos_score)):
+        mean_pos_score.append(np.mean(pos_score[i]))
+
+    mean_pos_score = pd.Series(mean_pos_score, name = 'mean_pos_score')
+    reads = pd.Series(list_of_n_reads, name = set_name)
+
+    corr_quality_perf = calculate_correlations([mean_pos_score, reads], corr)
+    return corr_quality_perf
+
+def calc_corr_quality_perf(df_auc, set_name, list_of_n_reads, corr = 'pearson'):
+    auc_int = []
+    auc_patch = []
+    for n_reads_paris in list_of_n_reads:
+        auc_int.append(df_auc[df_auc.model_name == 'RIME'][f'auc_interactors_{set_name}{n_reads_paris}'].iloc[0])
+        auc_patch.append(df_auc[df_auc.model_name == 'RIME'][f'auc_patches_{set_name}{n_reads_paris}'].iloc[0])
+
+    auc_int = pd.Series(auc_int, name='DRI_AUC')
+    auc_patch = pd.Series(auc_patch, name='DRP_AUC')
+    reads = pd.Series(list_of_n_reads)
+    reads.name = set_name
+
+    corr_quality_perf = calculate_correlations([auc_int, auc_patch, reads], corr)
+    return corr_quality_perf
+
 def calculate_correlations(series_list, method='pearson', plot=False):
     """
     Calculate the correlations between all combinations of series in the list.

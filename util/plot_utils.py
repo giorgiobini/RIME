@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import math
+import sys
+import os
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
@@ -13,11 +15,57 @@ from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_min
 from .colors import *
 from .model_names_map import map_model_names
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import MODEL_NAME
+
 
 '''
 ------------------------------------------------------------------------------------------
 Result plots:
 '''
+
+def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9)):
+    """
+    Plots a box plot for each list of scores corresponding to n_reads.
+    
+    Parameters:
+    - n_reads: List of x-axis labels, representing different read numbers.
+    - scores: List of lists, where each sublist contains the scores for the corresponding n_read.
+    - variable: Label for the x-axis (default is 'Number of Reads').
+    - figsize: Tuple to set the figure size (default is (17, 9)).
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    # Create the boxplot
+    ax.boxplot(scores, showfliers=False)
+    # Set the x-axis labels to the n_reads values
+    ax.set_xticklabels(n_reads)
+    # Set axis labels
+    ax.set_xlabel(variable)
+    ax.set_ylabel(f'{MODEL_NAME} Score')
+    # Set the title
+    ax.set_title(f'Boxplot of {MODEL_NAME} Scores for Each {variable}')
+    # Display the plot
+    plt.show()
+
+def plot_metric_confidence_for_all_models_for_2tasks(df_auc, list_of_reads, n_positives_run, name, size_multiplier = 10, metric = 'AUC', string_label = 'interaction length size', figsize = (17,9)):
+
+    model_names = list(df_auc['model_name'])
+
+    for task_name in ['interactors', 'patches']:
+        auc_models = []
+        perc_models = []
+        for model_name in model_names:
+            auc_current_model = []
+            for n_reads in list_of_reads:
+                auc_current_model.append(df_auc[df_auc['model_name'] == model_name][f'auc_{task_name}_{name}{n_reads}'].iloc[0])
+            auc_models.append(auc_current_model)
+            perc_models.append(np.array(n_positives_run)/np.max(n_positives_run) * 100)
+
+        print('TASK: ', task_name)
+        plt.figure(figsize=figsize)
+        plot_metric_confidence_for_all_models(list_of_reads, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label)
+        plt.show()
+        print('\n\n')
 
 def plot_all_model_auc(subset, tools, n_runs=50):
     models = [{'prob': subset.probability, 'model_name': 'NT'}]

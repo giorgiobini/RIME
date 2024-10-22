@@ -58,7 +58,10 @@ def main(args):
         paris = True
     else:
         paris = False
-    
+
+    if HOW == 'train_val_fine_tuning':
+        assert hq_suffix == ''
+
     start_time = time.time() 
 
     if paris:
@@ -165,7 +168,7 @@ def main(args):
 
     if dataset == 'splash':
         df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes_splash.csv"), sep = ',')[['gene_id', 'species_set']].rename({'gene_id':'original_gene_id'}, axis = 1)
-    elif dataset in ['paris', 'mario', 'ricseq']:
+    else:
         df_genes_original = pd.read_csv(os.path.join(processed_files_dir, "df_genes.csv"), sep = ',')[['gene_id', 'specie']].rename({'gene_id':'original_gene_id'}, axis = 1)
 
     df_genes = df_genes_nt[['gene_id', 'original_gene_id']].merge(df_genes_original, on = 'original_gene_id')
@@ -196,6 +199,8 @@ if __name__ == '__main__':
     #nohup python run_binary_cl_on_test_500.py --dataset=mario &> run_binary_cl_on_test_mario500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=ricseq &> run_binary_cl_on_test_ricseq500.out &
     #nohup python run_binary_cl_on_test_500.py --dataset=splash &> run_binary_cl_on_test_splash500.out &
+    #nohup python run_binary_cl_on_test_500.py --how=train_val_fine_tuning &> run_binary_cl_on_test_train_val_fine_tuning500.out &
+    #nohup python run_binary_cl_on_test_500.py --how=val &> run_binary_cl_on_test_train_val_fine_tuning500.out &
     
     #For HQ results, add --hq argument, like:
     #nohup python run_binary_cl_on_test_500.py --how=test --hq &> run_binary_cl_on_test_HQ_500.out &

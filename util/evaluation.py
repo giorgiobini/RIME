@@ -19,6 +19,31 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
 
 
+def obtain_enhn_easypos_smartneg(res, filter_neg_by_HQ = False):
+    
+    if filter_neg_by_HQ:
+    
+        res['g1'] = res.gene1.str.extractall('(.*)_(.*)_(.*)').reset_index()[0]
+        res['g2'] = res.gene2.str.extractall('(.*)_(.*)_(.*)').reset_index()[0]
+
+        enhn = res[res.policy.isin(['easypos', 'easyneg', 'hardneg'])].reset_index(drop = True)
+
+        pos_to_keep = list(set(enhn[enhn.ground_truth == 1].couples))
+        hn_condition = enhn.couples.isin(pos_to_keep) & (enhn.policy == 'hardneg')
+        genes_hq = set(enhn[enhn.couples.isin(pos_to_keep)]['g1']).union(enhn[enhn.couples.isin(pos_to_keep)]['g2'])
+        en_condition = enhn.g1.isin(genes_hq) & enhn.g2.isin(genes_hq) & (enhn.policy == 'easyneg')
+        enhn = enhn[en_condition | hn_condition | (enhn.policy == 'easypos')]
+        
+        easypos_smartneg = res[res.policy.isin(['easypos', 'smartneg'])].reset_index(drop = True)
+        sn_condition = easypos_smartneg.g1.isin(genes_hq) & easypos_smartneg.g2.isin(genes_hq) & (easypos_smartneg.policy == 'smartneg')
+        easypos_smartneg = easypos_smartneg[sn_condition | (easypos_smartneg.policy == 'easypos')]
+    else:
+        easypos_smartneg = res[res.policy.isin(['easypos', 'smartneg'])].reset_index(drop = True)
+        enhn = res[res.policy.isin(['easypos', 'easyneg', 'hardneg'])].reset_index(drop = True)
+        
+    return enhn, easypos_smartneg
+
+
 def calc_corr_perf_conf(prec_dri_list, npv_dri_list, prec_drp_list, npv_drp_list, list_of_datasets, corr = 'pearson'):
     n_values = len(prec_dri_list[0])
     values = pd.Series(np.arange(n_values), name = 'top_values')

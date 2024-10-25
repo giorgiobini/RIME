@@ -381,6 +381,9 @@ class ModelResultsManager:
                     ((res.n_reads >= n_reads_ricseq) & (res.policy == 'easypos'))
                 ].reset_index(drop = True)
         
+        if (experiment == 'paris') & (paris_test == False):
+            paris_finetuned_model = False
+
         if paris_finetuned_model:
             res = res[~res.couples.isin(self.couples_paris_val)].reset_index(drop = True)
             
@@ -429,7 +432,7 @@ class ModelResultsManager:
         
         assert experiment in ['paris', 'splash', 'ricseq', 'mario', 'psoralen']
         
-        if experiment == 'psoralen':
+        if experiment in ['psoralen']:
             paris = self._load_single_experiment_data('paris', paris_test, paris_finetuned_model, specie_paris, paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model, only_test_splash_ricseq_mario, n_reads_ricseq)
             splash = self._load_single_experiment_data('splash', paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model, only_test_splash_ricseq_mario, n_reads_ricseq)
             splash['n_reads'] = np.nan
@@ -522,13 +525,15 @@ class ModelResultsManager:
         Returns:
             str: The experiment name ('test_HQ', 'test', 'val_HQ', 'val').
         """
+
         if paris_test and paris_hq:
             return 'test_HQ'
         elif paris_test:
             return 'test'
         elif paris_hq:
             return 'val_HQ'
-        return 'val'
+        else:
+            return 'val'
     
     
 def obtain_all_model_auc(subset, tools, n_runs=50):
@@ -602,7 +607,7 @@ def map_thermodynamic_columns(res, energy_columns, logistic_regression_models):
     return res
 
 def map_dataset_to_hp(dataset):
-    assert dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash']
+    assert dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_mouse_HQ', 'val_mouse', 'val_HQ', 'psoralen_val']
     
     if dataset == 'parisHQ':
         experiment = 'paris'
@@ -611,6 +616,16 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 3
         interlen_OR_nreads_paris = True
         n_reads_ricseq = np.nan
+        paris_test = True
+        
+    elif dataset == 'val_HQ':
+        experiment = 'paris'
+        specie_paris = 'human'
+        paris_hq_threshold = 35
+        n_reads_paris = 3
+        interlen_OR_nreads_paris = True
+        n_reads_ricseq = np.nan
+        paris_test = False
 
     elif dataset == 'paris_mouse_HQ':
         experiment = 'paris'
@@ -619,6 +634,16 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 3
         interlen_OR_nreads_paris = True
         n_reads_ricseq = np.nan
+        paris_test = True
+        
+    elif dataset == 'val_mouse_HQ':
+        experiment = 'paris'
+        specie_paris = 'mouse'
+        paris_hq_threshold = 35
+        n_reads_paris = 3
+        interlen_OR_nreads_paris = True
+        n_reads_ricseq = np.nan
+        paris_test = False
 
     elif dataset == 'ricseqHQ':
         experiment = 'ricseq'
@@ -627,6 +652,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = np.nan
         interlen_OR_nreads_paris = np.nan
         n_reads_ricseq = 4
+        paris_test = np.nan
 
     elif dataset == 'psoralen':
         experiment = 'psoralen'
@@ -635,6 +661,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        paris_test = True
 
     elif dataset == 'paris_mouse':
         experiment = 'paris'
@@ -643,29 +670,59 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        paris_test = True
+        
+    elif dataset == 'val_mouse':
+        experiment = 'paris'
+        specie_paris = 'mouse'
+        paris_hq_threshold = 1
+        n_reads_paris = 1
+        interlen_OR_nreads_paris = False
+        n_reads_ricseq = np.nan
+        paris_test = False
+        
+    elif dataset == 'psoralen_val':
+        experiment = 'psoralen'
+        specie_paris = 'all'
+        paris_hq_threshold = 1
+        n_reads_paris = 1
+        interlen_OR_nreads_paris = False
+        n_reads_ricseq = np.nan
+        paris_test = False
 
-    else:
+    elif dataset == 'val':
+        experiment = 'paris'
+        specie_paris = 'all'
+        paris_hq_threshold = 1
+        n_reads_paris = 1
+        interlen_OR_nreads_paris = False
+        n_reads_ricseq = np.nan
+        paris_test = False
+
+    else: #paris, ricseq, mario, splash
         experiment = dataset
-        specie_paris = 'human'
+        specie_paris = 'all'
         paris_hq_threshold = 1
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = 1
+        paris_test = True
         
-    return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris
+        
+    return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris, paris_test
 
 def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_model, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
-    assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'])) == set(list_of_datasets)
+    assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_HQ', 'psoralen_val', 'val_mouse'])) == set(list_of_datasets)
     
 
     dfs = [] 
     for dataset in tqdm(list_of_datasets):
 
-        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris = map_dataset_to_hp(dataset)
+        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris, paris_test  = map_dataset_to_hp(dataset)
         
         res = model.get_experiment_data(
             experiment = experiment, 
-            paris_test = True, 
+            paris_test = paris_test, 
             paris_finetuned_model = paris_finetuned_model, 
             specie_paris = specie_paris,
             paris_hq = False,

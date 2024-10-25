@@ -4,14 +4,10 @@ folders=('arch2_PARISfinetuned_PARIStest0023_PARISfinetunedSPLASH_PARIStest0043'
 
 for folder in "${folders[@]}"; do
 
-    nohup python run_binary_cl_on_test_500.py --folder="$folder" --how=train_val_fine_tuning &> run_binary_cl_on_test_500train_val_fine_tuning.out &
-    pid1=$!
-
     nohup python run_binary_cl_on_test_500.py --folder="$folder" --how=val &> run_binary_cl_on_test_val.out &
-    pid2=$!
-
+    pid1=$!
+    
     wait "$pid1"
-    wait "$pid2"
 done
 
 # nohup ./run_multiple_folders_on_test500DROP.sh &> run_multiple_folders_on_test500DROP.out &

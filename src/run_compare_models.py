@@ -35,7 +35,7 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
     PARIS_FINETUNED_MODEL = True
     SPLASH_TRAINED_MODEL = True
     energy_columns = [] #['IntaRNA', 'priblast', 'RNAplex', 'rnacofold', 'assa', 'RNAhybrid', 'RNAup', 'risearch2']
-    list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash']
+    list_of_datasets = ['val', 'val_HQ', 'val_mouse', 'psoralen_val', 'parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash']
     
     diz_results = {}
     name_map = {}
@@ -54,27 +54,28 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
             other_tools = energy_columns, 
             other_tools_dir = external_dataset_dir
         )
-        
+
         df_auc = obtain_df_auc(modelRM, PARIS_FINETUNED_MODEL, energy_columns, SPLASH_TRAINED_MODEL, list_of_datasets = list_of_datasets, logistic_regression_models = {} )
 
         for dataset in list_of_datasets:
+            
             row[f'auc_interactors_{dataset}'] = df_auc[df_auc['model_name'] == MODEL_NAME][f'auc_interactors_{dataset}'].iloc[0]
             row[f'auc_patches_{dataset}'] = df_auc[df_auc['model_name'] == MODEL_NAME][f'auc_patches_{dataset}'].iloc[0]
             
-            experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris = map_dataset_to_hp(dataset)
+            experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris, paris_test = map_dataset_to_hp(dataset)
     
-            if dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'mario', 'splash']:
+            if dataset in ['parisHQ', 'val_HQ', 'paris_mouse_HQ', 'paris_mouse_HQ', 'ricseqHQ', 'mario', 'splash']:
                 n_run_undersampling = 50 
             else:
                 n_run_undersampling = 10
 
             res = modelRM.get_experiment_data(
                 experiment = experiment, 
-                paris_test = True, 
+                paris_test = paris_test, 
                 paris_finetuned_model = PARIS_FINETUNED_MODEL, 
                 specie_paris = specie_paris,
-                paris_hq = paris_hq_threshold,
-                paris_hq_threshold = 1,
+                paris_hq = False,
+                paris_hq_threshold = paris_hq_threshold,
                 n_reads_paris = n_reads_paris,
                 interlen_OR_nreads_paris = interlen_OR_nreads_paris,
                 splash_trained_model = SPLASH_TRAINED_MODEL,
@@ -153,11 +154,12 @@ def main():
     for model_name in models_to_check:
         model_folder = os.path.join(chkpt_folder, model_name)
         test_paris = os.path.join(chkpt_folder, model_name, 'test_results200.csv')
+        val_paris = os.path.join(chkpt_folder, model_name, 'val_results200.csv')
         ricseq = os.path.join(chkpt_folder, model_name, 'ricseq_results200.csv')
         splash = os.path.join(chkpt_folder, model_name, 'splash_results200.csv')
         mario = os.path.join(chkpt_folder, model_name, 'mario_results200.csv')
         
-        if os.path.exists(test_paris) & os.path.exists(ricseq) & os.path.exists(splash) & os.path.exists(mario):
+        if os.path.exists(test_paris) & os.path.exists(val_paris) & os.path.exists(ricseq) & os.path.exists(splash) & os.path.exists(mario):
             checkpoint_dir_paths.append(model_folder)
 
     for i in range(1, 1_000):

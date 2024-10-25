@@ -1,7 +1,49 @@
 nohup: ignoring input
+/data01/giorgio/RNARNA-NT/src/train_binary_cl.py:373: DtypeWarning: Columns (18,19,21,22,23,24) have mixed types.Specify dtype option on import or set low_memory=False.
+  dataset_paris, policies_train = obtain_train_dataset_paris(dimension, train_hq, finetuning, per_sample_p, proportion_sn, proportion_hn, proportion_en, min_n_groups_train, max_n_groups_train, specie, scaling_factor)
 /data01/giorgio/ENTER/envs/dnabert/lib/python3.9/site-packages/torch/nn/init.py:388: UserWarning: Initializing zero-element tensors is a no-op
   warnings.warn("Initializing zero-element tensors is a no-op")
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
 number of params: 4189214
 Start training
+Epoch: [0], (Time: 2:07:35)
+Averaged stats: {'accuracy': 0.524472713470459, 'precision': 0.6877408027648926, 'recall': 0.0900089368224144, 'F2': 0.1089465469121933, 'specificity': 0.9591158032417297, 'NPV': 0.513038158416748, 'loss': 0.6675602197647095}
+Test (Time: 0:18:42)
+Averaged stats: {'accuracy': 0.5504680275917053, 'precision': 0.7855775356292725, 'recall': 0.13882936537265778, 'F2': 0.1661941260099411, 'specificity': 0.9621067047119141, 'NPV': 0.5276798605918884, 'loss': 0.6525247693061829}
+Epoch: [1], (Time: 2:03:45)
+Averaged stats: {'accuracy': 0.5337430238723755, 'precision': 0.676547646522522, 'recall': 0.13024844229221344, 'F2': 0.15533432364463806, 'specificity': 0.9376634955406189, 'NPV': 0.5185236930847168, 'loss': 0.6624865531921387}
+Test (Time: 0:18:05)
+Averaged stats: {'accuracy': 0.5570091605186462, 'precision': 0.7841483950614929, 'recall': 0.1573249101638794, 'F2': 0.1872633993625641, 'specificity': 0.9566933512687683, 'NPV': 0.5316828489303589, 'loss': 0.6542171239852905}
+Epoch: [2], (Time: 2:03:36)
+Averaged stats: {'accuracy': 0.5401232838630676, 'precision': 0.6795574426651001, 'recall': 0.1556052565574646, 'F2': 0.18397490680217743, 'specificity': 0.9263070821762085, 'NPV': 0.5220513939857483, 'loss': 0.6600664854049683}
+Test (Time: 0:17:55)
+Averaged stats: {'accuracy': 0.5796210765838623, 'precision': 0.7135511040687561, 'recall': 0.2660426199436188, 'F2': 0.30419865250587463, 'specificity': 0.8931995034217834, 'NPV': 0.5489326119422913, 'loss': 0.6456406116485596}
+Epoch: [3], (Time: 2:03:35)
+Averaged stats: {'accuracy': 0.5404390692710876, 'precision': 0.6832030415534973, 'recall': 0.15561795234680176, 'F2': 0.18404227495193481, 'specificity': 0.927433431148529, 'NPV': 0.522031843662262, 'loss': 0.6581447720527649}
+Test (Time: 0:17:52)
+Averaged stats: {'accuracy': 0.5673282742500305, 'precision': 0.741309642791748, 'recall': 0.2068343311548233, 'F2': 0.241684690117836, 'specificity': 0.9278222918510437, 'NPV': 0.5391218662261963, 'loss': 0.64598149061203}
+Epoch: [4], (Time: 2:01:54)
+Averaged stats: {'accuracy': 0.5458856821060181, 'precision': 0.6849751472473145, 'recall': 0.16802316904067993, 'F2': 0.19789324700832367, 'specificity': 0.9228987097740173, 'NPV': 0.5264666080474854, 'loss': 0.6555044651031494}
+Test (Time: 0:17:56)
+Averaged stats: {'accuracy': 0.5705424547195435, 'precision': 0.7631468176841736, 'recall': 0.20457877218723297, 'F2': 0.23966176807880402, 'specificity': 0.9365061521530151, 'NPV': 0.5407305955886841, 'loss': 0.6438019871711731}
+Epoch: [5], (Time: 2:02:18)
+Averaged stats: {'accuracy': 0.5399637818336487, 'precision': 0.681800901889801, 'recall': 0.16325509548187256, 'F2': 0.1925429105758667, 'specificity': 0.9226077795028687, 'NPV': 0.5205015540122986, 'loss': 0.658534586429596}
+Test (Time: 0:18:05)
+Averaged stats: {'accuracy': 0.5676102638244629, 'precision': 0.776140034198761, 'recall': 0.19003045558929443, 'F2': 0.2238369882106781, 'specificity': 0.9451900124549866, 'NPV': 0.538520872592926, 'loss': 0.642386257648468}
+Epoch: [6], (Time: 2:03:13)
+Averaged stats: {'accuracy': 0.5456231236457825, 'precision': 0.682276725769043, 'recall': 0.16895855963230133, 'F2': 0.1988852322101593, 'specificity': 0.9214865565299988, 'NPV': 0.5263350605964661, 'loss': 0.6551609039306641}
+Test (Time: 0:18:46)
+Averaged stats: {'accuracy': 0.587007999420166, 'precision': 0.6882166266441345, 'recall': 0.3181459307670593, 'F2': 0.35648393630981445, 'specificity': 0.8558700680732727, 'NPV': 0.5565823316574097, 'loss': 0.6428080797195435}
+Epoch: [7], (Time: 2:02:29)
+Averaged stats: {'accuracy': 0.5479309558868408, 'precision': 0.6751381158828735, 'recall': 0.1821705400943756, 'F2': 0.21332308650016785, 'specificity': 0.912604033946991, 'NPV': 0.52812659740448, 'loss': 0.6555318236351013}
+Test (Time: 0:18:23)
+Averaged stats: {'accuracy': 0.5779857635498047, 'precision': 0.7519125938415527, 'recall': 0.23277319967746735, 'F2': 0.27006515860557556, 'specificity': 0.923198401927948, 'NPV': 0.546133816242218, 'loss': 0.6403596997261047}
+Epoch: [8], (Time: 2:06:07)
+Averaged stats: {'accuracy': 0.5511442422866821, 'precision': 0.6786710023880005, 'recall': 0.19934937357902527, 'F2': 0.23213981091976166, 'specificity': 0.9050484895706177, 'NPV': 0.5291134715080261, 'loss': 0.6544819474220276}
+Test (Time: 0:18:20)
+Averaged stats: {'accuracy': 0.5753355026245117, 'precision': 0.7726530432701111, 'recall': 0.21348822116851807, 'F2': 0.2496175915002823, 'specificity': 0.9371827840805054, 'NPV': 0.5437058210372925, 'loss': 0.6393840312957764}
+Epoch: [9], (Time: 2:10:19)
+Averaged stats: {'accuracy': 0.5511505603790283, 'precision': 0.6821506023406982, 'recall': 0.1950143575668335, 'F2': 0.22750785946846008, 'specificity': 0.9087574481964111, 'NPV': 0.5292497277259827, 'loss': 0.654237687587738}
+Test (Time: 0:23:24)
+Averaged stats: {'accuracy': 0.5846960544586182, 'precision': 0.7257967591285706, 'recall': 0.2722454071044922, 'F2': 0.3111305832862854, 'specificity': 0.8971467018127441, 'NPV': 0.5521238446235657, 'loss': 0.639783501625061}

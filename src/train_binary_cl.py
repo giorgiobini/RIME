@@ -473,10 +473,10 @@ def main(args):
         checkpoint_paths = [output_dir / 'checkpoint.pth']
         
         if args.class_1_weight == 1:
-            save_this_epoch = utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['accuracy', 'F2', 'loss'], maximize_list = [True, True, False], n_top = 10)
+            save_this_epoch = utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['accuracy', 'F2', 'loss'], maximize_list = [True, True, False], n_top = 15)
 
         elif args.class_1_weight > 1:
-            save_this_epoch = utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['F2', 'precision', 'specificity', 'loss'], maximize_list = [True, True, True, False], n_top = 10)
+            save_this_epoch = utils.save_this_epoch(os.path.join(output_dir, "log.txt"), metrics = ['F2', 'precision', 'specificity', 'loss'], maximize_list = [True, True, True, False], n_top = 15)
         else:
             raise NotImplementedError
 

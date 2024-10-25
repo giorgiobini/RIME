@@ -1,6 +1,6 @@
 #!/bin/bash
 
-folders=('arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0087' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0093' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0094' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0095' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0096' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0097' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0098' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0099' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0100' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0101')
+folders=('arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0100' 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086_PARISfinetunedSPLASHFPweight_PARIStest0101')
 
 for folder in "${folders[@]}"; do
 
@@ -22,21 +22,20 @@ for folder in "${folders[@]}"; do
     nohup python run_binary_cl_on_test_500.py --folder="$folder" --how=val &> run_binary_cl_on_test_val.out &
     pid6=$!
 
-    nohup python run_binary_cl_on_test_500.py --folder="$folder" --how=train_val_fine_tuning &> run_binary_cl_on_test_500train_val_fine_tuning.out &
-    pid7=$!
-
     wait "$pid1"
     wait "$pid2"
     wait "$pid3"
     wait "$pid4"
     wait "$pid5"
     wait "$pid6"
-    wait "$pid7"
 done
 
 # nohup ./run_multiple_folders_on_test500.sh &> run_multiple_folders_on_test500.out &
 
 
 
-#  # Wait for each command within the folder iteration to complete
-# wait "$pid1"
+
+# nohup python run_binary_cl_on_test_500.py --folder="$folder" --how=train_val_fine_tuning &> run_binary_cl_on_test_500train_val_fine_tuning.out &
+# pid7=$!
+
+# wait "$pid7"

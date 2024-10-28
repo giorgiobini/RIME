@@ -47,6 +47,10 @@ pip install .
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 conda install -c conda-forge pytorch-gpu=2.0.0 -y (C e una ripetizione del secondo comando; jax dovrebbe comunque funzionare anche dopo questo comando, prova a metterlo prima la prossima volta evitando la ripetizione)
 pip install datasets
+
+
+OPPURE: 
+copia incolla il folder rnarna dentro la cartella qualcosa/ENTER/envs/
 ``` 
 
 DNABERT (Required)
@@ -63,6 +67,11 @@ conda install -c conda-forge biopython=1.79 -y
 pip install datasets
 conda install -c conda-forge matplotlib-venn -y (I still have todo this in bluecheer)
 python -m pip install --no-cache-dir ortools -y  (I still have todo this in bluecheer)
+
+OPPURE: 
+copia incolla il folder dnabert dentro la cartella qualcosa/ENTER/envs/
+cd DNABERT_dependencies
+python3 -m pip install --editable .
 ```
 
 INTARNA 

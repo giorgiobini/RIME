@@ -14,7 +14,7 @@ EMBEDDING_DIM_BERT = 768 #bert-transformer embedding (number of features for eac
 EMBEDDING_DIM = 2560 #nucleotide-transformer embedding (number of features for each token)
 N_PCA = 1000 #dimension to reduce nucleotide-transformer embeddings
 
-ROOT_DIR =  '/data01/giorgio/RNARNA-NT/' #/data01/gbini/projects/RNA-RNA/
+ROOT_DIR =  os.path.dirname(os.path.abspath(__file__)) #'/data01/giorgio/RNARNA-NT/' #/data01/gbini/projects/RNA-RNA/
 dataset_files_dir = os.path.join(ROOT_DIR, 'dataset')
 original_files_dir = os.path.join(dataset_files_dir, 'original_files')
 rna_rna_files_dir = os.path.join(dataset_files_dir, "rna_rna_pairs")

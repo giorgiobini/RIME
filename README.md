@@ -3,6 +3,7 @@ This repo bla bla
 
 ## 1. Environment setup 
 We recommend you to build a python virtual environment with Anaconda.
+The machine has cuda version 525, toolkit cuda 12.0, cudnn 8.8.1.3
 
 #### 1.1 Install miniconda
 

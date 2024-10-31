@@ -318,11 +318,22 @@ def calc_metric(df, column, metric = 'precision_recall_curve'):
             output = auc(recall, precision)
         except:
             output = np.nan
+    elif metric == 'cross_entropy':
+        output = ce_loss(df, column)
 
     else:
         raise NotImplementedError
 
     return output
+
+
+def ce_loss(subset, column):
+    # Cross-entropy loss calculation
+    predictions = np.clip(subset[column], 1e-7, 1 - 1e-7)  # Avoid log(0)
+    ground_truth = subset['ground_truth']
+    cross_entropy = -np.mean(ground_truth * np.log(predictions) + (1 - ground_truth) * np.log(1 - predictions))
+    return cross_entropy
+
 
 def make_calculation(calc_pos, calc_neg, metric): 
     calc = False

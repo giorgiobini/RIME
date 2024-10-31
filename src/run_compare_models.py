@@ -88,7 +88,8 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
             prec_list = []
             spec_list = []
             rec_list = []
-            
+            ce_list = []
+
             for i in range(n_run_undersampling):
                 
                 balanced = balancing_only_for_one_task(res, task = 'all')
@@ -96,12 +97,14 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
                 npv_list.append(calc_metric(balanced, 'probability', 'npv'))
                 prec_list.append(calc_metric(balanced, 'probability', 'precision'))
                 spec_list.append(calc_metric(balanced, 'probability', 'specificity'))
-                rec_list.append(calc_metric(balanced, 'probability', 'recall'))        
+                rec_list.append(calc_metric(balanced, 'probability', 'recall'))      
+                ce_list.append(calc_metric(balanced, 'probability', 'cross_entropy'))  
             
             row[f'npv_{dataset}'] = np.round(np.mean(npv_list), 2)
             row[f'precision_{dataset}'] = np.round(np.mean(prec_list), 2)
             row[f'tnr_{dataset}'] = np.round(np.mean(spec_list), 2)
             row[f'recall_{dataset}'] = np.round(np.mean(rec_list), 2)
+            row[f'ce_{dataset}'] = np.round(np.mean(ce_list), 2)
         
         model_name = f'model{idx_v + index_name}'
         name_map[model_name] = checkpoint_dir

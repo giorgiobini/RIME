@@ -243,17 +243,31 @@ def balancing_only_for_one_task(res: pd.DataFrame, task: 'str') -> pd.DataFrame:
 
         res_sampled = pd.concat([ep_sampled, sn_sampled], axis=0).reset_index(drop=True)
         
-    elif task == 'all':
+    elif task == 'all_equally_balanced':
+        # sn_sampled should be 33% of ep_sampled. hn should be 33% of ep_sampled, en should be 33% of ep_sampled.
         size_sampling_neg = min(ep.shape[0]//3, hn.shape[0], en.shape[0], sn.shape[0])
     
         # Undersample each class to have the same number of samples as the smallest class
-        ep_sampled = ep.sample(size_sampling_neg*3)
+        ep_sampled = ep.sample(size_sampling_neg * 3)
         hn_sampled = hn.sample(size_sampling_neg)
         en_sampled = en.sample(size_sampling_neg)
         sn_sampled = sn.sample(size_sampling_neg)
 
         res_sampled = pd.concat([ep_sampled, hn_sampled, en_sampled, sn_sampled], axis=0).reset_index(drop=True)
-    
+        
+    elif task == 'all':
+        # sn_sampled should be 50% of ep_sampled. hn should be 25% of ep_sampled, en should be 25% of ep_sampled.
+        size_sampling_neg = min(ep.shape[0]//4, hn.shape[0], en.shape[0], sn.shape[0]//2)
+        
+        # Calculate the sample sizes for each category
+        ep_sampled = ep.sample(size_sampling_neg * 4)
+        hn_sampled = hn.sample(size_sampling_neg)
+        en_sampled = en.sample(size_sampling_neg)
+        sn_sampled = sn.sample(size_sampling_neg * 2)
+
+        # Combine the sampled data
+        res_sampled = pd.concat([ep_sampled, hn_sampled, en_sampled, sn_sampled], axis=0).reset_index(drop=True)
+
     assert np.round(
         (res_sampled[res_sampled.ground_truth == 0].shape[0] / res_sampled[res_sampled.ground_truth == 1].shape[0]), 
         1) == 1

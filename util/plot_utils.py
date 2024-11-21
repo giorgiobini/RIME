@@ -11,7 +11,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from sklearn.utils import resample
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.stats import pearsonr
-from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
+from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class, find_extension_from_savepath
 from .colors import *
 from .model_names_map import map_model_names
 
@@ -24,7 +24,174 @@ from config import MODEL_NAME
 Result plots:
 '''
 
-def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9)):
+def plot_interacting_region_hist_paris(df, figsize=(12, 8), savepath=''):
+    """
+    Plots a histogram of the combined 'w' and 'h' columns in the dataframe, 
+    including only values above the 99th percentile of the distribution.
+
+    Parameters:
+    - df: DataFrame containing the data with columns 'w' and 'h'.
+    - figsize: Tuple specifying the size of the figure.
+    - savepath: Optional path to save the plot. If empty, the plot won't be saved.
+    """
+    # Concatenate the columns 'w' and 'h', reset the index
+    combined_data = pd.concat([df['w'], df['h']], axis=0).reset_index(drop=True)
+    
+    # Calculate the 99th percentile
+    threshold = combined_data.quantile(0.99)
+    
+    # Filter the data to include only values above the 99th percentile
+    filtered_data = combined_data[combined_data <= threshold]
+    
+    # Plotting the histogram
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.hist(filtered_data, bins=40, color='skyblue', edgecolor='black', rwidth=0.8)
+    
+    # Adding labels and title
+    ax.set_xlabel("Value")
+    ax.set_ylabel("Frequency")
+    ax.set_title("Histogram of Values Above the 99th Percentile")
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        plt.savefig(savepath, format=f"{extension}")
+    
+    plt.show()
+
+def plot_bar_n_reads_hist(df, upper = 10, figsize=(12, 8), savepath=''):
+    """
+    Plots a histogram of the 'n_reads' column in the dataframe for interacting reads, 
+    with a cutoff at 10 to show "≥ 10" on the x-axis.
+
+    Parameters:
+    - df: DataFrame containing the data. It should have a column 'n_reads' and a boolean column 'interacting'.
+    - figsize: Tuple specifying the size of the figure.
+    - savepath: Optional path to save the plot. If empty, the plot won't be saved.
+    """
+    
+    # Filter for interacting reads and clip values to a maximum of 10
+    n_reads_distribution = df[df['interacting']]['n_reads'].clip(upper=upper)
+    
+    # Determine the minimum number of reads in the data
+    min_reads = int(n_reads_distribution.min())
+    
+    # Define bins from min_reads to upper
+    bins = list(range(min_reads, upper+2))
+    
+    # Plotting the histogram
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.hist(n_reads_distribution, bins=bins, align='left', rwidth=0.8, color='skyblue', edgecolor='black')
+    
+    # Customizing the x-axis labels, including "≥ 10" for the last bin
+    xticks_labels = list(range(min_reads, upper)) + [f'≥ {upper}'] + ['']
+    ax.set_xticks(bins)
+    ax.set_xticklabels(xticks_labels)
+    
+    # Adding labels and title
+    ax.set_xlabel("Number of Reads")
+    ax.set_ylabel("Frequency")
+    ax.set_title("Histogram of Number of Reads")
+    
+    # Saving the plot if a savepath is provided
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        plt.savefig(savepath, format=f"{extension}")
+    
+    plt.show()
+
+def plot_matrix_area_kde_curves(datasets, labels, xlabel="Square Root of Contact Matrix Area", title="KDE Plot of Contact Matrix Area", savepath=''):
+    """
+    Plots KDE curves for the square root of the product of length_1 and length_2 in multiple datasets,
+    after filtering out values greater than the 99th percentile for each distribution.
+    
+    Parameters:
+    - datasets: List of pandas DataFrames containing 'length_1' and 'length_2' columns
+    - labels: List of labels corresponding to each dataset for the legend
+    - xlabel: Label for the x-axis
+    - title: Title of the plot
+    - savepath: Path to save the plot, with the extension indicating the format (e.g., 'plot.png')
+    """
+    
+    plt.figure(figsize=(10, 6))
+    
+    for data, label in zip(datasets, labels):
+        # Calculate the square root of product of lengths and filter by the 99th percentile
+        filtered_data = np.sqrt(data.length_1 * data.length_2)
+        filtered_data = filtered_data[filtered_data <= np.percentile(filtered_data, 99)]
+        
+        # Plot KDE curve
+        sns.kdeplot(filtered_data, label=label, shade=False)
+    
+    # Add legend and labels
+    plt.legend()
+    plt.xlabel(xlabel)
+    plt.ylabel("Density")
+    plt.title(title)
+    
+    # Save plot if savepath is provided
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        plt.savefig(savepath, format=f"{extension}")
+    
+    # Show plot
+    plt.show()
+
+def plot_interaction_region(df, savepath = ''):
+    
+    df['where'] = df['where'].apply(lambda x: x.replace("UTR5", "5'UTR"))
+    df['where'] = df['where'].apply(lambda x: x.replace("UTR3", "3'UTR"))
+    df['where'] = df['where'].apply(lambda x: x.replace("none", "ncRNA"))
+    
+    df_int, df_neg = df[df.interacting == True], df[df.interacting == False]
+    
+    # PLOT 
+    categories = list(set(df_int['where'].value_counts().index).union(df_neg['where'].value_counts().index))
+
+    neg = df_neg['where'].value_counts()
+    neg = pd.Series([neg.get(key, 0) for key in categories], index=categories)
+
+    pos = df_int['where'].value_counts()
+    pos = pd.Series([pos.get(key, 0) for key in categories], index=categories)
+
+    values1 = pos.values
+
+    values2 = neg.values
+
+    total1 = sum(values1)
+    total2 = sum(values2)
+
+    percentages1 = np.array([value / total1 * 100 for value in values1])
+    percentages2 = np.array([value / total2 * 100 for value in values2])
+
+    bar_width = 0.35
+    index = np.arange(len(categories))
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    bar1 = ax.bar(index, percentages1, bar_width, label='Positive Distribution', color='skyblue')
+    bar2 = ax.bar(index + bar_width, percentages2, bar_width, label='Negative Distribution', color='orange')
+
+    ax.set_xlabel('Categories')
+    ax.set_ylabel('Percentage')
+    ax.set_title('Comparison of Two Distributions')
+    ax.set_xticks(index + bar_width / 2)
+    ax.set_xticklabels(categories, rotation=45, ha='right')
+    ax.legend()
+    plt.tight_layout()
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        plt.savefig(savepath, format=f"{extension}")
+    
+    plt.show()
+
+def plot_correlations_QPC(corr_QPC, figsize=(5, 5), savepath = ''):
+    plt.figure(figsize=figsize)
+    sns.heatmap(corr_QPC, annot=True, cmap="coolwarm", vmin=-1, vmax=1, center=0)
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        plt.savefig(savepath, format=f"{extension}")
+
+def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9), savepath = ''):
     """
     Plots a box plot for each list of scores corresponding to n_reads.
     
@@ -44,38 +211,108 @@ def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsiz
     ax.set_ylabel(f'{MODEL_NAME} Score')
     # Set the title
     ax.set_title(f'Boxplot of {MODEL_NAME} Scores for Each {variable}')
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath) 
+        plt.savefig(savepath, format=f"{extension}")
+    
     # Display the plot
     plt.show()
 
-def plot_metric_confidence_for_all_models_for_2tasks(df_auc, list_of_reads, n_positives_run, name, size_multiplier = 10, metric = 'AUC', string_label = 'interaction length size', figsize = (17,9)):
+# def plot_metric_confidence_for_all_models_for_2tasks(df_auc, list_of_reads, n_positives_run, name, size_multiplier = 10, metric = 'AUC', string_label = 'interaction length size', figsize = (17,9)):
 
+#     model_names = list(df_auc['model_name'])
+
+#     for task_name in ['interactors', 'patches']:
+#         auc_models = []
+#         perc_models = []
+#         for model_name in model_names:
+#             auc_current_model = []
+#             for n_reads in list_of_reads:
+#                 auc_current_model.append(df_auc[df_auc['model_name'] == model_name][f'auc_{task_name}_{name}{n_reads}'].iloc[0])
+#             auc_models.append(auc_current_model)
+#             perc_models.append(np.array(n_positives_run)/np.max(n_positives_run) * 100)
+
+#         print('TASK: ', task_name)
+#         plt.figure(figsize=figsize)
+#         plot_metric_confidence_for_all_models(list_of_reads, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label)
+#         plt.show()
+#         print('\n\n')
+
+def plot_metric_confidence_for_all_models_for_2tasks(
+    df_auc, list_of_reads, n_positives_run, name, size_multiplier=10,
+    metric='AUC', string_label='interaction length size', figsize=(17, 9), savepath = ''
+):
     model_names = list(df_auc['model_name'])
 
     for task_name in ['interactors', 'patches']:
         auc_models = []
         perc_models = []
+        
         for model_name in model_names:
             auc_current_model = []
             for n_reads in list_of_reads:
-                auc_current_model.append(df_auc[df_auc['model_name'] == model_name][f'auc_{task_name}_{name}{n_reads}'].iloc[0])
+                auc_current_model.append(
+                    df_auc[df_auc['model_name'] == model_name][f'auc_{task_name}_{name}{n_reads}'].iloc[0]
+                )
             auc_models.append(auc_current_model)
-            perc_models.append(np.array(n_positives_run)/np.max(n_positives_run) * 100)
+            perc_models.append(np.array(n_positives_run) / np.max(n_positives_run) * 100)
 
         print('TASK: ', task_name)
-        plt.figure(figsize=figsize)
-        plot_metric_confidence_for_all_models(list_of_reads, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label)
+        
+        # Create a figure with 2 vertically stacked subplots
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, sharex=True, gridspec_kw={'height_ratios': [1, 3]})
+        
+        # Top plot - Table aligned horizontally with x-axis values
+        histogram_values = n_positives_run
+        cell_text = [histogram_values]  # Single row with values across columns
+
+        # Turn off the axis for the table plot
+        ax1.axis('off')
+        table = ax1.table(cellText=cell_text,
+                          colLabels=list_of_reads,
+                          rowLabels=["Values"],
+                          cellLoc='center', 
+                          loc='center')
+        
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1, 1.5)  # Adjust cell size as needed
+
+        # Bottom plot - Primary AUC metrics plot
+        plt.sca(ax2)  # Set ax2 as the current axis
+        plot_metric_confidence_for_all_models(
+            list_of_reads, auc_models, perc_models, model_names, task_name, 
+            size_multiplier, metric, string_label
+        )
+        ax2.set_xlabel(string_label)
+        ax2.set_ylabel(metric)
+
+        # Show the combined figure
+        plt.tight_layout()
+        
+        if savepath:
+            extension = find_extension_from_savepath(savepath)
+            plt.savefig(add_task_name_to_savepath(savepath, task_name), format=f"{extension}")
+        
         plt.show()
         print('\n\n')
 
-def plot_all_model_auc(subset, tools, n_runs=50):
+def add_task_name_to_savepath(savepath, task_name):
+    # Split the file path into name and extension
+    base, ext = os.path.splitext(savepath)
+    # Return the modified path with task_name added before the extension
+    return f"{base}_{task_name}{ext}"
+
+def plot_all_model_auc(subset, tools, n_runs=50, savepath = ''):
     models = [{'prob': subset.probability, 'model_name': 'NT'}]
     
     for tool_name in tools:
         models.append({'prob': abs(subset[tool_name]), 'model_name': tool_name})
     
-    plot_roc_curves_with_undersampling(models, subset.ground_truth, n_runs) 
+    plot_roc_curves_with_undersampling(models, subset.ground_truth, n_runs, savepath = savepath) 
 
-def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50):
+def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50, savepath = ''):
     unbalanced = is_unbalanced(pd.DataFrame({'ground_truth': ground_truth}))
     
     plt.figure(figsize=(10, 8))
@@ -130,6 +367,11 @@ def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver Operating Characteristic (ROC) Curves')
     plt.legend(loc='lower right')
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath) 
+        plt.savefig(savepath, format=f"{extension}")
+    
     plt.show()
 
 def various_metrics(df_res, eps = 1e-6):
@@ -319,7 +561,13 @@ def calc_metric(df, column, metric = 'precision_recall_curve'):
         except:
             output = np.nan
     elif metric == 'cross_entropy':
-        output = ce_loss(df, column)
+        output = weighted_ce_loss(df, column, (1.0, 1.0))
+
+    elif metric == 'cross_entropy_FP':
+        output = weighted_ce_loss(df, column, (1.5, 1.0))
+
+    elif metric == 'cross_entropy_FN':
+        output = weighted_ce_loss(df, column, (1.0, 1.5))
 
     else:
         raise NotImplementedError
@@ -327,12 +575,35 @@ def calc_metric(df, column, metric = 'precision_recall_curve'):
     return output
 
 
-def ce_loss(subset, column):
-    # Cross-entropy loss calculation
-    predictions = np.clip(subset[column], 1e-7, 1 - 1e-7)  # Avoid log(0)
+def weighted_ce_loss(subset, column, weights):
+    """
+    Compute weighted cross-entropy loss.
+
+    Args:
+        subset (pd.DataFrame): Dataframe containing predictions and ground truth.
+        column (str): Name of the column containing predictions.
+        weights (tuple): Weights for the negative (class 0) and positive (class 1) classes.
+
+    Returns:
+        float: Weighted cross-entropy loss.
+    """
+    # Clip predictions to avoid log(0)
+    predictions = np.clip(subset[column], 1e-7, 1 - 1e-7)
     ground_truth = subset['ground_truth']
-    cross_entropy = -np.mean(ground_truth * np.log(predictions) + (1 - ground_truth) * np.log(1 - predictions))
-    return cross_entropy
+    
+    # Separate weights for each class
+    weight_0, weight_1 = weights
+
+    # Compute weighted cross-entropy
+    loss = -np.mean(
+        ground_truth * weight_1 * np.log(predictions) +
+        (1 - ground_truth) * weight_0 * np.log(1 - predictions)
+    )
+    return loss
+
+
+def ce_loss(subset, column):
+    return weighted_ce_loss(subset, column, (1.0, 1.0))
 
 
 def make_calculation(calc_pos, calc_neg, metric): 
@@ -1145,7 +1416,6 @@ def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_mod
     plt.ylabel(f'{metric}')
     plt.legend()
     plt.grid(True, alpha=0.5)
-    plt.show()
     
     
 def collect_results_based_on_topbottom_for_all_models_perc_neg(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision'):
@@ -1976,7 +2246,7 @@ def plot_features_vs_risearch2_confidence(res, based_on_percentile = True, n_val
         plt.grid(True, alpha=0.5)
         plt.show()
         
-def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method='pearson'):
+def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method='pearson', savepath = ''):
     """
     Plot a heatmap of the given correlation DataFrame.
     
@@ -2011,31 +2281,36 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
                 ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
     
     plt.title(title)
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath) 
+        plt.savefig(savepath, format=f"{extension}")
+    
     plt.show()
     
     
-def plot_sr_distributions(df_sr, label_x, figsize = (16, 8)):
+def plot_sr_distributions(df_sr, label_x, column = 'Model', figsize = (16, 8), savepath = ''):
     
     #map model_names
-    df_sr['Model'] = df_sr['Model'].apply(map_model_names)
+    df_sr[column] = df_sr[column].apply(map_model_names)
 
     # Create the violin plot without the inner box plot
     plt.figure(figsize=figsize)
-    ax = sns.violinplot(x='Model', y='Normalized Score', hue='Category', data=df_sr, split=True, palette=['#FF9999', '#99FF99'], inner=None)
+    ax = sns.violinplot(x=column, y='Normalized Score', hue='Category', data=df_sr, split=True, palette=['#FF9999', '#99FF99'], inner=None)
 
     # Add the mean points with custom horizontal lines
     mean_line_length = 0.3  # Adjust this value to control the length of the horizontal lines
 
     # Calculate means
-    mean_points = df_sr.groupby(['Model', 'Category'])['Normalized Score'].mean().reset_index()
+    mean_points = df_sr.groupby([column, 'Category'])['Normalized Score'].mean().reset_index()
 
     # Get the positions of each category for plotting
-    positions = {category: idx for idx, category in enumerate(df_sr['Model'].unique())}
+    positions = {category: idx for idx, category in enumerate(df_sr[column].unique())}
 
     # Plot mean lines manually
-    for i, model in enumerate(mean_points['Model'].unique()):
+    for i, model in enumerate(mean_points[column].unique()):
         for j, category in enumerate(mean_points['Category'].unique()):
-            mean_val = mean_points[(mean_points['Model'] == model) & (mean_points['Category'] == category)]['Normalized Score'].values[0]
+            mean_val = mean_points[(mean_points[column] == model) & (mean_points['Category'] == category)]['Normalized Score'].values[0]
             pos = positions[model]
             # Add offset for split violin
             if category == label_x:
@@ -2047,12 +2322,16 @@ def plot_sr_distributions(df_sr, label_x, figsize = (16, 8)):
     # Adjust the legend to prevent duplication
     handles, labels = plt.gca().get_legend_handles_labels()
     plt.legend(handles[:2], labels[:2], title='Category')
-
     plt.title('Violin Plot with Two Distributions per Category')
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath) 
+        plt.savefig(savepath, format=f"{extension}")
+    
     plt.show()
     
     
-def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1):
+def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1, savepath = ''):
     
     model_names = map_model_names(model_names)
     
@@ -2114,6 +2393,11 @@ def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1):
     plt.legend()
 
     plt.tight_layout()
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath) 
+        plt.savefig(savepath, format=f"{extension}")
+    
     plt.show()
     
     

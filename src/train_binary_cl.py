@@ -419,7 +419,7 @@ def main(args):
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr,
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
-
+    
     weights = torch.tensor([args.class_1_weight, 1.0]).to(device)
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     

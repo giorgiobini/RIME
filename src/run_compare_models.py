@@ -89,6 +89,8 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
             spec_list = []
             rec_list = []
             ce_list = []
+            ce2_list = []
+            ce3_list = []
 
             for i in range(n_run_undersampling):
                 
@@ -99,12 +101,16 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
                 spec_list.append(calc_metric(balanced, 'probability', 'specificity'))
                 rec_list.append(calc_metric(balanced, 'probability', 'recall'))      
                 ce_list.append(calc_metric(balanced, 'probability', 'cross_entropy'))  
+                ce2_list.append(calc_metric(balanced, 'probability', 'cross_entropy_FP'))  
+                ce3_list.append(calc_metric(balanced, 'probability', 'cross_entropy_FN'))  
             
-            row[f'npv_{dataset}'] = np.round(np.mean(npv_list), 2)
-            row[f'precision_{dataset}'] = np.round(np.mean(prec_list), 2)
-            row[f'tnr_{dataset}'] = np.round(np.mean(spec_list), 2)
-            row[f'recall_{dataset}'] = np.round(np.mean(rec_list), 2)
-            row[f'ce_{dataset}'] = np.round(np.mean(ce_list), 2)
+            row[f'npv_{dataset}'] = np.round(np.mean(npv_list), 5)
+            row[f'precision_{dataset}'] = np.round(np.mean(prec_list), 5)
+            row[f'tnr_{dataset}'] = np.round(np.mean(spec_list), 5)
+            row[f'recall_{dataset}'] = np.round(np.mean(rec_list), 5)
+            row[f'ce_{dataset}'] = np.round(np.mean(ce_list), 5)
+            row[f'ceFP_{dataset}'] = np.round(np.mean(ce2_list), 5)
+            row[f'ceFN_{dataset}'] = np.round(np.mean(ce3_list), 5)
         
         model_name = f'model{idx_v + index_name}'
         name_map[model_name] = checkpoint_dir
@@ -112,7 +118,7 @@ def otain_results_new(checkpoint_dir_paths, index_name, n_run_undersampling = 15
         
     df = pd.DataFrame.from_dict(diz_results, 'index')
     df = df*100
-    df = df.round(2)
+    df = df.round(5)
     df = df.reset_index().rename({'index':'model'}, axis = 1)
     
     return df, name_map

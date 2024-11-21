@@ -26,7 +26,7 @@ from config import *
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
-    parser.add_argument('--model_name', default='arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086',
+    parser.add_argument('--model_name', default='arch2_PSORALENtrained_PARISval0046',
                         help='Name of the model folder')
     parser.add_argument('--pairs_path', default='',
                         help='Path to the folder where there is pairs.csv')
@@ -56,7 +56,7 @@ def main(args, device):
     probability = []
     for _, row in df.iterrows():
         id_pair, embedding1name, embedding2name, x1, x2, y1, y2 = row['id_pair'], row['embedding1name'], row['embedding2name'], row['start_window1'], row['end_window1'], row['start_window2'], row['end_window2']
-        print(id_pair)
+
         if (x2-x1 >= 12)&(y2-y1 >= 12):
             x1_emb, x2_emb, y1_emb, y2_emb = x1//6, x2//6, y1//6, y2//6
 

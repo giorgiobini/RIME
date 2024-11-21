@@ -20,6 +20,8 @@ original_files_dir = os.path.join(dataset_files_dir, 'original_files')
 rna_rna_files_dir = os.path.join(dataset_files_dir, "rna_rna_pairs")
 processed_files_dir = os.path.join(dataset_files_dir, "processed_files")
 
+plots_dir = os.path.join(ROOT_DIR, 'plots')
+
 #INTARNA
 intarna_dir = os.path.join(processed_files_dir, "intarna")
 

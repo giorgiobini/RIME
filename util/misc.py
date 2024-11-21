@@ -233,6 +233,10 @@ def prepare_rna_branch_nt(s):
 def load_embedding(embedding_path):
     return np.load(embedding_path)
 
+def find_extension_from_savepath(savepath):
+    # Extracts the extension without the dot
+    return os.path.splitext(savepath)[1][1:]
+
 def collate_fn_nt(batch):
     batch_size = len(batch)
     

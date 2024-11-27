@@ -2352,11 +2352,11 @@ def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1, 
 
     # Applichiamo la colormap 'Oranges' alla parte sinistra (NPV)
     norm = plt.Normalize(vmin=0, vmax=1)
-    npv_colored = plt.cm.Oranges(norm(npv_data))[:, :, :3]  # Consideriamo solo i primi tre canali (RGB)
+    npv_colored = plt.cm.Blues(norm(npv_data))[:, :, :3]  # Consideriamo solo i primi tre canali (RGB)
     combined_image[:, :n_points, :] = npv_colored
 
     # Applichiamo la colormap 'Blues' alla parte destra (Precision)
-    precision_colored = plt.cm.Blues(norm(precision_data))[:, :, :3]  # Consideriamo solo i primi tre canali (RGB)
+    precision_colored = plt.cm.Oranges(norm(precision_data))[:, :, :3]  # Consideriamo solo i primi tre canali (RGB)
     combined_image[:, n_points:, :] = precision_colored
 
     # Plotting
@@ -2377,21 +2377,20 @@ def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1, 
     cax2 = divider.append_axes("right", size="5%", pad=0.7)
 
     # Colorbar per NPV
-    cb1 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Oranges'), cax=cax1)
+    cb1 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), cax=cax1)
     cb1.set_label('NPV Score')
 
     # Colorbar per Precision
-    cb2 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), cax=cax2)
+    cb2 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Oranges'), cax=cax2)
     cb2.set_label('Precision Score')
 
     # Aggiungiamo i numeri alle celle del grafico
     for i in range(num_modelli):
         for j in range(n_points):
-            text = ax.text(j, i, f"{npv_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold')
-            text = ax.text(j + n_points, i, f"{precision_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold')
+            text = ax.text(j, i, f"{npv_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold', fontsize=17, fontfamily='Arial')
+            text = ax.text(j + n_points, i, f"{precision_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold', fontsize=17, fontfamily='Arial')
 
     plt.legend()
-
     plt.tight_layout()
     
     if savepath:

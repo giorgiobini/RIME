@@ -24,6 +24,41 @@ from config import MODEL_NAME
 Result plots:
 '''
 
+def plot_interacting_region_kde_paris(df, figsize=(12, 8), savepath=''):
+    """
+    Plots a KDE of the combined 'w' and 'h' columns in the dataframe,
+    including only values above the 99th percentile of the distribution.
+
+    Parameters:
+    - df: DataFrame containing the data with columns 'w' and 'h'.
+    - figsize: Tuple specifying the size of the figure.
+    - savepath: Optional path to save the plot. If empty, the plot won't be saved.
+    """
+    # Concatenate the columns 'w' and 'h', reset the index
+    combined_data = pd.concat([df['w'], df['h']], axis=0).reset_index(drop=True)
+    
+    # Calculate the 99th percentile
+    threshold = combined_data.quantile(0.99)
+    
+    # Filter the data to include only values above the 99th percentile
+    filtered_data = combined_data[combined_data <= threshold]
+    
+    # Plotting the KDE
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.kdeplot(filtered_data, color="skyblue", ax=ax, linewidth=2)
+    
+    # Adding labels and title
+    ax.set_xlabel("Value")
+    ax.set_ylabel("Density")
+    ax.set_title("KDE Plot of Values Above the 99th Percentile")
+    
+    if savepath:
+        extension = savepath.split('.')[-1]
+        plt.savefig(savepath, format=extension)
+    
+    plt.show()
+
+
 def plot_interacting_region_hist_paris(df, figsize=(12, 8), savepath=''):
     """
     Plots a histogram of the combined 'w' and 'h' columns in the dataframe, 
@@ -304,7 +339,7 @@ def add_task_name_to_savepath(savepath, task_name):
     # Return the modified path with task_name added before the extension
     return f"{base}_{task_name}{ext}"
 
-def plot_all_model_auc(subset, tools, n_runs=50, savepath = ''):
+def plot_all_model_auc(subset, tools, n_runs=100, savepath = ''):
     models = [{'prob': subset.probability, 'model_name': 'NT'}]
     
     for tool_name in tools:
@@ -2266,19 +2301,43 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
     
     plt.figure(figsize=(10, 8))
     
+    # if method == 'mutual_info':
+    #     sns.heatmap(correlation_df, annot=annot, cmap=cmap)
+    # else:
+    #     sns.heatmap(correlation_df, annot=annot, cmap=cmap, vmin=-1, vmax=1, center=0)
+        
+
     if method == 'mutual_info':
-        sns.heatmap(correlation_df, annot=annot, cmap=cmap)
+        sns.clustermap(
+            correlation_df,
+            annot=annot,
+            cmap=cmap,
+            method='average',  # Example clustering method (can be 'single', 'complete', etc.)
+            metric='euclidean',  # Example distance metric
+        )
     else:
-        sns.heatmap(correlation_df, annot=annot, cmap=cmap, vmin=-1, vmax=1, center=0)
+        sns.clustermap(
+            correlation_df,
+            annot=annot,
+            cmap=cmap,
+            vmin=-1,
+            vmax=1,
+            center=0,
+            method='average',
+            metric='euclidean',
+        )
+
     
     # Highlight specified labels
     if highlight_labels:
         ax = plt.gca()
         labels = correlation_df.columns
-        for label in labels:
-            if label in highlight_labels:
-                ax.get_xticklabels()[labels.get_loc(label)].set_color('darkgreen')
-                ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
+    
+        
+#         for label in labels:
+#             if label in highlight_labels:
+#                 ax.get_xticklabels()[labels.get_loc(label)].set_color('darkgreen')
+#                 ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
     
     plt.title(title)
     
@@ -2289,7 +2348,7 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
     plt.show()
     
     
-def plot_sr_distributions(df_sr, label_x, column = 'Model', figsize = (16, 8), savepath = ''):
+def plot_sr_distributions(df_sr, label_x, label_y_name = 'Normalized Score', column = 'Model', figsize = (16, 8), savepath = ''):
     
     #map model_names
     df_sr[column] = df_sr[column].apply(map_model_names)
@@ -2322,6 +2381,7 @@ def plot_sr_distributions(df_sr, label_x, column = 'Model', figsize = (16, 8), s
     # Adjust the legend to prevent duplication
     handles, labels = plt.gca().get_legend_handles_labels()
     plt.legend(handles[:2], labels[:2], title='Category')
+    plt.ylabel(label_y_name)
     plt.title('Violin Plot with Two Distributions per Category')
     
     if savepath:

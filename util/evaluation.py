@@ -550,7 +550,7 @@ class ModelResultsManager:
             return 'val'
     
     
-def obtain_all_model_auc(subset, tools, n_runs=50):
+def obtain_all_model_auc(subset, tools, n_runs=100):
     if is_unbalanced(subset):
         list_to_append = ['NT']
         

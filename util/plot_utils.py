@@ -54,7 +54,7 @@ def plot_interacting_region_kde_paris(df, figsize=(12, 8), savepath=''):
     
     if savepath:
         extension = savepath.split('.')[-1]
-        plt.savefig(savepath, format=extension)
+        plt.savefig(savepath, format=extension, dpi = 300)
     
     plt.show()
 
@@ -89,7 +89,7 @@ def plot_interacting_region_hist_paris(df, figsize=(12, 8), savepath=''):
     
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
 
@@ -130,7 +130,7 @@ def plot_bar_n_reads_hist(df, upper = 10, figsize=(12, 8), savepath=''):
     # Saving the plot if a savepath is provided
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
 
@@ -166,7 +166,7 @@ def plot_matrix_area_kde_curves(datasets, labels, xlabel="Square Root of Contact
     # Save plot if savepath is provided
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     # Show plot
     plt.show()
@@ -215,7 +215,7 @@ def plot_interaction_region(df, savepath = ''):
     
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
 
@@ -224,7 +224,7 @@ def plot_correlations_QPC(corr_QPC, figsize=(5, 5), savepath = ''):
     sns.heatmap(corr_QPC, annot=True, cmap="coolwarm", vmin=-1, vmax=1, center=0)
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
 
 def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9), savepath = ''):
     """
@@ -249,7 +249,7 @@ def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsiz
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     # Display the plot
     plt.show()
@@ -328,7 +328,7 @@ def plot_metric_confidence_for_all_models_for_2tasks(
         
         if savepath:
             extension = find_extension_from_savepath(savepath)
-            plt.savefig(add_task_name_to_savepath(savepath, task_name), format=f"{extension}")
+            plt.savefig(add_task_name_to_savepath(savepath, task_name), format=f"{extension}", dpi = 300)
         
         plt.show()
         print('\n\n')
@@ -405,7 +405,7 @@ def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50, savepath
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
 
@@ -2343,7 +2343,7 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
     
@@ -2386,7 +2386,7 @@ def plot_sr_distributions(df_sr, label_x, label_y_name = 'Normalized Score', col
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
     
@@ -2455,7 +2455,7 @@ def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1, 
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
-        plt.savefig(savepath, format=f"{extension}")
+        plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
     

@@ -549,7 +549,7 @@ class ModelResultsManager:
         else:
             return 'val'
     
-    
+
 def obtain_all_model_auc(subset, tools, n_runs=100):
     if is_unbalanced(subset):
         list_to_append = ['NT']
@@ -580,26 +580,32 @@ def obtain_all_model_auc(subset, tools, n_runs=100):
                 roc_auc = auc(fpr, tpr)
                 aucs_dict[tool_name].append(roc_auc)
 
-        # Calculate mean AUC for each model
+        # Calculate mean AUC and standard error for each model
         mean_aucs = {tool_name: np.mean(aucs_dict[tool_name]) for tool_name in aucs_dict}
+        std_errors = {tool_name: np.std(aucs_dict[tool_name], ddof=1) / np.sqrt(n_runs) for tool_name in aucs_dict}
     else:
         # Calculate AUC directly without undersampling
         mean_aucs = {}
+        std_errors = {}
         
         fpr, tpr, _ = roc_curve(subset.ground_truth, subset['probability'])
         mean_aucs['NT'] = auc(fpr, tpr)
+        std_errors['NT'] = 0  # Standard error not applicable for single calculation
         
         for tool_name in tools:
             fpr, tpr, _ = roc_curve(subset.ground_truth, abs(subset[tool_name]))
             mean_aucs[tool_name] = auc(fpr, tpr)
+            std_errors[tool_name] = 0  # Standard error not applicable for single calculation
     
     # Create DataFrame with results
     df_out = pd.DataFrame({
         'model_name': list(mean_aucs.keys()),
-        'auc': [round(auc, 2) for auc in mean_aucs.values()]
+        'auc': [round(auc, 4) for auc in mean_aucs.values()],
+        'standard_error': [round(std_errors[tool], 4) for tool in mean_aucs.keys()]
     })
     
     return df_out
+
 
 
 def remove_outliers(df, column, threshold = 3):
@@ -752,8 +758,14 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_m
         easypos_smartneg = res[res.policy.isin(['easypos', 'smartneg'])].reset_index(drop = True)
         enhn = res[res.policy.isin(['easypos', 'easyneg', 'hardneg'])].reset_index(drop = True)
 
-        dfs.append(obtain_all_model_auc(easypos_smartneg, energy_columns).rename({'auc': f'auc_interactors_{dataset}'}, axis = 1))
-        dfs.append(obtain_all_model_auc(enhn, energy_columns).rename({'auc': f'auc_patches_{dataset}'}, axis = 1))
+        dfs.append(obtain_all_model_auc(easypos_smartneg, energy_columns).rename({
+            'auc': f'auc_interactors_{dataset}', 
+            'standard_error': f'se_interactors_{dataset}', 
+        }, axis = 1))
+        dfs.append(obtain_all_model_auc(enhn, energy_columns).rename({
+            'auc': f'auc_patches_{dataset}',
+            'standard_error': f'se_patches_{dataset}'
+        }, axis = 1))
 
 
     df_auc = pd.concat(dfs, axis = 1)

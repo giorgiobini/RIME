@@ -400,7 +400,7 @@ class ModelResultsManager:
 
         if paris_finetuned_model:
             res = res[~res.couples.isin(self.couples_paris_val)].reset_index(drop = True)
-            
+        
         if splash_trained_model:
             res = res[~res.couples.isin(self.couples_splash_training)].reset_index(drop = True)
         

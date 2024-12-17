@@ -2,14 +2,9 @@ import os
 import sys
 import argparse
 sys.path.insert(0, '..')
-from util.inference_utils import RIME_inference
+from util.inference_utils import associateRIMEpobability, ParseFasta
 
 # import subprocess
-
-
-### CLASS AND FUNCTIONS 
-
-bin_bedtools = "/home/giorgio/bedtools2/bin/bedtools" #"/opt/bedtools2/bin/bedtools"
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
@@ -32,6 +27,7 @@ def get_args_parser():
     return parser
 
 
+
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python parse_fasta_for_run_inference.py --output_file_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=prova&> parse_fasta_for_run_inference.out &
@@ -39,7 +35,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare data for inference', parents=[get_args_parser()])
     args = parser.parse_args()
     fasta_query_input = os.path.join(args.fasta_path, args.fasta_query_name)
-    fasta_target_input = os.path.join(args.fasta_path, args.fasta_target_name)
+    fasta_target_input = os.path.join(args.fasta_path, args.fasta_query_name)
     dir_out = args.output_file_dir
     name_analysis = args.name_analysis
 
@@ -47,11 +43,10 @@ if __name__ == '__main__':
     step_window = args.step_window
     length_max_embedding = args.length_max_embedding
     step_embedding=int(length_max_embedding/2)
-    ### CODE
-    obj_rinet = RIME_inference(bin_bedtools, fasta_query_input,fasta_target_input,dir_out,name_analysis=name_analysis)
-    wind_df=obj_rinet.Windows(size_window=size_window,step=step_window,mode="generate")
-    emb_df=obj_rinet.Embedding(mode="generate",length_max_embedding=length_max_embedding,step=step_embedding)
-    obj_rinet.AssembleQueryTargetRanges()
+    associateRIMEpobability()
+
+
+
 
 # ### GIORGIO SCRIPTS
 # obj_rinet.LoadEmbedding()

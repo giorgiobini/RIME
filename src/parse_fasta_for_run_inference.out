@@ -1,9 +1,9 @@
 nohup: ignoring input
-/data01/giorgio/RNARNA-NT/src/parse_fasta_for_run_inference.py:105: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
+/data01/giorgio/RNARNA-NT/src/../util/inference_utils.py:96: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
   wind_df_final = wind_df_final.append(wind_df)
-/data01/giorgio/RNARNA-NT/src/parse_fasta_for_run_inference.py:207: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
+/data01/giorgio/RNARNA-NT/src/../util/inference_utils.py:198: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
   emb_bed_final = emb_bed_final.append(emb_df)
-/data01/giorgio/RNARNA-NT/src/parse_fasta_for_run_inference.py:208: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
+/data01/giorgio/RNARNA-NT/src/../util/inference_utils.py:199: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
   emb_fasta_final = emb_fasta_final.append(emb_fasta)
 processing q
 /home/giorgio/bedtools2/bin/bedtools makewindows -i srcwinnum  -g /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/genome.txt -w 200 -s 100 > /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/window_temp.txt
@@ -15,48 +15,14 @@ mode: generate or load
 length emb: 5970
 step for emedding: 2985
 processing q
-                     0  1     2                     3  width
-18     ENSG00000156097  0  4921     ENSG00000156097_1   4921
-0      ENSG00000159409  0  5582     ENSG00000159409_1   5582
-8      ENSG00000166822  0  5028     ENSG00000166822_1   5028
-4      ENSG00000174358  0  5168     ENSG00000174358_1   5168
-16     ENSG00000184588  0  4546     ENSG00000184588_1   4546
-22     ENSG00000189238  0  5253     ENSG00000189238_1   5253
-2      ENSG00000198105  0  5141     ENSG00000198105_1   5141
-28     ENSG00000247199  0  5039     ENSG00000247199_1   5039
-20     ENSG00000261146  0  4706     ENSG00000261146_1   4706
-34     ENSG00000267391  0  4521     ENSG00000267391_1   4521
-26     ENSG00000279085  0  5388     ENSG00000279085_1   5388
-24     ENSG00000286010  0  4601     ENSG00000286010_1   4601
-30     ENSG00000286788  0  5569     ENSG00000286788_1   5569
-6   ENSMUSG00000024044  0  4692  ENSMUSG00000024044_1   4692
-14  ENSMUSG00000037608  0  5437  ENSMUSG00000037608_1   5437
-10  ENSMUSG00000044807  0  5325  ENSMUSG00000044807_1   5325
-12  ENSMUSG00000095928  0  5371  ENSMUSG00000095928_1   5371
-32  ENSMUSG00000097099  0  5192  ENSMUSG00000097099_1   5192
-36  ENSMUSG00000104324  0  4953  ENSMUSG00000104324_1   4953
-38  ENSMUSG00000104435  0  4718  ENSMUSG00000104435_1   4718
+                 0  1     2                  3  width
+0  ENSG00000159409  0  5582  ENSG00000159409_1   5582
 /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/embeddings/5970/embedding_temp.bed
 processing t
-                     0  1     2                     3  width
-18     ENSG00000156097  0  4921     ENSG00000156097_1   4921
-0      ENSG00000159409  0  5582     ENSG00000159409_1   5582
-8      ENSG00000166822  0  5028     ENSG00000166822_1   5028
-4      ENSG00000174358  0  5168     ENSG00000174358_1   5168
-16     ENSG00000184588  0  4546     ENSG00000184588_1   4546
-22     ENSG00000189238  0  5253     ENSG00000189238_1   5253
-2      ENSG00000198105  0  5141     ENSG00000198105_1   5141
-28     ENSG00000247199  0  5039     ENSG00000247199_1   5039
-20     ENSG00000261146  0  4706     ENSG00000261146_1   4706
-34     ENSG00000267391  0  4521     ENSG00000267391_1   4521
-26     ENSG00000279085  0  5388     ENSG00000279085_1   5388
-24     ENSG00000286010  0  4601     ENSG00000286010_1   4601
-30     ENSG00000286788  0  5569     ENSG00000286788_1   5569
-6   ENSMUSG00000024044  0  4692  ENSMUSG00000024044_1   4692
-14  ENSMUSG00000037608  0  5437  ENSMUSG00000037608_1   5437
-10  ENSMUSG00000044807  0  5325  ENSMUSG00000044807_1   5325
-12  ENSMUSG00000095928  0  5371  ENSMUSG00000095928_1   5371
-32  ENSMUSG00000097099  0  5192  ENSMUSG00000097099_1   5192
-36  ENSMUSG00000104324  0  4953  ENSMUSG00000104324_1   4953
-38  ENSMUSG00000104435  0  4718  ENSMUSG00000104435_1   4718
+                    0     1     2                     3  width
+0     ENSG00000267391     0  5970     ENSG00000267391_1   5970
+1     ENSG00000267391  2985  8955     ENSG00000267391_2   5970
+2     ENSG00000267391  3072  9042     ENSG00000267391_3   3072
+4  ENSMUSG00000104324     0  4953  ENSMUSG00000104324_1   4953
+6  ENSMUSG00000104435     0  4718  ENSMUSG00000104435_1   4718
 /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/embeddings/5970/embedding_temp.bed

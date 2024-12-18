@@ -132,58 +132,33 @@ Run these scripts from the src directory in the following order:
 
 
 
-## 5. Inference Old (drop)
-Put your files inside the directory dataset/external_dataset/your_folder/
-You must have these files inside your_folder:
+## 5. Inference
+Put these files inside the directory dataset/external_dataset/your_folder/
 
 ```
-embedding_query.csv
+query.fa
 
-id_query,cdna
-ENSFAKE001,CGUUUCGCUAAACUCUG
-ENSFAKE002,UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
-ENSFAKE003,GUGAACGUCGCGAUAGGCGGAACAA
-ENSFAKE004,AGUAACAACGCUAGGUGCGAGUGUCGUC
-
+>ENSFAKE001
+CGUUUCGCUAAACUCUG
+>ENSFAKE002
+UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
 
 
-pairs.txt
+target.fa
 
-ENSFAKE001_ENSFAKE002
-ENSFAKE001_ENSFAKE003
-ENSFAKE003_ENSFAKE004
+>ENSFAKE003
+GUGAACGUCGCGAUAGGCGGAACAA
+>ENSFAKE004
+AGUAACAACGCUAGGUGCGAGUGUCGUC
 ```
 
 Run these scripts from the src directory in the following order:
-- nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/embeddings &> download_embeddings_inference.out &
-- run_inference.ipynb
+- conda activate rnarna 
+- cd /data01/giorgio/RNARNA-NT/src/
+- nohup python parse_fasta_for_run_inference.py --output_file_dir=dataset/external_dataset/your_folder/--fasta_path=dataset/external_dataset/your_folder/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=temp &> parse_fasta_for_run_inference.out &
+- nohup python download_embeddings.py --batch_size=1 --path_to_embedding_query_dir=dataset/external_dataset/your_folder/temp --embedding_dir=dataset/external_dataset/your_folder/temp/embeddings &> download_embeddings.out &
+- conda activate dnabert
+- nohup python run_inference_new.py --pairs_path=dataset/external_dataset/your_folder/temp --model_name=arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086 &> run_inference_new.out &
+- nohup python parse_output_for_inference.py --inference_dir=dataset/external_dataset/your_folder/ &> parse_output_for_inference.out &
 
-
-## 5. Inference New
-Put your files inside the directory dataset/external_dataset/your_folder/
-You must have these files inside your_folder:
-
-```
-embedding_query.csv
-
-id_query,cdna
-ENSFAKE001,CGUUUCGCUAAACUCUG
-ENSFAKE002,UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
-ENSFAKE003,GUGAACGUCGCGAUAGGCGGAACAA
-ENSFAKE004,AGUAACAACGCUAGGUGCGAGUGUCGUC
-
-
-
-pairs.csv
-id_pair, embedding1name,embedding2name,start_window1,end_window1,start_window2,end_window2
-0,ENSFAKE001,ENSFAKE002,0,500,300,800
-1,ENSFAKE001,ENSFAKE002,100,600,0,500
-2,ENSFAKE001,ENSFAKE003,100,600,0,500
-3,ENSFAKE003,ENSFAKE004,0,500,0,500
-```
-
-##### TODO: rendi run_inference_new.ipynb uno script python, aggiungi la possibilita di scaricare la matrice gradcam, aggiungi la possibilita di lavorare in batch
-
-Run these scripts from the src directory in the following order:
-- nohup python download_embeddings.py --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset/embeddings &> download_embeddings_inference.out &
-- nohup python run_inference_new.py --pairs_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_predictions &> run_inference_new.out &
+You will have output_table.bedpe, plots folder inside the dataset/external_dataset/your_folder/ path

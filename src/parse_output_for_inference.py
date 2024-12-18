@@ -34,15 +34,18 @@ if __name__ == '__main__':
     t_fa=ParseFasta(fasta_target_input)
     query_gene_names=q_fa.loc[:,"header"].to_list()
     target_gene_names=t_fa.loc[:,"header"].to_list()
+    query_gene_lengths=q_fa.loc[:,"length"].to_list()
+    target_gene_lengths=t_fa.loc[:,"length"].to_list()
 
     save_path_dir = os.path.join(inference_dir, 'plots')
     if os.path.isdir(save_path_dir) == False:
         os.mkdir(save_path_dir)
 
-    for gene_x in query_gene_names:
-        for gene_y in target_gene_names:
+    for i, gene_x in enumerate(query_gene_names):
+        for j, gene_y in enumerate(target_gene_names):
             save_path = os.path.join(save_path_dir, f'{gene_x}_{gene_y}.png')
-            PlotByGene(pairs_prob_mean, gene_x, gene_y, save_path = save_path, sizes = (50, 20))
+            size_x, size_y = query_gene_lengths[i]//100, target_gene_lengths[j]//100
+            PlotByGene(pairs_prob_mean, gene_x, gene_y, save_path = save_path, sizes = (size_y, size_x))
 
 
 # ### GIORGIO SCRIPTS

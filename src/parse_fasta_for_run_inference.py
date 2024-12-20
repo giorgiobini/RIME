@@ -9,12 +9,12 @@ from util.inference_utils import RIME_inference
 
 ### CLASS AND FUNCTIONS 
 
-bin_bedtools = "/home/giorgio/bedtools2/bin/bedtools" #"/opt/bedtools2/bin/bedtools"
-
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     # parser.add_argument('--model_name', default='arch2_PSORALENtrained_PARISval0046',
     #                     help='Name of the model folder')
+    parser.add_argument('--bin_bedtools', default='/home/giorgio/bedtools2/bin/bedtools',
+                        help='Path to the bedtools2 folder')
     parser.add_argument('--output_file_dir', default='',
                         help='Path to the folder where you want to save the files for running RIME predictions')
     parser.add_argument('--fasta_path', default='',
@@ -34,7 +34,7 @@ def get_args_parser():
 
 if __name__ == '__main__':
     #run me with: -> 
-    #nohup python parse_fasta_for_run_inference.py --output_file_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=prova&> parse_fasta_for_run_inference.out &
+    #nohup python parse_fasta_for_run_inference.py --bin_bedtools=/home/giorgio/bedtools2/bin/bedtools --output_file_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=prova&> parse_fasta_for_run_inference.out &
 
     parser = argparse.ArgumentParser('Prepare data for inference', parents=[get_args_parser()])
     args = parser.parse_args()
@@ -42,6 +42,7 @@ if __name__ == '__main__':
     fasta_target_input = os.path.join(args.fasta_path, args.fasta_target_name)
     dir_out = args.output_file_dir
     name_analysis = args.name_analysis
+    bin_bedtools = args.bin_bedtools
 
     size_window = args.size_window
     step_window = args.step_window

@@ -54,7 +54,7 @@ def plot_interacting_region_kde_paris(df, figsize=(12, 8), savepath=''):
     
     if savepath:
         extension = savepath.split('.')[-1]
-        plt.savefig(savepath, format=extension, dpi = 300)
+        plt.savefig(savepath, format=extension, dpi = 300, bbox_inches='tight')
     
     plt.show()
 
@@ -89,7 +89,7 @@ def plot_interacting_region_hist_paris(df, figsize=(12, 8), savepath=''):
     
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}", dpi = 300)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
     
     plt.show()
 
@@ -130,11 +130,11 @@ def plot_bar_n_reads_hist(df, upper = 10, figsize=(12, 8), savepath=''):
     # Saving the plot if a savepath is provided
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}", dpi = 300)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
     
     plt.show()
 
-def plot_matrix_area_kde_curves(datasets, labels, xlabel="Square Root of Contact Matrix Area", title="KDE Plot of Contact Matrix Area", savepath=''):
+def plot_matrix_area_kde_curves(datasets, labels, fontsize = 7, figsize=(10, 6), legend_fontsize = 5, xlabel="Square Root of Contact Matrix Area", title="KDE Plot of Contact Matrix Area", savepath=''):
     """
     Plots KDE curves for the square root of the product of length_1 and length_2 in multiple datasets,
     after filtering out values greater than the 99th percentile for each distribution.
@@ -147,7 +147,7 @@ def plot_matrix_area_kde_curves(datasets, labels, xlabel="Square Root of Contact
     - savepath: Path to save the plot, with the extension indicating the format (e.g., 'plot.png')
     """
     
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=figsize)
     
     for data, label in zip(datasets, labels):
         # Calculate the square root of product of lengths and filter by the 99th percentile
@@ -158,20 +158,20 @@ def plot_matrix_area_kde_curves(datasets, labels, xlabel="Square Root of Contact
         sns.kdeplot(filtered_data, label=label, shade=False)
     
     # Add legend and labels
-    plt.legend()
-    plt.xlabel(xlabel)
-    plt.ylabel("Density")
-    plt.title(title)
+    plt.legend(fontsize=legend_fontsize)
+    plt.xlabel(xlabel, fontsize=fontsize)
+    plt.ylabel("Density", fontsize=fontsize)
+    plt.title(title, fontsize=fontsize)
     
     # Save plot if savepath is provided
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}", dpi = 300)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
     
     # Show plot
     plt.show()
 
-def plot_interaction_region(df, savepath = ''):
+def plot_interaction_region(df, title = 'Full set', savepath = '', plot_legend = False, figsize=(12, 8)):
     
     df['where'] = df['where'].apply(lambda x: x.replace("UTR5", "5'UTR"))
     df['where'] = df['where'].apply(lambda x: x.replace("UTR3", "3'UTR"))
@@ -201,21 +201,22 @@ def plot_interaction_region(df, savepath = ''):
     bar_width = 0.35
     index = np.arange(len(categories))
 
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=figsize)
     bar1 = ax.bar(index, percentages1, bar_width, label='Positive Distribution', color='skyblue')
     bar2 = ax.bar(index + bar_width, percentages2, bar_width, label='Negative Distribution', color='orange')
 
-    ax.set_xlabel('Categories')
-    ax.set_ylabel('Percentage')
-    ax.set_title('Comparison of Two Distributions')
+    #ax.set_xlabel('Categories')
+    ax.set_ylabel('Percentage of regions pairs')
+    ax.set_title(title)
     ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(categories, rotation=45, ha='right')
-    ax.legend()
+    ax.set_xticklabels(categories, rotation=90, ha='right')
+    if plot_legend:
+        ax.legend()
     plt.tight_layout()
     
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}", dpi = 300)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
     
     plt.show()
 
@@ -224,7 +225,7 @@ def plot_correlations_QPC(corr_QPC, figsize=(5, 5), savepath = ''):
     sns.heatmap(corr_QPC, annot=True, cmap="coolwarm", vmin=-1, vmax=1, center=0)
     if savepath:
         extension = find_extension_from_savepath(savepath)
-        plt.savefig(savepath, format=f"{extension}", dpi = 300)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
 
 def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9), savepath = ''):
     """
@@ -339,19 +340,19 @@ def add_task_name_to_savepath(savepath, task_name):
     # Return the modified path with task_name added before the extension
     return f"{base}_{task_name}{ext}"
 
-def plot_all_model_auc(subset, tools, n_runs=100, savepath = ''):
+def plot_all_model_auc(subset, tools, n_runs=100, linewidth=2, legend_fontsize=6, figsize = (5,5), savepath = ''):
     models = [{'prob': subset.probability, 'model_name': 'NT'}]
     
     for tool_name in tools:
         models.append({'prob': abs(subset[tool_name]), 'model_name': tool_name})
     
-    plot_roc_curves_with_undersampling(models, subset.ground_truth, n_runs, savepath = savepath) 
+    plot_roc_curves_with_undersampling(models, subset.ground_truth, n_runs = n_runs, linewidth=linewidth, legend_fontsize=legend_fontsize, figsize=figsize, savepath = savepath) 
 
-def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50, savepath = ''):
+def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50, linewidth=2, legend_fontsize=6, figsize=(5,5), savepath = ''):
     unbalanced = is_unbalanced(pd.DataFrame({'ground_truth': ground_truth}))
     
-    plt.figure(figsize=(10, 8))
-    plt.plot([0, 1], [0, 1], 'k--')  # Plotting the random guessing line
+    plt.figure(figsize=figsize)
+    plt.plot([0, 1], [0, 1], 'k--', linewidth=linewidth) # Plotting the random guessing line
 
     for model in models:
         aucs = []
@@ -396,12 +397,12 @@ def plot_roc_curves_with_undersampling(models, ground_truth, n_runs=50, savepath
         mean_fpr[0], mean_tpr[0] = 0.0, 0.0
         mean_fpr[-1], mean_tpr[-1] = 1.0, 1.0
         
-        plt.plot(mean_fpr, mean_tpr, label=f'{map_model_names(model["model_name"])} (AUC = {mean_auc:.2f})', color = model_colors_dict.get(model["model_name"], 'black'))
+        plt.plot(mean_fpr, mean_tpr, label=f'{map_model_names(model["model_name"])} (AUC = {mean_auc:.2f})', color = model_colors_dict.get(model["model_name"], 'black'), linewidth=linewidth)
 
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('Receiver Operating Characteristic (ROC) Curves')
-    plt.legend(loc='lower right')
+    plt.legend(loc='lower right', fontsize = legend_fontsize)
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
@@ -2280,11 +2281,12 @@ def plot_features_vs_risearch2_confidence(res, based_on_percentile = True, n_val
         plt.legend()
         plt.grid(True, alpha=0.5)
         plt.show()
-        
-def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method='pearson', savepath = ''):
+    
+    
+def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatmap", cmap="coolwarm", annot=True, method='pearson', numbers_size = 5, figsize=(10, 8), savepath=''):
     """
     Plot a heatmap of the given correlation DataFrame.
-    
+
     Parameters:
     - correlation_df: DataFrame containing the correlation matrix.
     - highlight_labels: List of labels to highlight on the heatmap.
@@ -2292,61 +2294,81 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
     - cmap: Colormap to use for the heatmap.
     - annot: Boolean indicating whether to annotate the heatmap with correlation values.
     - method: Correlation method to use.
+    - figsize: Tuple specifying the figure size.
+    - savepath: Path to save the heatmap image.
     """
-    
     # Map column names
     mapped_columns = map_model_names(correlation_df.columns.tolist())
     correlation_df.columns = mapped_columns
     correlation_df.index = mapped_columns
-    
-    plt.figure(figsize=(10, 8))
-    
-    # if method == 'mutual_info':
-    #     sns.heatmap(correlation_df, annot=annot, cmap=cmap)
-    # else:
-    #     sns.heatmap(correlation_df, annot=annot, cmap=cmap, vmin=-1, vmax=1, center=0)
-        
 
-    if method == 'mutual_info':
-        sns.clustermap(
-            correlation_df,
-            annot=annot,
-            cmap=cmap,
-            method='average',  # Example clustering method (can be 'single', 'complete', etc.)
-            metric='euclidean',  # Example distance metric
-        )
-    else:
-        sns.clustermap(
-            correlation_df,
-            annot=annot,
-            cmap=cmap,
-            vmin=-1,
-            vmax=1,
-            center=0,
-            method='average',
-            metric='euclidean',
-        )
+    # Create the clustermap
+    clustergrid = sns.clustermap(
+        correlation_df,
+        annot=annot,
+        cmap=cmap,
+        vmin=-1 if method != 'mutual_info' else None,
+        vmax=1 if method != 'mutual_info' else None,
+        center=0 if method != 'mutual_info' else None,
+        figsize=figsize,  # Pass figsize here
+        method='average',  # Example clustering method
+        metric='euclidean',  # Example distance metric
+    )
 
-    
+    # Set the title for the heatmap
+    #clustergrid.ax_heatmap.set_title(title, fontsize=plt.rcParams['font.size'])
+
     # Highlight specified labels
     if highlight_labels:
-        ax = plt.gca()
+        ax = clustergrid.ax_heatmap
         labels = correlation_df.columns
+        # for label in labels:
+        #     if label in highlight_labels:
+        #         idx = list(labels).index(label)
+        #         ax.get_xticklabels()[idx].set_color('darkgreen')
+        #         ax.get_yticklabels()[idx].set_color('darkgreen')
+
+    #clustergrid.ax_heatmap.tick_params(axis='both', which='both', labelsize=numbers_size)
+    clustergrid.ax_heatmap.collections[0].colorbar.ax.tick_params(labelsize=6)
+
     
-        
-#         for label in labels:
-#             if label in highlight_labels:
-#                 ax.get_xticklabels()[labels.get_loc(label)].set_color('darkgreen')
-#                 ax.get_yticklabels()[labels.get_loc(label)].set_color('darkgreen')
+    # Save the figure if a savepath is provided
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        clustergrid.savefig(savepath, format=f"{extension}", dpi=300)
+
+    plt.show()
+
     
-    plt.title(title)
+def plot_sr_distributions_full(df_sr, label_x = 'Dataset', label_x_name = 'Dataset', label_y_name = 'Normalized Score', column = 'Model', figsize = (16, 8), savepath = ''):
+
+    df_sr[column] = df_sr[column].apply(map_model_names)
     
+    plt.figure(figsize=figsize)
+
+    hue_order = [
+        'no Simple Repeat positive samples',
+        'at least Simple Repeat positive samples',
+        'both Simple Repeat positive samples',
+    ]
+    palette={hue_order[0]: '#76b5c5', hue_order[1]: '#eab676', hue_order[2]: '#e28743'}
+
+    sns.boxplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False)
+    #sns.violinplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False)
+    
+    
+    # Customize the plot
+    plt.title('Box Plots of Normalized Score by Category and Dataset')
+    plt.xlabel(label_x_name)
+    plt.ylabel(label_y_name)
+    plt.legend(title='Dataset')
+    plt.tight_layout()
+
     if savepath:
         extension = find_extension_from_savepath(savepath) 
         plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
     plt.show()
-    
     
 def plot_sr_distributions(df_sr, label_x, label_y_name = 'Normalized Score', column = 'Model', figsize = (16, 8), savepath = ''):
     

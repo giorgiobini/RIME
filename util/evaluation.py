@@ -481,7 +481,7 @@ class ModelResultsManager:
         test500['distance_from_site_embedding'] = ( (test500['distance_embedding_x'] ** 2) + (test500['distance_embedding_y']** 2) )**(0.5) #pitagora
                 
         if experiment_name == 'ricseq':
-            df_nt = pd.read_csv(os.path.join(metadata_dir, f'df_nt_ricseq.csv'))
+            df_nt = pd.read_csv(os.path.join(self.test_info_directory, f'df_nt_ricseq.csv'))
             test500 = df_nt[['couples', 'n_reads']].rename({'couples':'df_nt_id'}, axis = 1).merge(test500, on = 'df_nt_id')
         
         res = res.merge(test500.drop(['policy', 'g1', 'g2'], axis = 1).rename({'couples':'id_sample'}, axis = 1), on = 'id_sample').reset_index(drop = True) # policy, g1, g2 are already in res

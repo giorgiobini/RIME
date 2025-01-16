@@ -19,6 +19,33 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
 
 
+def how_many_ast(pvalue):
+    if pvalue > 0.05:
+        return 0
+    elif 0.01 < pvalue <= 0.05:
+        return 1
+    elif 0.001 < pvalue <= 0.01:
+        return 2
+    elif 0.0001 < pvalue <= 0.001:
+        return 3
+    elif pvalue <= 0.0001:
+        return 4
+
+def create_pvalue_df(pvalue_df):
+    pvalue_df = pd.DataFrame(pvalue_df)
+    # Number of comparisons
+    n_comparisons = len(pvalue_df)
+    # Bonferroni correction
+    pvalue_df['both_bonferroni'] = pvalue_df['both'] * n_comparisons
+    pvalue_df['at_least_one_bonferroni'] = pvalue_df['at_least_one'] * n_comparisons
+    pvalue_df['both_bonferroni'] = pvalue_df['both_bonferroni'].clip(upper=1.0)
+    pvalue_df['at_least_one_bonferroni'] = pvalue_df['at_least_one_bonferroni'].clip(upper=1.0)
+    pvalue_df['sig_both'] = pvalue_df['both_bonferroni'] < 0.05
+    pvalue_df['sig_at_least_one'] = pvalue_df['at_least_one_bonferroni']  < 0.05
+    pvalue_df['ast_at_least_one_bonferroni'] = pvalue_df['at_least_one_bonferroni'].apply(how_many_ast)
+    pvalue_df['ast_both_bonferroni'] = pvalue_df['both_bonferroni'].apply(how_many_ast)
+    return pvalue_df
+
 def obtain_enhn_easypos_smartneg(res, filter_neg_by_HQ = False):
     
     if filter_neg_by_HQ:
@@ -312,7 +339,7 @@ class ModelResultsManager:
         Internal method to load the dataframes for all experiments.
         The method assumes that the files are stored in CSV format in the provided directory.
         """
-        experiments = ['test_HQ', 'test', 'val_HQ', 'val', 'splash', 'ricseq', 'mario']
+        experiments = ['test_HQ', 'test', 'val_HQ', 'val', 'splash', 'ricseq', 'mario'] #mario
         for experiment in experiments:
             try:
                 self.dataframes[experiment] = self._load_res_for_experiment(experiment)
@@ -341,7 +368,8 @@ class ModelResultsManager:
         interlen_OR_nreads_paris: bool,
         splash_trained_model: bool,
         only_test_splash_ricseq_mario: bool, 
-        n_reads_ricseq: int
+        n_reads_ricseq: int,
+        n_reads_mario: int,
     ) -> pd.DataFrame:
         """
         See get_experiment_data()
@@ -394,6 +422,12 @@ class ModelResultsManager:
                     (res.policy.isin(['hardneg', 'easyneg', 'smartneg'])) |
                     ((res.n_reads >= n_reads_ricseq) & (res.policy == 'easypos'))
                 ].reset_index(drop = True)
+                
+            if experiment == 'mario':
+                res = res[
+                    (res.policy.isin(['hardneg', 'easyneg', 'smartneg'])) |
+                    ((res.n_reads >= n_reads_mario) & (res.policy == 'easypos'))
+                ].reset_index(drop = True)
         
         if (experiment == 'paris') & (paris_test == False):
             paris_finetuned_model = False
@@ -422,6 +456,7 @@ class ModelResultsManager:
         splash_trained_model: bool,
         only_test_splash_ricseq_mario: bool,
         n_reads_ricseq: int,
+        n_reads_mario: int,
         logistic_regression_models:dict,
     ) -> pd.DataFrame:
         """
@@ -439,6 +474,7 @@ class ModelResultsManager:
         splash_trained_model (bool): If true, I will exclude from all the test set results the couple inside the splash training set.
         only_test_splash_ricseq_mario (bool): If true, I will keep only the data of the test set (this is valid only for 'splash', 'ricseq', 'mario' since paris is a test set).
         n_reads_ricseq (int): minimum number of reads (included) supporting ricseq data
+        n_reads_mario (int): minimum number of reads (included) supporting mario data
         
         Returns:
         pd.DataFrame: The dataframe for the requested experiment.
@@ -447,14 +483,14 @@ class ModelResultsManager:
         assert experiment in ['paris', 'splash', 'ricseq', 'mario', 'psoralen']
         
         if experiment in ['psoralen']:
-            paris = self._load_single_experiment_data('paris', paris_test, paris_finetuned_model, specie_paris, paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model, only_test_splash_ricseq_mario, n_reads_ricseq)
-            splash = self._load_single_experiment_data('splash', paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model, only_test_splash_ricseq_mario, n_reads_ricseq)
+            paris = self._load_single_experiment_data('paris', paris_test, paris_finetuned_model, specie_paris, paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model, only_test_splash_ricseq_mario, n_reads_ricseq, n_reads_mario)
+            splash = self._load_single_experiment_data('splash', paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model, only_test_splash_ricseq_mario, n_reads_ricseq, n_reads_mario)
             splash['n_reads'] = np.nan
             assert set(paris.columns) == set(splash.columns)
             splash = splash.filter(list(paris.columns), axis = 1) # so that they have the same order
             res = pd.concat([paris, splash], axis = 0).reset_index(drop=True)
         else:
-            res = self._load_single_experiment_data(experiment, paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq)
+            res = self._load_single_experiment_data(experiment, paris_test, paris_finetuned_model, specie_paris,paris_hq, paris_hq_threshold, n_reads_paris, interlen_OR_nreads_paris, splash_trained_model,only_test_splash_ricseq_mario, n_reads_ricseq, n_reads_mario)
             
         if logistic_regression_models:
             res = map_thermodynamic_columns(res, self.other_tools, logistic_regression_models)
@@ -476,7 +512,10 @@ class ModelResultsManager:
         # Drop all the pairs (they should be few) that are present in the training set.
         res = res[~res.couples.isin(self.couples_paris_training)].reset_index(drop = True)
         
-        test500 = pd.read_csv(os.path.join(self.test_info_directory, f'{experiment_name}{self.dimension}.csv'))
+        if experiment_name == 'mario':
+            test500 = pd.read_csv(os.path.join(self.test_info_directory,  f'mario{self.dimension}.remap.filtered_newscore.csv')).reset_index(drop = True).rename({'new_score':'n_reads'}, axis = 1) # se vuoi sapere perche per mario carico questo vai a vedere alla fine dello script Create_datasets-mario-ricseq-splash.ipynb
+        else:
+            test500 = pd.read_csv(os.path.join(self.test_info_directory, f'{experiment_name}{self.dimension}.csv'))
         test500['distance_from_site'] = ( (test500['distance_x'] ** 2) + (test500['distance_y']** 2) )**(0.5) #pitagora
         test500['distance_from_site_embedding'] = ( (test500['distance_embedding_x'] ** 2) + (test500['distance_embedding_y']** 2) )**(0.5) #pitagora
                 
@@ -523,8 +562,10 @@ class ModelResultsManager:
             
         res['interacting'] = True
         res.loc[res.policy.isin(['easyneg', 'hardneg', 'smartneg']), 'interacting'] = False
-        res = res.drop('Unnamed: 0', axis = 1).reset_index(drop = True)
-        return res
+        for col in ['Unnamed: 0', 'Unnamed: 0_x', 'Unnamed: 0_y']:
+            if col in res.columns:
+                res = res.drop(col, axis=1)
+        return res.reset_index(drop = True)
         
         
         
@@ -636,6 +677,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 3
         interlen_OR_nreads_paris = True
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = True
         
     elif dataset == 'val_HQ':
@@ -645,6 +687,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 3
         interlen_OR_nreads_paris = True
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = False
 
     elif dataset == 'paris_mouse_HQ':
@@ -654,6 +697,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 3
         interlen_OR_nreads_paris = True
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = True
         
     elif dataset == 'val_mouse_HQ':
@@ -663,6 +707,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 3
         interlen_OR_nreads_paris = True
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = False
 
     elif dataset == 'ricseqHQ':
@@ -672,6 +717,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = np.nan
         interlen_OR_nreads_paris = np.nan
         n_reads_ricseq = 4
+        n_reads_mario = np.nan
         paris_test = np.nan
 
     elif dataset == 'psoralen':
@@ -681,6 +727,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = True
 
     elif dataset == 'paris_mouse':
@@ -690,6 +737,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = True
         
     elif dataset == 'val_mouse':
@@ -699,6 +747,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = False
         
     elif dataset == 'psoralen_val':
@@ -708,6 +757,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = False
 
     elif dataset == 'val':
@@ -717,6 +767,7 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
         paris_test = False
 
     else: #paris, ricseq, mario, splash
@@ -726,10 +777,11 @@ def map_dataset_to_hp(dataset):
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
         n_reads_ricseq = 1
+        n_reads_mario = 1
         paris_test = True
         
         
-    return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris, paris_test
+    return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_mario, n_reads_paris, interlen_OR_nreads_paris, paris_test
 
 def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_model, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
     assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_HQ', 'psoralen_val', 'val_mouse'])) == set(list_of_datasets)
@@ -738,7 +790,7 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_m
     dfs = [] 
     for dataset in tqdm(list_of_datasets):
 
-        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_paris, interlen_OR_nreads_paris, paris_test  = map_dataset_to_hp(dataset)
+        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_mario, n_reads_paris, interlen_OR_nreads_paris, paris_test  = map_dataset_to_hp(dataset)
         
         res = model.get_experiment_data(
             experiment = experiment, 
@@ -752,6 +804,7 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_m
             splash_trained_model = splash_trained_model,
             only_test_splash_ricseq_mario = False,
             n_reads_ricseq = n_reads_ricseq,
+            n_reads_mario = n_reads_mario,
             logistic_regression_models = logistic_regression_models
         )
 

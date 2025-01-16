@@ -13,11 +13,17 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.stats import pearsonr
 from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class, find_extension_from_savepath
 from .colors import *
-from .model_names_map import map_model_names
+from .model_names_map import map_model_names, map_experiment_names
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import MODEL_NAME
 
+
+def add_task_name_to_savepath(savepath, task_name):
+    # Split the file path into name and extension
+    base, ext = os.path.splitext(savepath)
+    # Return the modified path with task_name added before the extension
+    return f"{base}_{task_name}{ext}"
 
 '''
 ------------------------------------------------------------------------------------------
@@ -92,6 +98,72 @@ def plot_interacting_region_hist_paris(df, figsize=(12, 8), savepath=''):
         plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
     
     plt.show()
+
+def draw_arrow(ax, start, end, color='black'):
+    """Disegna una freccia tra due punti."""
+    ax.annotate('', 
+                xy=end, xytext=start, 
+                arrowprops=dict(arrowstyle='<|-|>', color=color, lw=1.5))
+
+def draw_triangle_with_arrows(side_length = 0.5, figsize=(7, 7), savepath = ''):
+    # Calcolo dei vertici del triangolo equilatero con lato 3
+    height = np.sqrt(3) / 2 * side_length  # Altezza del triangolo equilatero
+
+    vertices = np.array([
+        [0, 0],                              # Vertice A
+        [side_length, 0],                    # Vertice B
+        [side_length / 2, height]            # Vertice C
+    ])
+
+    
+    # Creazione della figura
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.set_aspect('equal')
+    
+    # Disegna le frecce (archi bidirezionali)
+    draw_arrow(ax, vertices[0], vertices[1])  # A -> B
+    draw_arrow(ax, vertices[1], vertices[0])  # B -> A
+    
+    draw_arrow(ax, vertices[1], vertices[2])  # B -> C
+    draw_arrow(ax, vertices[2], vertices[1])  # C -> B
+    
+    draw_arrow(ax, vertices[2], vertices[0])  # C -> A
+    draw_arrow(ax, vertices[0], vertices[2])  # A -> C
+
+    # Aggiungi i vertici e le etichette con posizioni regolate
+    labels = ['Data Quality', 'Model Performance', 'Model Confidence']
+    labels = ['', '', '']
+    for i, (x, y) in enumerate(vertices):
+        if i == 0:  # Sposta "Data Quality" in basso e leggermente a sinistra
+            ax.text(x - 0.1, y - 0.1, labels[i], ha='center', fontsize=7)
+        elif i == 1:  # Sposta "Model Performance" in basso e leggermente a destra
+            ax.text(x + 0.1, y - 0.1, labels[i], ha='center', fontsize=7)
+        else:  # Mantieni "Model Confidence" in alto
+            ax.text(x, y + 0.05, labels[i], ha='center', fontsize=7)
+
+    
+    # Aggiungi le scritte tra i vertici con posizioni regolate
+    edge_labels = {
+        (1, 2): (r"$\rho_{PC}$", 0.1, 0),  # Spostato leggermente a destra (+0.1 su x)
+        (0, 1): (r"$\rho_{QP}$", 0, -0.1), # Spostato leggermente in basso (-0.1 su y)
+        (0, 2): (r"$\rho_{QC}$", -0.1, 0), # Spostato leggermente a sinistra (-0.1 su x)
+    }
+
+    for (start, end), (label, x_offset, y_offset) in edge_labels.items():
+        mid_x = (vertices[start][0] + vertices[end][0]) / 2 + x_offset  # Offset su x
+        mid_y = (vertices[start][1] + vertices[end][1]) / 2 + y_offset  # Offset su y
+        ax.text(mid_x, mid_y, label, fontsize=7, ha='center', va='center', bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
+
+    # Personalizzazione degli assi
+    ax.set_xlim(-0.5, 1.5)
+    ax.set_ylim(-0.5, 1.5)
+    ax.axis('off')  # Nascondi gli assi
+    
+    if savepath:
+        extension = find_extension_from_savepath(savepath)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
+    
+    plt.show()    
 
 def plot_bar_n_reads_hist(df, upper = 10, figsize=(12, 8), savepath=''):
     """
@@ -276,12 +348,12 @@ def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsiz
 #         print('\n\n')
 
 def plot_metric_confidence_for_all_models_for_2tasks(
-    df_auc, list_of_reads, n_positives_run, name, size_multiplier=10,
-    metric='AUC', string_label='interaction length size', figsize=(17, 9), savepath = ''
+    df_auc, list_of_reads, n_positives_run, name, titles, xlabel, ylabel,
+    linewidth=2, legend_fontsize=5, size_multiplier=10, figsize=(17, 9), savepath=''
 ):
     model_names = list(df_auc['model_name'])
 
-    for task_name in ['interactors', 'patches']:
+    for i, task_name in enumerate(['interactors', 'patches']):
         auc_models = []
         perc_models = []
         
@@ -296,49 +368,60 @@ def plot_metric_confidence_for_all_models_for_2tasks(
 
         print('TASK: ', task_name)
         
-        # Create a figure with 2 vertically stacked subplots
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, sharex=True, gridspec_kw={'height_ratios': [1, 3]})
+        # Create figure and axis
+        fig, ax = plt.subplots(figsize=figsize)
         
-        # Top plot - Table aligned horizontally with x-axis values
-        histogram_values = n_positives_run
-        cell_text = [histogram_values]  # Single row with values across columns
-
-        # Turn off the axis for the table plot
-        ax1.axis('off')
-        table = ax1.table(cellText=cell_text,
-                          colLabels=list_of_reads,
-                          rowLabels=["Values"],
-                          cellLoc='center', 
-                          loc='center')
-        
-        table.auto_set_font_size(False)
-        table.set_fontsize(10)
-        table.scale(1, 1.5)  # Adjust cell size as needed
-
-        # Bottom plot - Primary AUC metrics plot
-        plt.sca(ax2)  # Set ax2 as the current axis
+        # Plot the metrics
         plot_metric_confidence_for_all_models(
             list_of_reads, auc_models, perc_models, model_names, task_name, 
-            size_multiplier, metric, string_label
+            size_multiplier, titles[i], xlabel, ylabel,
+            second_xaxis=n_positives_run, second_xlabel = 'RRIs',
+            linewidth=linewidth, legend_fontsize=legend_fontsize
         )
-        ax2.set_xlabel(string_label)
-        ax2.set_ylabel(metric)
 
-        # Show the combined figure
+        # Layout adjustments and saving
         plt.tight_layout()
         
         if savepath:
             extension = find_extension_from_savepath(savepath)
-            plt.savefig(add_task_name_to_savepath(savepath, task_name), format=f"{extension}", dpi = 300)
+            plt.savefig(add_task_name_to_savepath(savepath, task_name), format=f"{extension}", dpi=300, bbox_inches='tight')
         
         plt.show()
         print('\n\n')
 
-def add_task_name_to_savepath(savepath, task_name):
-    # Split the file path into name and extension
-    base, ext = os.path.splitext(savepath)
-    # Return the modified path with task_name added before the extension
-    return f"{base}_{task_name}{ext}"
+def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, title, xlabel, ylabel, second_xaxis, second_xlabel = 'RRIs', linewidth = 2, legend_fontsize = 5, markersize = 1):
+    
+    """
+    auc_models: list
+    perc_models: list
+    model_names : list
+    """
+    
+    for i, model_name in enumerate(model_names):
+        model_color = model_colors_dict.get(model_name, 'black')
+        
+        plt.plot(confidence_level, auc_models[i], marker='o', markersize=markersize, label=map_model_names(model_name), color = model_color, linewidth=linewidth)
+        #print(model_name, perc_models[i])
+        # Opzionalmente, variare la dimensione dei punti in base alla numerosità
+        for _, size in enumerate(perc_models[i]):
+            plt.scatter(confidence_level[_], auc_models[i][_], s=float(size)*size_multiplier, color=model_color) #float(size)*size_multiplier
+            
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if legend_fontsize>0:
+        plt.legend(fontsize = legend_fontsize)
+    plt.grid(False)
+
+    
+    ax = plt.gca()  # Get the current axis
+    ax.set_xticks(confidence_level)  # Forza i tick dell'asse x a essere solo i valori interi
+
+    # Ensure the ticks for the secondary axis are aligned with the primary axis
+    secax = ax.secondary_xaxis('top', functions=(lambda x: x, lambda x: x))  # Keep the same mapping
+    secax.set_xticks(confidence_level)  # Align the ticks with the primary axis
+    secax.set_xticklabels(second_xaxis)  # Use second_xaxis as the labels
+    secax.set_xlabel(second_xlabel)  # Set the label for the secondary x-axis
 
 def plot_all_model_auc(subset, tools, n_runs=100, linewidth=2, legend_fontsize=6, figsize = (5,5), savepath = ''):
     models = [{'prob': subset.probability, 'model_name': 'NT'}]
@@ -1428,31 +1511,7 @@ def plot_results_based_on_treshold_for_all_models(df, MIN_PERC, list_of_models_t
     auc_models=np.mean(auc_runs, axis = 0)
     perc_models=np.mean(perc_runs, axis = 0)
     
-    plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Confidence Level')
-    
-def plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label):
-    
-    """
-    auc_models: list
-    perc_models: list
-    model_names : list
-    """
-    
-    for i, model_name in enumerate(model_names):
-        model_color = model_colors_dict.get(model_name, 'black')
-        
-        plt.plot(confidence_level, auc_models[i], marker='o', label=map_model_names(model_name), color = model_color)
-        #print(model_name, perc_models[i])
-        # Opzionalmente, variare la dimensione dei punti in base alla numerosità
-        for _, size in enumerate(perc_models[i]):
-            plt.scatter(confidence_level[_], auc_models[i][_], s=float(size)*size_multiplier, color=model_color)
-            
-    plt.title(f'{metric} based on {string_label}, task: {task_name}')
-    plt.xlabel(f'{string_label} %')
-    plt.ylabel(f'{metric}')
-    plt.legend()
-    plt.grid(True, alpha=0.5)
-    
+    plot_metric_confidence_for_all_models(confidence_level, auc_models, perc_models, model_names, task_name, size_multiplier, title = 'title', xlabel = 'xlabel', ylabel ='ylabel', second_xaxis = confidence_level, second_xlabel = 'duplicated_axis')
     
 def collect_results_based_on_topbottom_for_all_models_perc_neg(df, MIN_PERC, list_of_models_to_test, n_values = 12, n_run_undersampling = 15, metric = 'precision'):
     
@@ -1827,7 +1886,7 @@ def plot_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_
     
     auc_models, perc_models, model_names = collect_results_based_on_topbottom_for_all_models(df, MIN_PERC, list_of_models_to_test, n_values, n_run_undersampling, metric)
 
-    plot_metric_confidence_for_all_models([str(perc) for perc in perc_models[0]], auc_models, perc_models, model_names, task_name, size_multiplier, metric, string_label = 'Percentage Data')
+    plot_metric_confidence_for_all_models([str(perc) for perc in perc_models[0]], auc_models, perc_models, model_names, task_name, size_multiplier, title = 'title', xlabel = 'xlabel', ylabel ='ylabel',  second_xaxis = [str(perc) for perc in perc_models[0]], second_xlabel = 'duplicated_axis')
 
     
     
@@ -1925,7 +1984,7 @@ def plot_results_how_many_repeats_in_pred_pos_for_all_models(subset, MIN_PERC, l
         if len(c_l)>len(confidence_level):
             confidence_level = c_l
     
-    plot_metric_confidence_for_all_models(confidence_level, perc_models, [[0 for i in range(len(perc_models[0]))] for j in range(len(perc_models))], model_names, feature_to_search, 0, f'Percentage of {feature_to_search} in positive predictions', string_label = 'Confidence Level')
+    plot_metric_confidence_for_all_models(confidence_level, perc_models, [[0 for i in range(len(perc_models[0]))] for j in range(len(perc_models))], model_names, feature_to_search, 0, title = 'title', xlabel = 'xlabel', ylabel ='ylabel',  second_xaxis = confidence_level, second_xlabel = 'duplicated_axis')
 
 def how_many_repeats_in_pred_pos_for_single_model(df, how = 'intarna', n_values = 15, MIN_PERC = 0.05, both_sr = False, feature_to_search = 'Simple_repeat'):
 
@@ -2340,9 +2399,11 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
     plt.show()
 
     
-def plot_sr_distributions_full(df_sr, label_x = 'Dataset', label_x_name = 'Dataset', label_y_name = 'Normalized Score', column = 'Model', figsize = (16, 8), savepath = ''):
+def plot_sr_distributions_full(df_sr, label_x = 'Dataset', label_x_name = 'Dataset', label_y_name = 'Normalized Score', column = 'Model', title = 'title',linewidth_boxplot = 0.5, width_boxplot=0.7, figsize = (16, 8), savepath = ''):
 
     df_sr[column] = df_sr[column].apply(map_model_names)
+    if 'Dataset' in df_sr.columns:
+        df_sr['Dataset'] = df_sr['Dataset'].apply(map_experiment_names)
     
     plt.figure(figsize=figsize)
 
@@ -2351,18 +2412,30 @@ def plot_sr_distributions_full(df_sr, label_x = 'Dataset', label_x_name = 'Datas
         'at least Simple Repeat positive samples',
         'both Simple Repeat positive samples',
     ]
-    palette={hue_order[0]: '#76b5c5', hue_order[1]: '#eab676', hue_order[2]: '#e28743'}
+    palette={hue_order[0]: '#D5E7B5', hue_order[1]: '#8174A0', hue_order[2]: '#441752'}
 
-    sns.boxplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False)
+    ax = sns.boxplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False, width = width_boxplot, linewidth=linewidth_boxplot)
     #sns.violinplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False)
-    
+        
+        
+    # Aggiungi i segmenti orizzontali sopra i box plot
+    for i in range(len(df_sr[label_x].unique())):  # Per ogni categoria sull'asse x
+        x_positions = [i - 0.25, i, i + 0.25]  # Posizioni x dei box plot
+        y_value = df_sr['Normalized Score'].max() + 0.05  # Altezza sopra i box plot
+        segment_width = 0.2  # Ampiezza del segmento
+        # Aggiungi segmento sopra il secondo box plot
+        ax.hlines(y=y_value, xmin=x_positions[1] - segment_width / 2, xmax=x_positions[1] + segment_width / 2, color='black', linewidth=0.3)
+        # Aggiungi segmento sopra il terzo box plot
+        ax.hlines(y=y_value, xmin=x_positions[2] - segment_width / 2, xmax=x_positions[2] + segment_width / 2, color='black', linewidth=0.3)
     
     # Customize the plot
-    plt.title('Box Plots of Normalized Score by Category and Dataset')
+    plt.title(title)
     plt.xlabel(label_x_name)
     plt.ylabel(label_y_name)
-    plt.legend(title='Dataset')
+    plt.ylim(plt.ylim()[0], plt.ylim()[1] + (plt.ylim()[1] - plt.ylim()[0]) * 0.05)
+    #plt.legend(title='Dataset')
     plt.tight_layout()
+    plt.legend([],[], frameon=False)
 
     if savepath:
         extension = find_extension_from_savepath(savepath) 
@@ -2413,9 +2486,9 @@ def plot_sr_distributions(df_sr, label_x, label_y_name = 'Normalized Score', col
     plt.show()
     
     
-def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1, savepath = ''):
+def npv_precision(precision_data, npv_data, experiment_names, figsize, min_perc = 1, title = 'NPV over bottom predictions (left), Precision over top predictions (right)', savepath = '', plot_legend = False):
     
-    model_names = map_model_names(model_names)
+    experiment_names = map_experiment_names(experiment_names)
     
     assert precision_data.shape == npv_data.shape
     
@@ -2443,60 +2516,63 @@ def npv_precision(precision_data, npv_data, model_names, figsize, min_perc = 1, 
 
     # Plotting
     fig, ax = plt.subplots(figsize=figsize)
-
+    
     # Creiamo il grafico principale
     im = ax.imshow(combined_image, aspect='auto', interpolation='nearest')
     plt.xlabel('Percentage of bottom / top predictions (%)')
-    plt.ylabel('Model')
-    plt.axvline(x=n_points-0.5, color='black', linestyle='--', label='Threshold between positive and negative predictions')
-    plt.title('NPV over bottom predictions (left), Precision over top predictions (right)')
+    #plt.ylabel('Model')
+    plt.axvline(x=n_points-0.5, color='black', linewidth=0.5, linestyle='--', label='Threshold between positive and negative predictions')
+    plt.title(title)
     plt.xticks(np.arange(len(percentuali)), percentuali)
-    plt.yticks(np.arange(num_modelli), model_names)
+    plt.yticks(np.arange(num_modelli), experiment_names)
 
-    # Divider per le due colorbar
-    divider = make_axes_locatable(ax)
-    cax1 = divider.append_axes("right", size="5%", pad=0.1)
-    cax2 = divider.append_axes("right", size="5%", pad=0.7)
+    if plot_legend:
 
-    # Colorbar per NPV
-    cb1 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), cax=cax1)
-    cb1.set_label('NPV Score')
+        # Divider per le due colorbar
+        divider = make_axes_locatable(ax)
+        cax1 = divider.append_axes("right", size="5%", pad=0.1)
+        cax2 = divider.append_axes("right", size="5%", pad=0.7)
 
-    # Colorbar per Precision
-    cb2 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Oranges'), cax=cax2)
-    cb2.set_label('Precision Score')
+        # Colorbar per NPV
+        cb1 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), cax=cax1)
+        cb1.set_label('NPV Score')
+        cax1.tick_params(axis='y', labelrotation=90, labelsize=7)  #size of the numbers
+
+        # Colorbar per Precision
+        cb2 = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Oranges'), cax=cax2)
+        cb2.set_label('Precision Score')
+        cax2.tick_params(axis='y', labelrotation=90, labelsize=7)  #size of the numbers
 
     # Aggiungiamo i numeri alle celle del grafico
     for i in range(num_modelli):
         for j in range(n_points):
-            text = ax.text(j, i, f"{npv_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold', fontsize=17, fontfamily='Arial')
-            text = ax.text(j + n_points, i, f"{precision_data[i, j]:.2f}", ha="center", va="center", color="white", fontweight='bold', fontsize=17, fontfamily='Arial')
+            text = ax.text(j, i, f"{npv_data[i, j]:.2f}", ha="center", va="center", color="white",  fontsize=5, fontfamily='Arial')
+            text = ax.text(j + n_points, i, f"{precision_data[i, j]:.2f}", ha="center", va="center", color="white", fontsize=5, fontfamily='Arial')
 
-    plt.legend()
     plt.tight_layout()
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
         plt.savefig(savepath, format=f"{extension}", dpi = 300)
     
-    plt.show()
-    
+    plt.show()    
     
 def plot_correlation_nreads_prob_intsize(modelRM, PARIS_FINETUNED_MODEL):
 
     res = modelRM.get_experiment_data(
-            experiment = 'paris', 
-            paris_test = True, 
-            paris_finetuned_model = PARIS_FINETUNED_MODEL, 
-            specie_paris = 'all',
-            paris_hq = False,
-            paris_hq_threshold = 1,
-            n_reads_paris = 1,
-            interlen_OR_nreads_paris = False,
-            splash_trained_model = False,
-            only_test_splash_ricseq_mario = np.nan,
-            n_reads_ricseq = np.nan,
-            logistic_regression_models = {},
+        experiment = 'paris', 
+        paris_test = True, 
+        paris_finetuned_model = PARIS_FINETUNED_MODEL, 
+        specie_paris = 'all',
+        paris_hq = False,
+        paris_hq_threshold = 1,
+        n_reads_paris = 1,
+        interlen_OR_nreads_paris = False,
+        splash_trained_model = False,
+        only_test_splash_ricseq_mario = np.nan,
+        n_reads_ricseq = np.nan,
+        n_reads_mario = np.nan,
+        logistic_regression_models = {},
     )
 
     pos = res[res.interacting]

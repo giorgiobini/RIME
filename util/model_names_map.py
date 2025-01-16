@@ -33,6 +33,21 @@ def map_model_names(model_names):
     else:
         return map_single_name(model_names)
 
+def map_experiment_names(experiment_names):
+    experiment_name_map = {
+        'psoralen':'Psoralen-based',
+        'ricseq':'RIC-seq',
+        'mario':'MARIO',
+    }
+
+    def map_single_name(name):
+        return experiment_name_map.get(name, name)
+
+    if isinstance(experiment_names, list):
+        return [map_single_name(name) for name in experiment_names]
+    else:
+        return map_single_name(experiment_names)
+    
     
     
 # Examples of usage:

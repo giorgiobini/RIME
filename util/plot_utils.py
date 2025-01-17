@@ -292,14 +292,14 @@ def plot_interaction_region(df, title = 'Full set', savepath = '', plot_legend =
     
     plt.show()
 
-def plot_correlations_QPC(corr_QPC, figsize=(5, 5), savepath = ''):
+def plot_correlations_QPC(corr_QPC, figsize=(5, 5), number_size = 7, savepath = ''):
     plt.figure(figsize=figsize)
-    sns.heatmap(corr_QPC, annot=True, cmap="coolwarm", vmin=-1, vmax=1, center=0)
+    sns.heatmap(corr_QPC, annot=True, cmap="coolwarm", vmin=-1, vmax=1, center=0, annot_kws={"size": number_size})
     if savepath:
         extension = find_extension_from_savepath(savepath)
         plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
 
-def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9), savepath = ''):
+def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsize=(17, 9),  xlabel = 'xlabel', title = 'title', savepath = ''):
     """
     Plots a box plot for each list of scores corresponding to n_reads.
     
@@ -315,14 +315,14 @@ def plot_qualityVSconfidence(n_reads, scores, variable='Number of Reads', figsiz
     # Set the x-axis labels to the n_reads values
     ax.set_xticklabels(n_reads)
     # Set axis labels
-    ax.set_xlabel(variable)
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(f'{MODEL_NAME} Score')
     # Set the title
-    ax.set_title(f'Boxplot of {MODEL_NAME} Scores for Each {variable}')
+    ax.set_title(title)
     
     if savepath:
         extension = find_extension_from_savepath(savepath) 
-        plt.savefig(savepath, format=f"{extension}", dpi = 300)
+        plt.savefig(savepath, format=f"{extension}", dpi = 300, bbox_inches='tight')
     
     # Display the plot
     plt.show()
@@ -357,11 +357,13 @@ def plot_metric_confidence_for_all_models_for_2tasks(
         auc_models = []
         perc_models = []
         
+        task_name_DR = 'DRP' if task_name == 'patches' else 'DRI'
+        
         for model_name in model_names:
             auc_current_model = []
             for n_reads in list_of_reads:
                 auc_current_model.append(
-                    df_auc[df_auc['model_name'] == model_name][f'auc_{task_name}_{name}{n_reads}'].iloc[0]
+                    df_auc[df_auc['model_name'] == model_name][f'auc_{task_name_DR}_{name}{n_reads}'].iloc[0]
                 )
             auc_models.append(auc_current_model)
             perc_models.append(np.array(n_positives_run) / np.max(n_positives_run) * 100)
@@ -2423,10 +2425,10 @@ def plot_sr_distributions_full(df_sr, label_x = 'Dataset', label_x_name = 'Datas
         x_positions = [i - 0.25, i, i + 0.25]  # Posizioni x dei box plot
         y_value = df_sr['Normalized Score'].max() + 0.05  # Altezza sopra i box plot
         segment_width = 0.2  # Ampiezza del segmento
-        # Aggiungi segmento sopra il secondo box plot
-        ax.hlines(y=y_value, xmin=x_positions[1] - segment_width / 2, xmax=x_positions[1] + segment_width / 2, color='black', linewidth=0.3)
-        # Aggiungi segmento sopra il terzo box plot
-        ax.hlines(y=y_value, xmin=x_positions[2] - segment_width / 2, xmax=x_positions[2] + segment_width / 2, color='black', linewidth=0.3)
+        # Aggiungi segmento sopra il secondo box plot (tra box1 e box2)
+        ax.hlines(y=y_value, xmin=(x_positions[0] + x_positions[1]) / 2 - segment_width / 2, xmax=(x_positions[0] + x_positions[1]) / 2 + segment_width / 2, color='black', linewidth=0.3)
+        # Aggiungi segmento sopra il terzo box plot (tra box1 e box3)
+        ax.hlines(y=y_value + 0.1, xmin=(x_positions[0] + x_positions[1]) / 2 - segment_width / 2, xmax=(x_positions[1] + x_positions[2]) / 2 + segment_width / 2, color='black', linewidth=0.3)
     
     # Customize the plot
     plt.title(title)

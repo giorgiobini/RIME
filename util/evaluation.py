@@ -99,8 +99,8 @@ def calc_corr_quality_perf(df_auc, set_name, list_of_n_reads, corr = 'pearson'):
     auc_int = []
     auc_patch = []
     for n_reads_paris in list_of_n_reads:
-        auc_int.append(df_auc[df_auc.model_name == 'RIME'][f'auc_interactors_{set_name}{n_reads_paris}'].iloc[0])
-        auc_patch.append(df_auc[df_auc.model_name == 'RIME'][f'auc_patches_{set_name}{n_reads_paris}'].iloc[0])
+        auc_int.append(df_auc[df_auc.model_name == 'RIME'][f'auc_DRI_{set_name}{n_reads_paris}'].iloc[0])
+        auc_patch.append(df_auc[df_auc.model_name == 'RIME'][f'auc_DRP_{set_name}{n_reads_paris}'].iloc[0])
 
     auc_int = pd.Series(auc_int, name='DRI_AUC')
     auc_patch = pd.Series(auc_patch, name='DRP_AUC')
@@ -668,7 +668,7 @@ def map_thermodynamic_columns(res, energy_columns, logistic_regression_models):
     return res
 
 def map_dataset_to_hp(dataset):
-    assert dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_mouse_HQ', 'val_mouse', 'val_HQ', 'psoralen_val']
+    assert dataset in ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'psoralen_human', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_mouse_HQ', 'val_mouse', 'val_HQ', 'psoralen_val']
     
     if dataset == 'parisHQ':
         experiment = 'paris'
@@ -723,6 +723,16 @@ def map_dataset_to_hp(dataset):
     elif dataset == 'psoralen':
         experiment = 'psoralen'
         specie_paris = 'all'
+        paris_hq_threshold = 1
+        n_reads_paris = 1
+        interlen_OR_nreads_paris = False
+        n_reads_ricseq = np.nan
+        n_reads_mario = np.nan
+        paris_test = True
+        
+    elif dataset == 'psoralen_human':
+        experiment = 'psoralen'
+        specie_paris = 'human'
         paris_hq_threshold = 1
         n_reads_paris = 1
         interlen_OR_nreads_paris = False
@@ -784,7 +794,7 @@ def map_dataset_to_hp(dataset):
     return experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_mario, n_reads_paris, interlen_OR_nreads_paris, paris_test
 
 def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_model, list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
-    assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_HQ', 'psoralen_val', 'val_mouse'])) == set(list_of_datasets)
+    assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'psoralen_human', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_HQ', 'psoralen_val', 'val_mouse'])) == set(list_of_datasets)
     
 
     dfs = [] 
@@ -812,12 +822,12 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_m
         enhn = res[res.policy.isin(['easypos', 'easyneg', 'hardneg'])].reset_index(drop = True)
 
         dfs.append(obtain_all_model_auc(easypos_smartneg, energy_columns).rename({
-            'auc': f'auc_interactors_{dataset}', 
-            'standard_error': f'se_interactors_{dataset}', 
+            'auc': f'auc_DRI_{dataset}', 
+            'standard_error': f'se_DRI_{dataset}', 
         }, axis = 1))
         dfs.append(obtain_all_model_auc(enhn, energy_columns).rename({
-            'auc': f'auc_patches_{dataset}',
-            'standard_error': f'se_patches_{dataset}'
+            'auc': f'auc_DRP_{dataset}',
+            'standard_error': f'se_DRP_{dataset}'
         }, axis = 1))
 
 

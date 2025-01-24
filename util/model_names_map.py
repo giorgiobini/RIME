@@ -38,6 +38,11 @@ def map_experiment_names(experiment_names):
         'psoralen':'Psoralen-based',
         'ricseq':'RIC-seq',
         'mario':'MARIO',
+        'psoralen_human':'Psoralen Human',
+        'parisHQ':'Psoralen Human (HQ)',
+        'paris_mouse':'Psoralen Mouse', 
+        'paris_mouse_HQ':'Psoralen Mouse (HQ)',
+        'ricseqHQ': 'RIC-seq (HQ)',
     }
 
     def map_single_name(name):

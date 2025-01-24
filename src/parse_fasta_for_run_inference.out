@@ -6,23 +6,31 @@ nohup: ignoring input
 /data01/giorgio/RNARNA-NT/src/../util/inference_utils.py:199: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
   emb_fasta_final = emb_fasta_final.append(emb_fasta)
 processing q
-/home/giorgio/bedtools2/bin/bedtools makewindows -i srcwinnum  -g /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/genome.txt -w 200 -s 100 > /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/window_temp.txt
+/home/giorgio/bedtools2/bin/bedtools makewindows -i srcwinnum  -g /data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/windows/200_100/genome.txt -w 200 -s 100 > /data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/windows/200_100/window_temp.txt
 processing t
-/home/giorgio/bedtools2/bin/bedtools makewindows -i srcwinnum  -g /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/genome.txt -w 200 -s 100 > /data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/window_temp.txt
-/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/windows/200_100/window_temp.txt
+/home/giorgio/bedtools2/bin/bedtools makewindows -i srcwinnum  -g /data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/windows/200_100/genome.txt -w 200 -s 100 > /data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/windows/200_100/window_temp.txt
+/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/windows/200_100/window_temp.txt
 	
 mode: generate or load
 length emb: 5970
 step for emedding: 2985
 processing q
-                 0  1     2                  3  width
-0  ENSG00000159409  0  5582  ENSG00000159409_1   5582
-/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/embeddings/5970/embedding_temp.bed
+                    0  1    2                     3  width
+0  ENSMUST00000128121  0  599  ENSMUST00000128121_1    599
+/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/embeddings/5970/embedding_temp.bed
 processing t
-                    0     1     2                     3  width
-0     ENSG00000267391     0  5970     ENSG00000267391_1   5970
-1     ENSG00000267391  2985  8955     ENSG00000267391_2   5970
-2     ENSG00000267391  3072  9042     ENSG00000267391_3   3072
-4  ENSMUSG00000104324     0  4953  ENSMUSG00000104324_1   4953
-6  ENSMUSG00000104435     0  4718  ENSMUSG00000104435_1   4718
-/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/temp/embeddings/5970/embedding_temp.bed
+                      0  1     2                     3  width
+142  ENSMUST00000000001  0  3262  ENSMUST00000000001_1   3262
+467  ENSMUST00000000003  0   902  ENSMUST00000000003_1    902
+691  ENSMUST00000000010  0  2574  ENSMUST00000000010_1   2574
+53   ENSMUST00000000049  0  1190  ENSMUST00000000049_1   1190
+238  ENSMUST00000000058  0  2733  ENSMUST00000000058_1   2733
+..                  ... ..   ...                   ...    ...
+376  ENSMUST00000237661  0   646  ENSMUST00000237661_1    646
+86   ENSMUST00000237736  0   700  ENSMUST00000237736_1    700
+644  ENSMUST00000237803  0  1387  ENSMUST00000237803_1   1387
+215  ENSMUST00000238770  0  1954  ENSMUST00000238770_1   1954
+12   ENSMUST00000239299  0  5014  ENSMUST00000239299_1   5014
+
+[622 rows x 5 columns]
+/data01/giorgio/RNARNA-NT/dataset/external_dataset/pulldown/Lhx1os_control/temp/embeddings/5970/embedding_temp.bed

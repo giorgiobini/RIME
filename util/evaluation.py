@@ -11,12 +11,38 @@ from sklearn.utils import resample
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc, precision_score, recall_score, confusion_matrix
 from scipy.stats import spearmanr, kendalltau
 from sklearn.metrics import mutual_info_score
-from .plot_utils import calc_prec_rec_sens_npv
+from .plot_utils import calc_prec_rec_sens_npv, calc_metric
 from .model_names_map import map_model_names
 from .misc import balance_df, undersample_df, is_unbalanced, obtain_majority_minority_class
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
+
+def create_drp_dri_df(drp_hq, dri_hq, hq=True):
+    drp_hq = {map_model_names(k): v for k, v in drp_hq.items()}
+    dri_hq = {map_model_names(k): v for k, v in dri_hq.items()}
+    
+    if hq:
+        suffix = '(HQ) '
+    else:
+        suffix = ''
+        
+    drp_hq = pd.DataFrame.from_dict(drp_hq, 'index').reset_index().rename({0: f'{suffix}AUC DRP', 'index':'Model'}, axis = 1)
+    dri_hq = pd.DataFrame.from_dict(dri_hq, 'index').reset_index().rename({0: f'{suffix}AUC DRI', 'index':'Model'}, axis = 1)
+    
+    return drp_hq, dri_hq
+
+def obtain_training_info_from_model_name(model_name):
+    if model_name == 'arch2_PSORALENtrained_PARISval0074':
+        PARIS_FINETUNED_MODEL = False
+        SPLASH_TRAINED_MODEL = True
+    elif  model_name == 'arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086':
+        PARIS_FINETUNED_MODEL = True
+        SPLASH_TRAINED_MODEL = False
+    else:
+        raise NotImplementedError
+        
+    return PARIS_FINETUNED_MODEL, SPLASH_TRAINED_MODEL
 
 
 def how_many_ast(pvalue):
@@ -155,7 +181,7 @@ def calculate_correlations(series_list, method='pearson', plot=False):
     return correlations
 
 
-def calculate_metrics_mean_over_iterations(res, n_iterations=10, task = 'all', column = 'probability', threshold = 0.5):
+def calculate_metrics_mean_over_iterations(res, n_iterations=100, task = 'all', column = 'probability', threshold = 0.5):
     """
     Perform iterative resampling and calculate the mean metrics over multiple iterations.
     
@@ -590,6 +616,85 @@ class ModelResultsManager:
         else:
             return 'val'
     
+def obtain_df_metrics(model, paris_finetuned_model, splash_trained_model, list_of_metrics = ['accuracy', 'precision', 'npv', 'recall', 'specificity', 'f1'],list_of_datasets = ['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash'], logistic_regression_models = {}):
+    assert set(list_of_datasets).intersection(set(['parisHQ', 'paris_mouse_HQ', 'ricseqHQ', 'psoralen', 'psoralen_human', 'paris', 'paris_mouse', 'ricseq', 'mario', 'splash', 'val', 'val_HQ', 'psoralen_val', 'val_mouse'])) == set(list_of_datasets)
+    
+
+    dfs = [] 
+    for dataset in tqdm(list_of_datasets):
+
+        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_mario, n_reads_paris, interlen_OR_nreads_paris, paris_test  = map_dataset_to_hp(dataset)
+        
+        res = model.get_experiment_data(
+            experiment = experiment, 
+            paris_test = paris_test, 
+            paris_finetuned_model = paris_finetuned_model, 
+            specie_paris = specie_paris,
+            paris_hq = False,
+            paris_hq_threshold = paris_hq_threshold,
+            n_reads_paris = n_reads_paris,
+            interlen_OR_nreads_paris = interlen_OR_nreads_paris,
+            splash_trained_model = splash_trained_model,
+            only_test_splash_ricseq_mario = False,
+            n_reads_ricseq = n_reads_ricseq,
+            n_reads_mario = n_reads_mario,
+            logistic_regression_models = logistic_regression_models
+        )
+
+        easypos_smartneg = res[res.policy.isin(['easypos', 'smartneg'])].reset_index(drop = True)
+        enhn = res[res.policy.isin(['easypos', 'easyneg', 'hardneg'])].reset_index(drop = True)
+        
+        for metric in list_of_metrics:
+    
+            dfs.append(obtain_current_metric(easypos_smartneg, metric).rename({
+                metric: f'DRI_{metric}_{dataset}', 
+                f'standard_error_{metric}': f'se_DRI_{metric}_{dataset}', 
+            }, axis = 1))
+            dfs.append(obtain_current_metric(enhn, metric).rename({
+                metric: f'DRP_{metric}_{dataset}',
+                f'standard_error_{metric}': f'se_DRP_{metric}_{dataset}'
+            }, axis = 1))
+
+    df_auc = pd.concat(dfs, axis = 1)
+    df_auc = df_auc.loc[:,~df_auc.columns.duplicated()].copy()
+    df_auc['model_name'] = df_auc['model_name'].apply(map_model_names)
+    df_auc = df_auc.drop_duplicates().reset_index(drop=True)
+    
+    return df_auc
+
+
+def obtain_current_metric(subset, metric, n_runs=100):
+    list_to_append = ['NT']
+
+    aucs_dict = {tool_name: [] for tool_name in list_to_append}
+
+    for _ in range(n_runs):
+        # Perform undersampling to create a balanced subset
+        majority_class, minority_class = obtain_majority_minority_class(subset)
+
+        # Undersample majority class
+        majority_undersampled = resample(majority_class, 
+                                         replace=False, 
+                                         n_samples=len(minority_class), 
+                                         random_state=np.random.randint(10000))
+
+        # Combine minority class with undersampled majority class
+        balanced_subset = pd.concat([minority_class, majority_undersampled])
+
+        aucs_dict['NT'].append(calc_metric(balanced_subset, 'probability', metric))
+
+    # Calculate mean AUC and standard error for each model
+    mean_aucs = {tool_name: np.mean(aucs_dict[tool_name]) for tool_name in aucs_dict}
+    std_errors = {tool_name: np.std(aucs_dict[tool_name], ddof=1) / np.sqrt(n_runs) for tool_name in aucs_dict}
+    
+    # Create DataFrame with results
+    df_out = pd.DataFrame({
+        'model_name': list(mean_aucs.keys()),
+        metric: [round(auc, 4) for auc in mean_aucs.values()],
+        f'standard_error_{metric}': [round(std_errors[tool], 4) for tool in mean_aucs.keys()]
+    })
+    
+    return df_out
 
 def obtain_all_model_auc(subset, tools, n_runs=100):
     if is_unbalanced(subset):
@@ -800,7 +905,7 @@ def obtain_df_auc(model, paris_finetuned_model, energy_columns, splash_trained_m
     dfs = [] 
     for dataset in tqdm(list_of_datasets):
 
-        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_mario, n_reads_paris, interlen_OR_nreads_paris, paris_test  = map_dataset_to_hp(dataset)
+        experiment, specie_paris, paris_hq_threshold, n_reads_ricseq, n_reads_mario, n_reads_paris, interlen_OR_nreads_paris, paris_test = map_dataset_to_hp(dataset)
         
         res = model.get_experiment_data(
             experiment = experiment, 

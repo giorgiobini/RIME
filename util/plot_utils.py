@@ -681,6 +681,10 @@ def calc_metric(df, column, metric = 'precision_recall_curve'):
             output = auc(recall, precision)
         except:
             output = np.nan
+            
+    elif metric == 'accuracy':
+        output = ((df[column] > 0.5) == df.ground_truth).sum() / df.shape[0]
+        
     elif metric == 'cross_entropy':
         output = weighted_ce_loss(df, column, (1.0, 1.0))
 

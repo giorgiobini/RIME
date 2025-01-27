@@ -57,20 +57,40 @@ def how_many_ast(pvalue):
     elif pvalue <= 0.0001:
         return 4
 
-def create_pvalue_df(pvalue_df):
+def create_pvalue_df(pvalue_df, how = 'benjamini_hochberg'):
     pvalue_df = pd.DataFrame(pvalue_df)
     # Number of comparisons
     n_comparisons = len(pvalue_df)
     # Bonferroni correction
-    pvalue_df['both_bonferroni'] = pvalue_df['both'] * n_comparisons
-    pvalue_df['at_least_one_bonferroni'] = pvalue_df['at_least_one'] * n_comparisons
-    pvalue_df['both_bonferroni'] = pvalue_df['both_bonferroni'].clip(upper=1.0)
-    pvalue_df['at_least_one_bonferroni'] = pvalue_df['at_least_one_bonferroni'].clip(upper=1.0)
-    pvalue_df['sig_both'] = pvalue_df['both_bonferroni'] < 0.05
-    pvalue_df['sig_at_least_one'] = pvalue_df['at_least_one_bonferroni']  < 0.05
-    pvalue_df['ast_at_least_one_bonferroni'] = pvalue_df['at_least_one_bonferroni'].apply(how_many_ast)
-    pvalue_df['ast_both_bonferroni'] = pvalue_df['both_bonferroni'].apply(how_many_ast)
+    
+    if how == 'bonferroni':
+        pvalue_df['both_bonferroni'] = pvalue_df['both'] * n_comparisons
+        pvalue_df['at_least_one_bonferroni'] = pvalue_df['at_least_one'] * n_comparisons
+        pvalue_df['both_bonferroni'] = pvalue_df['both_bonferroni'].clip(upper=1.0)
+        pvalue_df['at_least_one_bonferroni'] = pvalue_df['at_least_one_bonferroni'].clip(upper=1.0)
+        pvalue_df['sig_both'] = pvalue_df['both_bonferroni'] < 0.05
+        pvalue_df['sig_at_least_one'] = pvalue_df['at_least_one_bonferroni']  < 0.05
+        pvalue_df['ast_at_least_one_bonferroni'] = pvalue_df['at_least_one_bonferroni'].apply(how_many_ast)
+        pvalue_df['ast_both_bonferroni'] = pvalue_df['both_bonferroni'].apply(how_many_ast)
+    elif how == 'benjamini_hochberg':
+        pvalue_df['both_bh'] = benjamini_hochberg(pvalue_df['both'].values)
+        pvalue_df['at_least_one_bh'] = benjamini_hochberg(pvalue_df['at_least_one'].values)
+        pvalue_df['sig_both'] = pvalue_df['both_bh'] < 0.05
+        pvalue_df['sig_at_least_one'] = pvalue_df['at_least_one_bh']  < 0.05
+        pvalue_df['ast_at_least_one_bh'] = pvalue_df['at_least_one_bh'].apply(how_many_ast)
+        pvalue_df['ast_both_bh'] = pvalue_df['both_bh'].apply(how_many_ast)
     return pvalue_df
+
+
+def benjamini_hochberg(p_values):
+    n = len(p_values)
+    sorted_indices = p_values.argsort()
+    sorted_p_values = p_values[sorted_indices]
+    adjusted_p_values = sorted_p_values * n / (range(1, n + 1))
+    adjusted_p_values = adjusted_p_values.clip(max=1.0)  # Ensure p-values don't exceed 1
+    # Return to original order
+    result = pd.Series(adjusted_p_values).iloc[sorted_indices.argsort()].values
+    return result
 
 def obtain_enhn_easypos_smartneg(res, filter_neg_by_HQ = False):
     

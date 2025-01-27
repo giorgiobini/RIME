@@ -2378,6 +2378,7 @@ def plot_heatmap(correlation_df, highlight_labels=None, title="Correlation Heatm
         figsize=figsize,  # Pass figsize here
         method='average',  # Example clustering method
         metric='euclidean',  # Example distance metric
+        annot_kws={"size": numbers_size},
     )
 
     # Set the title for the heatmap
@@ -2418,7 +2419,7 @@ def plot_sr_distributions_full(df_sr, label_x = 'Dataset', label_x_name = 'Datas
         'at least Simple Repeat positive samples',
         'both Simple Repeat positive samples',
     ]
-    palette={hue_order[0]: '#D5E7B5', hue_order[1]: '#8174A0', hue_order[2]: '#441752'}
+    palette={hue_order[0]: '#D5E7B5', hue_order[1]: '#bba3c2', hue_order[2]: '#7f5c8a'}
 
     ax = sns.boxplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False, width = width_boxplot, linewidth=linewidth_boxplot)
     #sns.violinplot(data=df_sr, x=label_x, y='Normalized Score', hue='Category', hue_order=hue_order, palette = palette, showfliers=False)

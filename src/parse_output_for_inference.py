@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 sys.path.insert(0, '..')
-from util.inference_utils import associateRIMEpobability, ParseFasta, PlotByGene
+from util.inference_utils import associateRIMEpobability, ParseFasta, PlotByGene, format_output_table_bedpe
 
 # import subprocess
 
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     temp_dir = os.path.join(inference_dir, 'temp')
 
     pairs_prob_mean = associateRIMEpobability(temp_dir)
-    pairs_prob_mean.drop(['window_1', 'window_2'], axis =1).to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
+    format_output_table_bedpe(pairs_prob_mean).to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
 
     fasta_query_input = os.path.join(inference_dir, 'query.fa')
     fasta_target_input = os.path.join(inference_dir, 'target.fa')

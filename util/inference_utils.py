@@ -331,6 +331,16 @@ def associateRIMEpobability(directory):
     
     return pairs_prob_mean
 
+def format_output_table_bedpe(df_input):
+    df = df_input.copy(deep=True)
+    df.loc[:,"window_id1"]=df.loc[:,"window_1"].apply(lambda x: x.split("__")[0])
+    df.loc[:,"window_id2"]=df.loc[:,"window_2"].apply(lambda x: x.split("__")[0])
+    df.loc[:,"start1"]=df.loc[:,"window_1"].apply(lambda x: x.split("__")[1].split("_")[0])
+    df.loc[:,"end1"]=df.loc[:,"window_1"].apply(lambda x: x.split("__")[1].split("_")[1])
+    df.loc[:,"start2"]=df.loc[:,"window_2"].apply(lambda x: x.split("__")[1].split("_")[0])
+    df.loc[:,"end2"]=df.loc[:,"window_2"].apply(lambda x: x.split("__")[1].split("_")[1])
+    return df[["window_id1","start1","end1","window_id2","start2","end2","id_pair","RIME_score","strand1","strand2"]]
+
 def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
 
     matrix_prob_subset=pairs.copy(deep=True)

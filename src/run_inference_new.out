@@ -3,5 +3,5 @@ nohup: ignoring input
   warnings.warn("Initializing zero-element tensors is a no-op")
 ============================================================
 <class 'transformers.tokenization_dna.DNATokenizer'>
-69350 sequences to download
-Testing time 0:05:21
+2035259 sequences to download
+Testing time 3:37:30

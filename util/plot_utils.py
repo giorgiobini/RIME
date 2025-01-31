@@ -2526,7 +2526,7 @@ def npv_precision(precision_data, npv_data, experiment_names, figsize, min_perc 
     
     # Creiamo il grafico principale
     im = ax.imshow(combined_image, aspect='auto', interpolation='nearest')
-    plt.xlabel('Percentage of bottom / top predictions (%)')
+    plt.xlabel('Percentage of bottom / top predictions')
     #plt.ylabel('Model')
     plt.axvline(x=n_points-0.5, color='black', linewidth=0.5, linestyle='--', label='Threshold between positive and negative predictions')
     plt.title(title)

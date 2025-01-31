@@ -13,8 +13,11 @@ def ParseFasta(filename):
         for record in FastaIterator(handle):
             #print(str(entry.id)) #This is header of fasta entry
             #print(str(entry.seq))
-            all_ids+=[str(record.id)]
-            all_seq+=[str(record.seq)]
+            # all_ids+=[str(record.id)]
+            # all_seq+=[str(record.seq)]
+            all_ids.append(str(record.id))
+            all_seq.append(str(record.seq).replace('U', 'T'))  # Convert U to T
+
 
     res_fasta = pd.DataFrame([all_ids,all_seq]).T
     res_fasta.columns =["id","seq"]
@@ -379,6 +382,6 @@ def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
     matrix_prob_subset=matrix_prob_subset.pivot_table(index="window_1",columns="window_2",values="RIME_score",dropna=False)
 
     plt.figure(figsize=sizes)
-    sns.heatmap(matrix_prob_subset, cmap='coolwarm', annot=True, linewidths=0.5,vmin=0.0,vmax=1.0)
+    sns.heatmap(matrix_prob_subset, cmap='viridis', annot=True, linewidths=0.5,vmin=0.0,vmax=1.0)
     plt.savefig(save_path, dpi = 100)
     #plt.show()

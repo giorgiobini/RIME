@@ -32,6 +32,22 @@ def get_args_parser():
     return parser
 
 
+def main():
+    ### CODE
+    obj_rinet = RIME_inference(bin_bedtools, fasta_query_input,fasta_target_input,dir_out,name_analysis=name_analysis)
+    wind_df=obj_rinet.Windows(size_window=size_window,step=step_window,mode="generate")
+    emb_df=obj_rinet.Embedding(mode="generate",length_max_embedding=length_max_embedding,step=step_embedding)
+    obj_rinet.AssembleQueryTargetRanges()
+
+    # ### GIORGIO SCRIPTS
+    # obj_rinet.LoadEmbedding()
+    # obj_rinet.InferProbability()
+
+    # ### FINE GIORGIO SCRIPTS
+
+    # obj_rinet.AssociateRInetProbability()
+    # #obj_rinet.PlotByGene("NM_001396408.1","PGLYRP3",[10,15])
+
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python parse_fasta_for_run_inference.py --bin_bedtools=/home/giorgio/bedtools2/bin/bedtools --output_file_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=prova&> parse_fasta_for_run_inference.out &
@@ -48,17 +64,4 @@ if __name__ == '__main__':
     step_window = args.step_window
     length_max_embedding = args.length_max_embedding
     step_embedding=int(length_max_embedding/2)
-    ### CODE
-    obj_rinet = RIME_inference(bin_bedtools, fasta_query_input,fasta_target_input,dir_out,name_analysis=name_analysis)
-    wind_df=obj_rinet.Windows(size_window=size_window,step=step_window,mode="generate")
-    emb_df=obj_rinet.Embedding(mode="generate",length_max_embedding=length_max_embedding,step=step_embedding)
-    obj_rinet.AssembleQueryTargetRanges()
-
-# ### GIORGIO SCRIPTS
-# obj_rinet.LoadEmbedding()
-# obj_rinet.InferProbability()
-
-# ### FINE GIORGIO SCRIPTS
-
-# obj_rinet.AssociateRInetProbability()
-# #obj_rinet.PlotByGene("NM_001396408.1","PGLYRP3",[10,15])
+    main()

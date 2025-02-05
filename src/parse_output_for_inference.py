@@ -15,18 +15,12 @@ def get_args_parser():
     return parser
 
 
-
-if __name__ == '__main__':
-    #run me with: -> 
-    #nohup python parse_output_for_inference.py --inference_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ &> parse_output_for_inference.out &
-
-    parser = argparse.ArgumentParser('Prepare data for inference', parents=[get_args_parser()])
-    args = parser.parse_args()
-    inference_dir = args.inference_dir
-    temp_dir = os.path.join(inference_dir, 'temp')
+def main():
 
     pairs_prob_mean = associateRIMEpobability(temp_dir)
-    format_output_table_bedpe(pairs_prob_mean).to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
+    output_table = format_output_table_bedpe(pairs_prob_mean)
+    output_table.to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
+    output_table.drop('id_pair', axis = 1).to_csv(os.path.join(inference_dir,'output_table_noid.bedpe'), sep="\t", index=False)
 
     fasta_query_input = os.path.join(inference_dir, 'query.fa')
     fasta_target_input = os.path.join(inference_dir, 'target.fa')
@@ -41,18 +35,29 @@ if __name__ == '__main__':
     if os.path.isdir(save_path_dir) == False:
         os.mkdir(save_path_dir)
 
+
     for i, gene_x in enumerate(query_gene_names):
         for j, gene_y in enumerate(target_gene_names):
             save_path = os.path.join(save_path_dir, f'{gene_x}_{gene_y}.png')
             size_x, size_y = max(1, query_gene_lengths[i]//100), max(1, target_gene_lengths[j]//100)
             PlotByGene(pairs_prob_mean, gene_x, gene_y, save_path = save_path, sizes = (size_y, size_x))
 
+    # ### GIORGIO SCRIPTS
+    # obj_rinet.LoadEmbedding()
+    # obj_rinet.InferProbability()
 
-# ### GIORGIO SCRIPTS
-# obj_rinet.LoadEmbedding()
-# obj_rinet.InferProbability()
+    # ### FINE GIORGIO SCRIPTS
 
-# ### FINE GIORGIO SCRIPTS
+    # obj_rinet.AssociateRInetProbability()
+    # #obj_rinet.PlotByGene("NM_001396408.1","PGLYRP3",[10,15])
 
-# obj_rinet.AssociateRInetProbability()
-# #obj_rinet.PlotByGene("NM_001396408.1","PGLYRP3",[10,15])
+if __name__ == '__main__':
+    #run me with: -> 
+    #nohup python parse_output_for_inference.py --inference_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ &> parse_output_for_inference.out &
+
+    parser = argparse.ArgumentParser('Prepare data for inference', parents=[get_args_parser()])
+    args = parser.parse_args()
+    inference_dir = args.inference_dir
+    temp_dir = os.path.join(inference_dir, 'temp')
+
+    main()

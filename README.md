@@ -54,11 +54,11 @@ OPPURE:
 copia incolla il folder rnarna dentro la cartella qualcosa/ENTER/envs/
 ``` 
 
-DNABERT (Required)
+RIME (Required)
 
 ```
-conda create -n dnabert --file spec-file-dnabert.txt
-conda activate dnabert
+conda create -n rime --file spec-file-dnabert.txt
+conda activate rime
 cd DNABERT_dependencies
 python3 -m pip install --editable .
 cd ..
@@ -75,21 +75,6 @@ cd DNABERT_dependencies
 python3 -m pip install --editable .
 ```
 
-INTARNA 
-
-``` 
-conda create -n intarna 
-conda activate intarna
-conda install -c conda-forge -c bioconda intarna
-
-create_intarna_fasta.ipynb
-cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/test500/
-nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 --noSeed &> test.csv &
-
-cd /data01/giorgio/RNARNA-NT/dataset/processed_files/intarna/val500/
-nohup IntaRNA --outCsvCols=id1,start1,end1,id2,start2,end2,subseqDP,hybridDP,E,E_norm -t rna1.fasta -q rna2.fasta --threads=40 --outMode=C --outPairwise -n 5 --noSeed &> val.csv &
-``` 
-
 ## 2. Data
 We need the data to be structured as the example below.
 
@@ -102,34 +87,6 @@ dataset
 ```
 
 You can download the original_files folder from this link (put a link). If you don't need to train the model you can avoid to download the original_files and keep the directory empty.
-
-## 3. Prepare the data
-Data preprocessing steps 
-
-- preprocess_adri_data.ipynb [dnabert]
-- train_test_val.ipynb [dnabert]
-
-(OPTIONAL, only needed if you want secondary structure predictions)
-- python create_fasta_query_for_secondary_structure.py [dnabert]
-- cd ../UFold_dependencies/ [dnabert]
-- python run_ufold_predictions.py [dnabert]
-- cd ../src/ [dnabert]
-- python dot_bracket_preprocessing.py [dnabert]
-- Create_df_genes_dot_br.ipynb [dnabert]
-
-
-## 4. Train your model
-Skip this section if you only need inference.
-
-Run these scripts from the src directory in the following order:
-- data_augmentation.ipynb (to test if valentino classes work) [rnarna]
-- Create_datasets.ipynb (to decide the hyperparameters of the dataloader and create the training, test, validation datasets) [rnarna]
-- download_embeddings.py [rnarna]
-- nohup python download_embeddings.py --batch_size 19 &> download_embeddings.out & [rnarna]
-- Decide_hyperparameters_dataloader.ipynb [rnarna]
-- train_binary_cl.py [rnarna]
-- run_binary_cl_on_test_500.py
-
 
 
 ## 5. Inference
@@ -153,12 +110,17 @@ AGUAACAACGCUAGGUGCGAGUGUCGUC
 ```
 
 Run these scripts from the src directory in the following order:
-- conda activate rnarna 
-- cd /data01/giorgio/RNARNA-NT/src/
+- conda activate download_embeddings 
+- cd your_path/src
 - nohup python parse_fasta_for_run_inference.py --output_file_dir=dataset/external_dataset/your_folder/--fasta_path=dataset/external_dataset/your_folder/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=temp &> parse_fasta_for_run_inference.out &
 - nohup python download_embeddings.py --batch_size=1 --path_to_embedding_query_dir=dataset/external_dataset/your_folder/temp --embedding_dir=dataset/external_dataset/your_folder/temp/embeddings &> download_embeddings.out &
-- conda activate dnabert
-- nohup python run_inference_new.py --pairs_path=dataset/external_dataset/your_folder/temp --model_name=arch2_PARISfinetuned_PARIStest0023_PARISfinetunedFPweight_PARIStest0086 &> run_inference_new.out &
+- conda activate rime
+- nohup python run_inference_new.py --pairs_path=dataset/external_dataset/your_folder/temp --model_name=RIMEfull &> run_inference_new.out &
 - nohup python parse_output_for_inference.py --inference_dir=dataset/external_dataset/your_folder/ &> parse_output_for_inference.out &
 
 You will have output_table.bedpe, plots folder inside the dataset/external_dataset/your_folder/ path
+
+
+# TODO
+- Fai una prova 
+- Serve 2. Data?

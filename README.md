@@ -122,11 +122,10 @@ You will have output_table.bedpe, plots folder inside the dataset/external_datas
 
 
 # TODO
-- risolvi not-found-error in download_embeddings.py
-- Link per scaricare NT? oppure e lo stesso allocato da loro? Ho lanciato il download_embeddings.py script e ha scaricato il modello nel folder corretto, verifica sia quello giusto, cioe che i risultati siano uguali a external_dataset/pulldown/try/. Nel caso, possiamo non dare indicazioni, tanto si scarica in automatico, ma conviene scriverlo nel readme per gli utenti che cio avviene.
 - metti indicazione su bedtools
-- Fai una prova 
+- Pulisci il file config.py
 - Serve 2. Data?
+- metti gradcam?
 - elimina script e folder inutili da /dataset/
 - elimina script e folder inutili da /models/
 - elimina script e folder inutili da /util/

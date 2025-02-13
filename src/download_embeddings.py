@@ -103,11 +103,11 @@ def main(args):
             del embeddings
             del padding_mask
 
-            with open(os.path.join(metadata_dir, f"done_{args.embedding_layer}.txt"), 'a') as f:
+            with open(os.path.join(args.embedding_dir, f"done_{args.embedding_layer}.txt"), 'a') as f:
                 for idx in ids:
                     f.write(str(idx) + '\n')
         except Exception as e:
-            with open(os.path.join(metadata_dir, f"excluded_{args.embedding_layer}.txt"), 'a') as f:
+            with open(os.path.join(args.embedding_dir, f"excluded_{args.embedding_layer}.txt"), 'a') as f:
                 for idx in ids:
                     f.write(str(idx) + str(e) + '\n')
 

@@ -1,9 +1,8 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 import sys
 import os
-from util.contact_matrix import create_contact_matrix, create_contact_matrix_for_masks
+from util.contact_matrix import create_contact_matrix
 from .projection_module import build_projection_module_nt
 from .mlp import build as build_top_classifier
 

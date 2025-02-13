@@ -4,18 +4,11 @@ import time
 import numpy as np
 import pickle
 import argparse
-from tqdm.notebook import tqdm
 import torch
-import matplotlib.pyplot as plt
 import sys
 import datetime
-from pathlib import Path
-import seaborn as sns
 import time
-from Bio import SeqIO
-from torch.utils.data import DataLoader
 import sys
-from sklearn.metrics import classification_report, roc_curve, roc_auc_score, auc
 
 sys.path.insert(0, '..')
 from models.nt_classifier import build as build_model
@@ -89,7 +82,7 @@ def main(args, device):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Testing time {}'.format(total_time_str))
     
-    
+
 if __name__ == '__main__':
     #run me with: -> 
     #nohup python run_inference_new.py --pairs_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_predictions &> run_inference_new.out &

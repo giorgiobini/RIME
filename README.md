@@ -1,7 +1,7 @@
-<img src="RIMElogo.jpg">
-
 # RNA-RNA interactions classifier
 This repository provides instructions, including dependencies and scripts, for using RIME (RNA Interactions Model with Embeddings), a deep learning framework designed for predicting RNA-RNA interactions.
+
+<img src="RIMElogo.jpg">
 
 ## 1. Environment setup 
 We recommend you to build a python virtual environment with Anaconda.

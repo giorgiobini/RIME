@@ -1,7 +1,0 @@
-In one shell, you do 
-ssh  -p 2323 gbini@151.100.188.9
-conda activate detr
-cd /data01/gbini/projects/DETR
-jupyter lab --no-browser --port=8081
-
-In another shell, you do ssh -p2323 -L 8081:localhost:8081 gbini@151.100.188.9

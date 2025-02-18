@@ -128,19 +128,17 @@ Run these scripts from the your_path/src directory in the following order:
 - python parse_fasta_for_run_inference.py --bin_bedtools=path_to_bedtools2/bin/bedtools --output_file_dir=your_path/dataset/external_dataset/your_folder/--fasta_path=your_path/dataset/external_dataset/your_folder/ --fasta_query_name=query.fa --fasta_target_name=target.fa --name_analysis=temp
 - python download_embeddings.py --batch_size=1 --path_to_embedding_query_dir=dataset/external_dataset/your_folder/temp --embedding_dir=dataset/external_dataset/your_folder/temp/embeddings
 - conda activate rime
-- python run_inference_new.py --pairs_path=your_path/dataset/external_dataset/your_folder/temp --model_name=RIMEfull
+- python run_inference.py --pairs_path=your_path/dataset/external_dataset/your_folder/temp --model_name=RIMEfull
 - python parse_output_for_inference.py --inference_dir=your_path/dataset/external_dataset/your_folder/
 
-You will have output_table.bedpe, plots folder inside the your_path/dataset/external_dataset/your_folder/ path
+You will have output_table.bedpe and plots folder inside the your_path/dataset/external_dataset/your_folder/ path
 
 ## Dataset 
 You can download the dataset for training your own model from this link (put a link).
 You can download the Test Set (200x200) for reproducibility from this link (put a link).
 
 # TODO
-- metti indicazione su bedtools
-- Pulisci il file config.py
 - metti gradcam?
+- Fai un test ora che ho pulito il file config.py
 - Metti un link per scaricare il mio modello 
-- Cambia nome per gli script in src (e nel readme quindi)
 - Crea comandi per rime environment (quello del mio modello che fa le predizioni), tenendo il minimo indispensabile

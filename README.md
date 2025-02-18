@@ -3,6 +3,17 @@ This repository provides instructions, including dependencies and scripts, for u
 
 <img src="RIMElogo.jpg">
 
+If this source code is helpful for your research please cite the following publication:
+
+"Decoding RNA-RNA Interactions: The Role of Low-Complexity Repeats and a Deep Learning Framework for Sequence-Based Prediction"
+
+Adriano Setti*†, Giorgio Bini*†, Valentino Maiorca, Flaminia Pellegrini, Gabriele Proietti, Dimitrios Miltiadis-Vrachnos, Alexandros Armaos, Julie Martone, Michele Monti, Giancarlo Ruocco, Emanuele Rodolà, Irene Bozzoni, Alessio Colantoni‡, Gian Gaetano Tartaglia‡
+
+*† Co-first authors
+‡ Co-last authors
+
+https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1
+
 ## 1. Environment setup 
 We recommend you to build a python virtual environment with Anaconda.
 The machine has cuda version 525, toolkit cuda 12.0, cudnn 8.8.1.3
@@ -133,14 +144,3 @@ You can download the Test Set (200x200) for reproducibility from this link (put 
 - Metti un link per scaricare il mio modello 
 - Cambia nome per gli script in src (e nel readme quindi)
 - Crea comandi per rime environment (quello del mio modello che fa le predizioni), tenendo il minimo indispensabile
-
-If this source code is helpful for your research please cite the following publication:
-
-"Decoding RNA-RNA Interactions: The Role of Low-Complexity Repeats and a Deep Learning Framework for Sequence-Based Prediction"
-
-Adriano Setti*†, Giorgio Bini*†, Valentino Maiorca, Flaminia Pellegrini, Gabriele Proietti, Dimitrios Miltiadis-Vrachnos, Alexandros Armaos, Julie Martone, Michele Monti, Giancarlo Ruocco, Emanuele Rodolà, Irene Bozzoni, Alessio Colantoni‡, Gian Gaetano Tartaglia‡
-
-* Co-first authors
-‡ Co-last authors
-
-https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1

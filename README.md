@@ -39,11 +39,6 @@ conda install pytorch torchvision -c pytorch -y
 conda install -c anaconda scikit-learn=1.2.2 -y
 pip install StrEnum==0.4.8
 cd NT_dependencies
-git clone https://github.com/instadeepai/nucleotide-transformer.git
-mv nucleotide-transformer nt
-mv nt/* .
-rm -r nt
-cp mypretrained.py nucleotide_transformer/.
 pip install .
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 conda install -c conda-forge biopython=1.79 -y

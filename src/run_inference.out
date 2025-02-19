@@ -1,0 +1,7 @@
+nohup: ignoring input
+Traceback (most recent call last):
+  File "/data01/giorgio/RIME/src/run_inference.py", line 107, in <module>
+    args_dict = pickle.load(f)
+  File "/data01/giorgio/RIME/src/../dataset/data.py", line 17, in <module>
+    from strenum import StrEnum
+ModuleNotFoundError: No module named 'strenum'

@@ -1,0 +1,40 @@
+Metadata-Version: 2.2
+Name: nucleotide_transformer
+Version: 0.0.1
+Summary: The Nucleotide Transformer: Building and Evaluating Robust Foundation Models for Human Genomics 
+Home-page: https://github.com/instadeepai/nucleotide-transformer
+Author: InstaDeep Ltd
+License: CC BY-NC-SA 4.0
+Keywords: Genomics,Language Model,Deep Learning,JAX
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: absl-py>=1.0.0
+Requires-Dist: jax>=0.3.25
+Requires-Dist: jaxlib>=0.3.25
+Requires-Dist: dm-haiku>=0.0.9
+Requires-Dist: numpy>=1.23.5
+Requires-Dist: boto3>=1.24.28
+Requires-Dist: typing_extensions>=3.10.0
+Requires-Dist: joblib>=1.2.0
+Requires-Dist: tqdm>=4.56.0
+Requires-Dist: regex>=2022.1.18
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+A Python package for genomic sequence analysis.

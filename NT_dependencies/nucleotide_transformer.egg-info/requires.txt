@@ -1,0 +1,10 @@
+absl-py>=1.0.0
+jax>=0.3.25
+jaxlib>=0.3.25
+dm-haiku>=0.0.9
+numpy>=1.23.5
+boto3>=1.24.28
+typing_extensions>=3.10.0
+joblib>=1.2.0
+tqdm>=4.56.0
+regex>=2022.1.18

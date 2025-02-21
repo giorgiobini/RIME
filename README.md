@@ -112,5 +112,4 @@ After running these steps, you will find the following inside `/path/to/output/f
 - **`plots/` (a folder containing visualizations)**  
 
 ### Note:
-- The **25B multi-species NT model** (~10GB) will be **downloaded automatically** the first time you run `download_embeddings.py`.  
-- The model weights will be stored in `./NT_dependencies/checkpoints/`.  
+- The **25B multi-species NT model** (~10GB) will be **downloaded automatically** the first time you run `download_embeddings.py`. It will be stored in `./NT_dependencies/checkpoints/`.  

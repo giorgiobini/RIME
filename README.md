@@ -108,8 +108,9 @@ This script generates the 200x200 windows and prepares the input files for embed
 
 ### Output:  
 After running these steps, you will find the following inside `/path/to/output/files/ `:  
-- **`output_table.bedpe`**  
-- **`plots/` (a folder containing visualizations)**  
+- **`output_table.bedpe`**  A BEDPE file containing RIMEfull prediction scores for all 200×200 windows generated from every target-query pair.
+- **`plots/`**  A directory containing PNG files, each representing a heatmap of RIMEfull scores for a specific target-query pair.
+
 
 ### Note:
 - The **25B multi-species NT model** (~10GB) will be **downloaded automatically** the first time you run `download_embeddings.py`. It will be stored in `./NT_dependencies/checkpoints/`.  

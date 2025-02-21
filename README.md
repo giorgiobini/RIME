@@ -50,7 +50,7 @@ pip install -r other-requirements-rime.txt
 ```
 
 ### 1.3 Install BEDtools
-The inference scripts require the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as `/path_to_bedtools/bin/bedtools`) will be needed as input in the initial step of the procedure.
+The procedure requires the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as `/path_to_bedtools/bin/bedtools`) will be needed as input in the initial step of the procedure.
 
 ## 2. Model  
 To run RIME, a model should be present in the `./checkpoints` folder:

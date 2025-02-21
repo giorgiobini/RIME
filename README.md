@@ -15,7 +15,7 @@ Adriano Setti†, Giorgio Bini†, Valentino Maiorca, Flaminia Pellegrini, Gabri
 https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1
 
 ## 1. Environment setup
-We recommend building a Python virtual environment with Anaconda. This repository enables running RIME with GPU acceleration. RIME was developed on a machine with CUDA version **525**, toolkit CUDA version **CUDA 12.0**, and **cuDNN version 8.8.1.3**.
+We recommend building a Python virtual environment with Anaconda. This repository enables running RIME with GPU acceleration. RIME was developed on a machine with CUDA version 525, CUDA toolkit version 12.0, and cuDNN version 8.8.1.3.
 
 ### 1.1 Install Miniconda  
 ```

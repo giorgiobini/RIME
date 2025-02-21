@@ -50,7 +50,7 @@ pip install -r other-requirements-rime.txt
 ```
 
 ### 1.3 Install BEDtools
-The inference scripts require the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as /`path_to_bedtools/bin/bedtools`) will be needed as input in the initial step of the procedure.
+The inference scripts require the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as `/path_to_bedtools/bin/bedtools`) will be needed as input in the initial step of the procedure.
 
 ## 2. Model  
 To run RIME, a model should be present in the `./checkpoints` folder:
@@ -89,7 +89,7 @@ This script generates the 200x200 windows and prepares the input files for embed
 3. **Download embeddings**  
    ```
    python download_embeddings.py --batch_size=1 \
-   --analysis_dir=./dataset/external_dataset/your_folder/temp
+   --analysis_dir=/path/to/output/files/temp 
    ```
 4. **Activate RIME environment**  
    ```
@@ -97,7 +97,7 @@ This script generates the 200x200 windows and prepares the input files for embed
    ```
 5. **Run inference**  
    ```
-   python run_inference.py --analysis_dir=./path/to/output/files/temp  --model_name=RIMEfull
+   python run_inference.py --analysis_dir=/path/to/output/files/temp  --model_name=RIMEfull
    ```
 6. **Parse output**  
    ```

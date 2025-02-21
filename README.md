@@ -97,11 +97,13 @@ This script generates the 200x200 windows and prepares the input files for embed
    ```
 5. **Run inference**  
    ```
-   python run_inference.py --analysis_dir=/path/to/output/files/temp  --model_name=RIMEfull
+   python run_inference.py --analysis_dir=/path/to/output/files/temp \
+   --model_name=RIMEfull
    ```
 6. **Parse output**  
    ```
-   python parse_output_for_inference.py --inference_dir=/path/to/output/files/
+   python parse_output_for_inference.py \
+   --inference_dir=/path/to/output/files/
    ```
 
 ### Output:  

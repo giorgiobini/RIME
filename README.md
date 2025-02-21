@@ -50,10 +50,10 @@ pip install -r other-requirements-rime.txt
 ```
 
 ### 1.3 Install BEDtools
-The inference scripts require the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as /path_to_bedtools/bin/bedtools) will be needed as input in the initial step of the procedure.
+The inference scripts require the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as /`path_to_bedtools/bin/bedtools`) will be needed as input in the initial step of the procedure.
 
 ## 2. Model  
-To run RIME, a model should be present in the ./checkpoints folder:
+To run RIME, a model should be present in the `./checkpoints` folder:
 
 ```
 checkpoints
@@ -61,13 +61,13 @@ checkpoints
 └── RIMEfull
 ```
 
-You can download the **RIMEfull** model folder from this link: [Insert Link Here]  
+You can download the RIMEfull model folder from this link: [Insert Link Here]  
 
 
 ## 3. Inference
 
 ### Required Files
-The procedure requires two input FASTA files: one for query RNA sequences (hereby called query.fa) and one for target RNA sequences (hereby called target.fa). Please note that U and T characters are considered equivalent. Both files can contain multiple sequences and must be placed within the same directory, hereby called /path/to/input/files/. Inference will be performed on all possible query-target pairs. The procedure also requires an output directory, hereby called /path/to/output/files/
+The procedure requires two input FASTA files: one for query RNA sequences (hereby called `query.fa`) and one for target RNA sequences (hereby called `target.fa`). Please note that U and T characters are considered equivalent. Both files can contain multiple sequences and must be placed within the same directory, hereby called `/path/to/input/files/`. Inference will be performed on all possible query-target pairs. The procedure also requires an output directory, hereby called `/path/to/output/files/`
 
 ### Running Inference  
 Run the following commands from the `./src` directory:

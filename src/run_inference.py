@@ -21,7 +21,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     parser.add_argument('--model_name', default='arch2_PSORALENtrained_PARISval0046',
                         help='Name of the model folder')
-    parser.add_argument('--pairs_path', default='',
+    parser.add_argument('--analysis_dir', default='',
                         help='Path to the folder where there is pairs.csv')
     parser.add_argument('--device', default='cuda',
                         help='cuda or cpu')
@@ -84,18 +84,13 @@ def main(args, device):
     
 
 if __name__ == '__main__':
-    #run me with: -> 
-    #nohup python run_inference_new.py --pairs_path=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_predictions &> run_inference_new.out &
-
     parser = argparse.ArgumentParser('Inference', parents=[get_args_parser()])
     args = parser.parse_args()
     model_name = args.model_name
-    pairs_path = args.pairs_path
-    #'/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_predictions'
+    pairs_path = args.analysis_dir
 
-    embedding_dir = os.path.join(os.path.join(pairs_path, 'embeddings', '32')) #/data01/giorgio/RNARNA-NT/dataset/external_dataset/paris_windows_subset/embeddings/
-    
-    checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', model_name)#'binary_cl2'
+    embedding_dir = os.path.join(os.path.join(pairs_path, 'embeddings', '32')) 
+    checkpoint_dir = os.path.join(ROOT_DIR, 'checkpoints', model_name)
     
     device = torch.device(args.device)
     

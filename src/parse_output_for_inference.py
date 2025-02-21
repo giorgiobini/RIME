@@ -4,12 +4,8 @@ import argparse
 sys.path.insert(0, '..')
 from util.inference_utils import associateRIMEpobability, ParseFasta, PlotByGene, format_output_table_bedpe
 
-# import subprocess
-
 def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
-    # parser.add_argument('--model_name', default='arch2_PSORALENtrained_PARISval0046',
-    #                     help='Name of the model folder')
     parser.add_argument('--inference_dir', default='',
                         help='Path to the folder where you want to save the files for running RIME predictions')
     return parser
@@ -52,9 +48,6 @@ def main():
     # #obj_rinet.PlotByGene("NM_001396408.1","PGLYRP3",[10,15])
 
 if __name__ == '__main__':
-    #run me with: -> 
-    #nohup python parse_output_for_inference.py --inference_dir=/data01/giorgio/RNARNA-NT/dataset/external_dataset/check_parse_fasta_class/ &> parse_output_for_inference.out &
-
     parser = argparse.ArgumentParser('Prepare data for inference', parents=[get_args_parser()])
     args = parser.parse_args()
     inference_dir = args.inference_dir

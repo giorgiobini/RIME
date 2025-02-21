@@ -1,16 +1,16 @@
 # RIME
-This repository provides instructions, including dependencies and scripts, for using RIME (RNA Interactions Model with Embeddings), a deep learning framework designed for predicting RNA-RNA interactions. If you only want to test a single RNA-RNA interaction we released the webserver at https://tools.tartaglialab.com/rna_rna
+This repository provides instructions, including dependencies and scripts, for using RIME (RNA Interactions Model with Embeddings), a deep learning framework designed for predicting interactions between long RNA molecules. In particular, we provide the RIMEfull model, which was trained and validated using the complete Psoralen-based set. Starting from two input RNA sequences, RIMEfull prediction scores are calculated across 200x200 nucleotide windows with a 100-nucleotide step. If you only want to run RIMEfull on a single pair of RNA molecules, you can use the dedicated web service, available at https://tools.tartaglialab.com/rna_rna
 
 <img src="RIMElogo.jpg">
 
-If this source code is helpful for your research please cite the following publication:
+If this source code is helpful for your research, please cite the following publication:
 
 "Decoding RNA-RNA Interactions: The Role of Low-Complexity Repeats and a Deep Learning Framework for Sequence-Based Prediction"
 
-Adriano Setti*†, Giorgio Bini*†, Valentino Maiorca, Flaminia Pellegrini, Gabriele Proietti, Dimitrios Miltiadis-Vrachnos, Alexandros Armaos, Julie Martone, Michele Monti, Giancarlo Ruocco, Emanuele Rodolà, Irene Bozzoni, Alessio Colantoni‡, Gian Gaetano Tartaglia‡
+Adriano Setti†, Giorgio Bini†, Valentino Maiorca, Flaminia Pellegrini, Gabriele Proietti, Dimitrios Miltiadis-Vrachnos, Alexandros Armaos, Julie Martone, Michele Monti, Giancarlo Ruocco, Emanuele Rodolà, Irene Bozzoni, Alessio Colantoni*, Gian Gaetano Tartaglia*
 
-*† Co-first authors
-‡ Co-last authors
+†Co-first authors
+*Corresponding authors
 
 https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1
 
@@ -50,11 +50,11 @@ conda activate rime
 pip install -r other-requirements-rime.txt
 ```
 
-### 1.3 Install bedtools2  
-The inference scripts require **bedtools2** installed on your machine.  
+### 1.3 Install BEDtools
+The inference scripts require the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as /path_to_bedtools/bin/bedtools) will be needed as input in the initial step of the procedure.
 
 ## 2. Model  
-We need the data to be structured as shown below:  
+To run RIME, a model should be present in the ./checkpoints folder:
 
 ```
 checkpoints
@@ -62,50 +62,35 @@ checkpoints
 └── RIMEfull
 ```
 
-You can download the **RIMEfull** folder from this link: [Insert Link Here]  
+You can download the **RIMEfull** model folder from this link: [Insert Link Here]  
 
 
 ## 3. Inference
-Put these files inside the directory:  
-```
-./dataset/external_dataset/your_folder/
-```
-### Required Files:
-#### `query.fa`
-```
->ENSFAKE001
-CGUUUCGCUAAACUCUG
->ENSFAKE002
-UCGCGAGGCGCAACGGCGCCGACCGAGUGUAGGC
-```
-#### `target.fa`
-```
->ENSFAKE003
-GUGAACGUCGCGAUAGGCGGAACAA
->ENSFAKE004
-AGUAACAACGCUAGGUGCGAGUGUCGUC
-```
+
+### Required Files
+The procedure requires two input FASTA files: one for query RNA sequences (hereby called query.fa) and one for target RNA sequences (hereby called target.fa). Please note that U and T characters are considered equivalent. Both files can contain multiple sequences and must be placed within the same directory, hereby called /path/to/input/files/. Inference will be performed on all possible query-target pairs. The procedure also requires an output directory, hereby called /path/to/output/files/
+
 ### Running Inference  
-Run the following scripts from the `./src` directory in order:
+Run the following commands from the `./src` directory:
 
 1. **Activate Conda environment**  
    ```
    conda activate download_embeddings
    ```
 2. **Parse FASTA files**  
+This script generates the 200x200 windows and prepares the input files for embedding extraction
    ```
-   python parse_fasta_for_run_inference.py --bin_bedtools=path_to_bedtools2/bin/bedtools \
-   --output_file_dir=./dataset/external_dataset/your_folder/ \
-   --fasta_path=./dataset/external_dataset/your_folder/ \
+   python parse_fasta_for_inference.py --bin_bedtools=/path_to_bedtools/bin/bedtools \
+   --inference_dir=/path/to/output/files/ \
+   --input_dir=/path/to/input/files/ \
    --fasta_query_name=query.fa \
    --fasta_target_name=target.fa \
-   --name_analysis=temp
+   --analysis_name=temp
    ```
 3. **Download embeddings**  
    ```
    python download_embeddings.py --batch_size=1 \
-   --path_to_embedding_query_dir=./dataset/external_dataset/your_folder/temp \
-   --embedding_dir=./dataset/external_dataset/your_folder/temp/embeddings
+   --analysis_dir=./dataset/external_dataset/your_folder/temp
    ```
 4. **Activate RIME environment**  
    ```
@@ -113,15 +98,15 @@ Run the following scripts from the `./src` directory in order:
    ```
 5. **Run inference**  
    ```
-   python run_inference.py --pairs_path=./dataset/external_dataset/your_folder/temp --model_name=RIMEfull
+   python run_inference.py --analysis_dir=./path/to/output/files/temp  --model_name=RIMEfull
    ```
 6. **Parse output**  
    ```
-   python parse_output_for_inference.py --inference_dir=./dataset/external_dataset/your_folder/
+   python parse_output_for_inference.py --inference_dir=/path/to/output/files/
    ```
 
 ### Output:  
-After running these steps, you will find the following inside `./dataset/external_dataset/your_folder/`:  
+After running these steps, you will find the following inside `/path/to/output/files/ `:  
 - **`output_table.bedpe`**  
 - **`plots/` (a folder containing visualizations)**  
 

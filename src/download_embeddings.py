@@ -55,17 +55,15 @@ def get_args_parser():
                         help="Batch size for the NT model")
     parser.add_argument('--embedding_layer', default='32',
                         help="Which is the embedding layer you cutted the NT model")
-    parser.add_argument('--path_to_embedding_query_dir', default='/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/metadata',
+    parser.add_argument('--analysis_dir', default='...',
                         help="Where is the embedding_query.csv file")
-    parser.add_argument('--embedding_dir', default='/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/embeddings',
-                        help="Where is the embedding directory. If it doesn t exist, it will be created")
     parser.add_argument('--save_mean', default=0, type=int,
                         help="0 for False, 1 for True. If true, only the mean embedding is saved (2560 shaped vector)")
     return parser
 
 def main(args):
     
-    df = pd.read_csv(os.path.join(args.path_to_embedding_query_dir, 'embedding_query.csv'))
+    df = pd.read_csv(os.path.join(args.analysis_dir, 'embedding_query.csv'))
 
     embeddings_layers_to_save = (int(args.embedding_layer),)
     model_name = '2B5_multi_species'
@@ -122,14 +120,11 @@ def main(args):
     
     
 if __name__ == '__main__':
-    #run me with: -> 
-    #nohup python download_embeddings.py &> download_embeddings.out &
-    #nohup python download_embeddings.py --batch_size=2  &> download_embeddings.out & 
-    #nohup python download_embeddings.py --save_mean=1 --path_to_embedding_query_dir=/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/mean_embeddings --embedding_dir=/data01/giorgio/RNARNA-NT/dataset/processed_files/nt_data/mean_embeddings &> download_embeddings.out &
-
     parser = argparse.ArgumentParser('Download NT Embeddings', parents=[get_args_parser()])
     args = parser.parse_args()
     
+    args.embedding_dir = os.path.join(args.analysis_dir, 'embeddings')
+
     if not os.path.exists(args.embedding_dir):
         os.makedirs(args.embedding_dir)
     

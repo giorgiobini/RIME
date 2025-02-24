@@ -18,6 +18,13 @@ https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1
 **Author(s).** *RIME: Model Weights and Dataset for Predicting RNA-RNA Interactions.* Zenodo (2025).  
 DOI: [10.5281/zenodo.14917229](https://doi.org/10.5281/zenodo.14917229)  
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14917229.svg)](https://doi.org/10.5281/zenodo.14917229)  
+
+## 📥 Download  
+You can download the model weights and dataset from Zenodo:  
+🔗 [Zenodo Record](https://zenodo.org/records/14917229)  
+
+
 ## 1. Environment setup
 We recommend building a Python virtual environment with Anaconda. This repository enables running RIME with GPU acceleration. RIME was developed on a machine with CUDA version 525, CUDA toolkit version 12.0, and cuDNN version 8.8.1.3.
 

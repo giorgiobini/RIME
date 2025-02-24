@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14917229.svg)](https://doi.org/10.5281/zenodo.14917229)  
+
 # RIME
 
 This repository provides instructions, including dependencies and scripts, for using RIME (RNA Interactions Model with Embeddings), a deep learning framework designed for predicting interactions between long RNA molecules. In particular, we provide the RIMEfull model, which was trained and validated using the complete Psoralen-based set. Starting from two input RNA sequences, RIMEfull prediction scores are calculated across 200x200 nucleotide windows with a 100-nucleotide step. If you only want to run RIMEfull on a single pair of RNA molecules, you can use the dedicated web service, available at https://tools.tartaglialab.com/rna_rna
@@ -14,16 +16,6 @@ Adriano Setti†, Giorgio Bini†, Valentino Maiorca, Flaminia Pellegrini, Gabri
 *Corresponding authors
 
 https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1
-
-**Author(s).** *RIME: Model Weights and Dataset for Predicting RNA-RNA Interactions.* Zenodo (2025).  
-DOI: [10.5281/zenodo.14917229](https://doi.org/10.5281/zenodo.14917229)  
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14917229.svg)](https://doi.org/10.5281/zenodo.14917229)  
-
-## 📥 Download  
-You can download the model weights and dataset from Zenodo:  
-🔗 [Zenodo Record](https://zenodo.org/records/14917229)  
-
 
 ## 1. Environment setup
 We recommend building a Python virtual environment with Anaconda. This repository enables running RIME with GPU acceleration. RIME was developed on a machine with CUDA version 525, CUDA toolkit version 12.0, and cuDNN version 8.8.1.3.

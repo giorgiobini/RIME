@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14917228.svg)](https://doi.org/10.5281/zenodo.14917228)  
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14926723.svg)](https://doi.org/10.5281/zenodo.14926723)  
 
 # RIME
 

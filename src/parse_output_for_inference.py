@@ -15,8 +15,12 @@ def main():
 
     pairs_prob_mean = associateRIMEpobability(temp_dir)
     output_table = format_output_table_bedpe(pairs_prob_mean)
-    output_table.to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
-    output_table.drop('id_pair', axis = 1).to_csv(os.path.join(inference_dir,'output_table_noid.bedpe'), sep="\t", index=False)
+    pairs_prob_mean["window_1"] = pairs_prob_mean["window_1"].str.replace(r"_\d+__", "_", regex=True)
+    pairs_prob_mean["window_2"] = pairs_prob_mean["window_2"].str.replace(r"_\d+__", "_", regex=True)
+    #output_table.to_csv(os.path.join(inference_dir,'output_table_withid.bedpe'), sep="\t", index=False)
+    output_table["window_id1"] = output_table["window_id1"].str.split("_").str[0]
+    output_table["window_id2"] = output_table["window_id2"].str.split("_").str[0]
+    output_table.drop('id_pair', axis = 1).to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
 
     fasta_query_input = os.path.join(inference_dir, 'query.fa')
     fasta_target_input = os.path.join(inference_dir, 'target.fa')
@@ -37,15 +41,6 @@ def main():
             save_path = os.path.join(save_path_dir, f'{gene_x}_{gene_y}.png')
             size_x, size_y = max(1, query_gene_lengths[i]//100), max(1, target_gene_lengths[j]//100)
             PlotByGene(pairs_prob_mean, gene_x, gene_y, save_path = save_path, sizes = (size_y, size_x))
-
-    # ### GIORGIO SCRIPTS
-    # obj_rinet.LoadEmbedding()
-    # obj_rinet.InferProbability()
-
-    # ### FINE GIORGIO SCRIPTS
-
-    # obj_rinet.AssociateRInetProbability()
-    # #obj_rinet.PlotByGene("NM_001396408.1","PGLYRP3",[10,15])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare data for inference', parents=[get_args_parser()])

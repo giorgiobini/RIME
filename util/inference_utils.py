@@ -382,6 +382,7 @@ def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
     matrix_prob_subset=matrix_prob_subset.pivot_table(index="window_1",columns="window_2",values="RIME_score",dropna=False)
 
     plt.figure(figsize=sizes)
+    plt.tight_layout()
     sns.heatmap(matrix_prob_subset, cmap='viridis', annot=True, linewidths=0.5,vmin=0.0,vmax=1.0)
-    plt.savefig(save_path, dpi = 100)
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
     #plt.show()

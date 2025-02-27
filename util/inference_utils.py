@@ -346,7 +346,14 @@ def format_output_table_bedpe(df_input):
 
 def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
 
+    print(pairs.head(), gene_x, gene_y)
+
     matrix_prob_subset=pairs.copy(deep=True)
+
+    matrix_prob_subset["window_1"] = matrix_prob_subset["window_1"].str.replace(r"_\d+__", "_", regex=True)
+    matrix_prob_subset["window_2"] = matrix_prob_subset["window_2"].str.replace(r"_\d+__", "_", regex=True)
+
+    print(matrix_prob_subset.head())
 
     matrix_prob_subset=matrix_prob_subset.loc[matrix_prob_subset["window_1"].str.count(gene_x)>0]
     matrix_prob_subset=matrix_prob_subset.loc[matrix_prob_subset["window_2"].str.count(gene_y)>0]
@@ -359,6 +366,8 @@ def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
 
     matrix_prob_subset=matrix_prob_subset.sort_values(["start1","start2"])
 
+    matrix_prob_subset["window_1"] = matrix_prob_subset["window_1"].str.replace(r"^[^_]+_", "", regex=True)
+    matrix_prob_subset["window_2"] = matrix_prob_subset["window_2"].str.replace(r"^[^_]+_", "", regex=True)
 
     lista_1=[]
     for i in list(matrix_prob_subset.loc[:,"window_1"]):
@@ -377,9 +386,10 @@ def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
     matrix_prob_subset.loc[:,"window_1"]=matrix_prob_subset.loc[:,"window_1"].astype(categoria1)
     matrix_prob_subset.loc[:,"window_2"]=matrix_prob_subset.loc[:,"window_2"].astype(categoria2)
 
-    #pairs_mlx.loc[(pairs_mlx["probability"]< 0.55),"probability"]=None
 
-    matrix_prob_subset=matrix_prob_subset.pivot_table(index="window_1",columns="window_2",values="RIME_score",dropna=False)
+    matrix_prob_subset = matrix_prob_subset.rename({"window_1": gene_x, "window_2": gene_y}, axis = 1)
+
+    matrix_prob_subset=matrix_prob_subset.pivot_table(index=gene_x,columns=gene_y,values="RIME_score",dropna=False)
 
     plt.figure(figsize=sizes)
     plt.tight_layout()

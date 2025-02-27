@@ -15,8 +15,6 @@ def main():
 
     pairs_prob_mean = associateRIMEpobability(temp_dir)
     output_table = format_output_table_bedpe(pairs_prob_mean)
-    pairs_prob_mean["window_1"] = pairs_prob_mean["window_1"].str.replace(r"_\d+__", "_", regex=True)
-    pairs_prob_mean["window_2"] = pairs_prob_mean["window_2"].str.replace(r"_\d+__", "_", regex=True)
     #output_table.to_csv(os.path.join(inference_dir,'output_table_withid.bedpe'), sep="\t", index=False)
     output_table["window_id1"] = output_table["window_id1"].str.split("_").str[0]
     output_table["window_id2"] = output_table["window_id2"].str.split("_").str[0]

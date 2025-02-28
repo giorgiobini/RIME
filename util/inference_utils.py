@@ -346,14 +346,10 @@ def format_output_table_bedpe(df_input):
 
 def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
 
-    print(pairs.head(), gene_x, gene_y)
-
     matrix_prob_subset=pairs.copy(deep=True)
 
     matrix_prob_subset["window_1"] = matrix_prob_subset["window_1"].str.replace(r"_\d+__", "_", regex=True)
     matrix_prob_subset["window_2"] = matrix_prob_subset["window_2"].str.replace(r"_\d+__", "_", regex=True)
-
-    print(matrix_prob_subset.head())
 
     matrix_prob_subset=matrix_prob_subset.loc[matrix_prob_subset["window_1"].str.count(gene_x)>0]
     matrix_prob_subset=matrix_prob_subset.loc[matrix_prob_subset["window_2"].str.count(gene_y)>0]
@@ -386,13 +382,27 @@ def PlotByGene(pairs, gene_x, gene_y, save_path = '', sizes=(15,8)):
     matrix_prob_subset.loc[:,"window_1"]=matrix_prob_subset.loc[:,"window_1"].astype(categoria1)
     matrix_prob_subset.loc[:,"window_2"]=matrix_prob_subset.loc[:,"window_2"].astype(categoria2)
 
+    if gene_x == gene_y:
+        gene_y = gene_y+' '
 
     matrix_prob_subset = matrix_prob_subset.rename({"window_1": gene_x, "window_2": gene_y}, axis = 1)
-
     matrix_prob_subset=matrix_prob_subset.pivot_table(index=gene_x,columns=gene_y,values="RIME_score",dropna=False)
 
     plt.figure(figsize=sizes)
     plt.tight_layout()
-    sns.heatmap(matrix_prob_subset, cmap='viridis', annot=True, linewidths=0.5,vmin=0.0,vmax=1.0)
+    #sns.heatmap(matrix_prob_subset, cmap='viridis', annot=True, linewidths=0.5,vmin=0.0,vmax=1.0)
+
+    ax = sns.heatmap(
+        matrix_prob_subset, cmap='viridis', annot=True, linewidths=0.5, 
+        vmin=0.0, vmax=1.0, cbar_kws={"shrink": 0.5}, 
+        annot_kws={"size": 7}  # Change font size of numbers inside the heatmap
+    )
+
+    ax.set_xlabel(gene_y, fontsize=18)  # Increase x-axis label size
+    ax.set_ylabel(gene_x, fontsize=18)  # Increase y-axis label size
+
+    plt.xticks(fontsize=8)  # Increase x-axis tick labels
+    plt.yticks(fontsize=8)  # Increase y-axis tick labels
+
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     #plt.show()

@@ -37,7 +37,7 @@ def main():
     for i, gene_x in enumerate(query_gene_names):
         for j, gene_y in enumerate(target_gene_names):
             save_path = os.path.join(save_path_dir, f'{gene_x}_{gene_y}.png')
-            size_x, size_y = max(1, query_gene_lengths[i]//100), max(1, target_gene_lengths[j]//100)
+            size_x, size_y = max(1, query_gene_lengths[i]//200), max(1, target_gene_lengths[j]//200)
             PlotByGene(pairs_prob_mean, gene_x, gene_y, save_path = save_path, sizes = (size_y, size_x))
 
 if __name__ == '__main__':

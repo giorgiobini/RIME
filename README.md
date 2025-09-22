@@ -111,11 +111,9 @@ Arguments:
 
 After running, you will find:
 
-output_table.bedpe in output_dir
+`output_table.bedpe` in `output_dir`
 
-A plots/ folder with PNG heatmaps
-
-The intermediate /temp folder is automatically deleted.
+A `plots/` folder with PNG heatmaps
 
 ### Option 2: **Run Each Step Manually**
 

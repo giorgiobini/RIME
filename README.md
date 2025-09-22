@@ -109,12 +109,6 @@ Arguments:
 
 --model (optional) → Model name (default: RIMEfull).
 
-After running, you will find:
-
-`output_table.bedpe` in `output_dir`
-
-A `plots/` folder with PNG heatmaps
-
 ### Option 2: **Run Each Step Manually**
 
 Run the following commands from the `./src` directory:

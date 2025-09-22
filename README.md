@@ -70,9 +70,55 @@ You can download the RIMEfull model folder from this link: [Insert Link Here]
 ## 3. Inference
 
 ### Required Files
-The procedure requires two input FASTA files: one for query RNA sequences (hereby called `query.fa`) and one for target RNA sequences (hereby called `target.fa`). Please note that U and T characters are considered equivalent. Both files can contain multiple sequences and must be placed within the same directory, hereby called `/path/to/input/files/`. Inference will be performed on all possible query-target pairs. The procedure also requires an output directory, hereby called `/path/to/output/files/`
+The procedure requires two input FASTA files: one for query RNA sequences (hereby called `query.fa`) and one for target RNA sequences (hereby called `target.fa`). Please note that U and T characters are considered equivalent. Both files can contain multiple sequences and must be placed within the same directory, hereby called `/path/to/input/files/`. Inference will be performed on all possible query-target pairs. The procedure also requires an output directory, hereby called `/path/to/output/files/`.
 
-### Running Inference  
+---
+
+### Option 1: **Run the Entire Pipeline with the Wrapper (Recommended)**
+
+You can now run the full pipeline with a single command using `rime_infer.py`.  
+This will sequentially:
+- Parse the FASTA files
+- Download embeddings
+- Run inference
+- Parse the output
+- Clean up the temporary analysis folder
+
+**Example usage:**
+```bash
+python rime_infer.py \
+  --input_dir=/path/to/input/files/ \
+  --query=query.fa \
+  --target=target.fa \
+  --output_dir=/path/to/output/files/ \
+  --bedtools_path=/path_to_bedtools/bin/bedtools \
+  --model=RIMEfull
+```
+
+Arguments:
+
+--input_dir → Directory containing the query and target FASTA files.
+
+--query → Name of the query FASTA file (must be inside input_dir).
+
+--target → Name of the target FASTA file (must be inside input_dir).
+
+--output_dir → Directory where results will be written.
+
+--bedtools_path → Path to the BEDTools binary.
+
+--model (optional) → Model name (default: RIMEfull).
+
+After running, you will find:
+
+output_table.bedpe in output_dir
+
+A plots/ folder with PNG heatmaps
+
+The intermediate /temp folder is automatically deleted.
+
+### Option 2: **Run Each Step Manually**
+
 Run the following commands from the `./src` directory:
 
 1. **Activate Conda environment**  
@@ -106,11 +152,14 @@ This script generates the 200x200 windows and prepares the input files for embed
 6. **Parse output**  
    ```
    python parse_output_for_inference.py \
-   --inference_dir=/path/to/output/files/
+   --inference_dir=/path/to/output/files/ \
+   --fasta_query_name=query.fa \
+   --fasta_target_name=target.fa \
+   --input_dir=/path/to/input/files/
    ```
 
 ### Output:  
-After running these steps, you will find the following inside `/path/to/output/files/ `:  
+After running either Option 1 (wrapper) or Option 2 (manual steps), you will find the following inside `/path/to/output/files/ `:  
 - **`output_table.bedpe`**  A BEDPE file containing RIMEfull prediction scores for all 200×200 windows generated from every target-query pair.
 - **`plots/`**  A directory containing PNG files, each representing a heatmap of RIMEfull scores for a specific target-query pair.
 

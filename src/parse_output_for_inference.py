@@ -8,6 +8,12 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Set model args', add_help=False)
     parser.add_argument('--inference_dir', default='',
                         help='Path to the folder where you want to save the files for running RIME predictions')
+    parser.add_argument('--input_dir', default='',
+                        help='Path to the folder where there is query and tartet fasta')
+    parser.add_argument('--fasta_query_name', default='',
+                        help='Name of the fasta query file, e.g. TINCR.fasta')
+    parser.add_argument('--fasta_target_name', default='',
+                        help='Name of the fasta target file, e.g PGLYRP3.fa')
     return parser
 
 
@@ -20,8 +26,6 @@ def main():
     output_table["window_id2"] = output_table["window_id2"].str.split("_").str[0]
     output_table.drop('id_pair', axis = 1).to_csv(os.path.join(inference_dir,'output_table.bedpe'), sep="\t", index=False)
 
-    fasta_query_input = os.path.join(inference_dir, 'query.fa')
-    fasta_target_input = os.path.join(inference_dir, 'target.fa')
     q_fa=ParseFasta(fasta_query_input)
     t_fa=ParseFasta(fasta_target_input)
     query_gene_names=q_fa.loc[:,"header"].to_list()
@@ -45,5 +49,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     inference_dir = args.inference_dir
     temp_dir = os.path.join(inference_dir, 'temp')
+
+    fasta_query_input = os.path.join(args.input_dir, args.fasta_query_name)
+    fasta_target_input = os.path.join(args.input_dir, args.fasta_target_name)
 
     main()

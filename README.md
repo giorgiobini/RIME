@@ -87,7 +87,14 @@ This will sequentially:
 
 **Example usage:**
 ```bash
-python rime_infer.py --input_dir=/path/to/input/files/ --query=query.fa --target=target.fa --output_dir=/path/to/output/files/ --bedtools_path=/path_to_bedtools/bin/bedtools --model=RIMEfull
+conda activate download_embeddings
+
+python rime_infer.py \
+--input_dir=/path/to/input/files/ \
+--query=query.fa --target=target.fa \
+--output_dir=/path/to/output/files/ \
+--bedtools_path=/path_to_bedtools/bin/bedtools \
+--model=RIMEfull
 ```
 
 Arguments:

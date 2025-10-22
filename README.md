@@ -17,6 +17,8 @@ Adriano Setti†, Giorgio Bini†, Valentino Maiorca, Flaminia Pellegrini, Gabri
 
 https://www.biorxiv.org/content/10.1101/2025.02.16.638500v1
 
+📜 License: CC BY-NC 4.0 — for academic and research use only.
+
 ## 1. Environment setup
 We recommend building a Python virtual environment with Anaconda. This repository enables running RIME with GPU acceleration. RIME was developed on a machine with CUDA version 525, CUDA toolkit version 12.0, and cuDNN version 8.8.1.3.
 
@@ -54,6 +56,8 @@ pip install -r other-requirements-rime.txt
 
 ### 1.3 Install BEDtools
 The procedure requires the BEDTools suite to be installed on your system. You can install BEDTools by following the instructions provided here: https://bedtools.readthedocs.io/en/latest/content/installation.html. The path to the BEDTools binary (referred to as `/path_to_bedtools/bin/bedtools`) will be needed as input in the initial step of the procedure.
+
+🕐 *Note:* Building the full environment (including dependencies and embeddings) may take approximately **15–20 minutes** on a standard computer.
 
 ## 2. Model  
 To run RIME, a model should be present in the `./checkpoints` folder:
@@ -155,6 +159,7 @@ After running either Option 1 (wrapper) or Option 2 (manual steps), you will fin
 - **`output_table.bedpe`**  A BEDPE file containing RIMEfull prediction scores for all 200×200 windows generated from every target-query pair.
 - **`plots/`**  A directory containing PNG files, each representing a heatmap of RIMEfull scores for a specific target-query pair.
 
+⏱️ *Runtime estimate:* Running RIME on a single query–target FASTA pair typically requires about **5 minutes** on a standard computer.
 
 ### Note:
 - The **25B multi-species NT model** (~10GB) will be **downloaded automatically** the first time you run `download_embeddings.py`. It will be stored in `./NT_dependencies/checkpoints/`.  

@@ -1,4 +1,14 @@
-# Ignore everything in this directory
+# Ignore everything
 *
-# Except this file
+
+# But keep this .gitignore file
 !.gitignore
+
+# Keep the plots directory (and its contents)
+!plots/
+!plots/**
+
+# Keep specific files
+!output_table.bedpe
+!query.fa
+!target.fa

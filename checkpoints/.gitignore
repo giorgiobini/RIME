@@ -1,4 +1,11 @@
-# Ignore everything in this directory
+# Ignore everything
 *
-# Except this file
+
+# But not this .gitignore file
 !.gitignore
+
+# And not the RIMEfull folder
+!RIMEfull/
+
+# But keep everything inside RIMEfull (if you actually want the contents)
+!RIMEfull/**

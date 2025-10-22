@@ -61,9 +61,9 @@ def run_pipeline(input_dir, query, target, output_dir, model="RIMEfull", bedtool
     # Step 5: Cleanup
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir)
-        print(f"🧹 Deleted temporary directory: {temp_dir}")
+        print(f"Deleted temporary directory: {temp_dir}")
 
-    print(f"✅ Inference complete. Results available in {output_dir}")
+    print(f"Inference complete. Results available in {output_dir}")
 
 
 if __name__ == "__main__":

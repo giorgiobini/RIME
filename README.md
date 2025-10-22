@@ -150,7 +150,7 @@ After running either Option 1 (wrapper) or Option 2 (manual steps), you will fin
 - **`output_table.bedpe`**  A BEDPE file containing RIMEfull prediction scores for all 200×200 windows generated from every target-query pair.
 - **`plots/`**  A directory containing PNG files, each representing a heatmap of RIMEfull scores for a specific target-query pair.
 
-⏱️ *Runtime estimate:* Running RIME on a single query–target FASTA pair typically requires about **5 minutes** on a standard computer.
+⏱️ *Runtime estimate:* Running RIME on a single query–target FASTA pair typically requires about **2 minutes** on a on an NVIDIA Quadro RTX 5000 GPU.
 📂 You can find an example of input and output files in `/dataset/example/`.
 
 ### Note:

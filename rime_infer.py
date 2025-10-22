@@ -22,6 +22,8 @@ def run_command(cmd, env):
 def run_pipeline(input_dir, query, target, output_dir, model="RIMEfull", bedtools_path="/path_to_bedtools/bin/bedtools"):
     temp_dir = os.path.join(output_dir, "temp")
 
+    warnings.simplefilter('ignore', FutureWarning)
+
     # Step 1: Parse FASTA
     run_command(
         f"python src/parse_fasta_for_inference.py "
@@ -69,8 +71,6 @@ def run_pipeline(input_dir, query, target, output_dir, model="RIMEfull", bedtool
 
 
 if __name__ == "__main__":
-
-    warnings.simplefilter('ignore', FutureWarning)
 
     parser = argparse.ArgumentParser(description="Run RIME inference pipeline.")
     parser.add_argument("--input_dir", required=True, help="Directory with input FASTA files")

@@ -3,6 +3,7 @@ import subprocess
 import argparse
 import os
 import shutil
+import warnings
 
 def run_command(cmd, env):
     """
@@ -10,6 +11,7 @@ def run_command(cmd, env):
     making sure PYTHONPATH includes the repo root so 'util' is found.
     """
     repo_root = os.path.dirname(__file__)
+
     subprocess.run(
         f"conda run -n {env} bash -c 'export PYTHONPATH={repo_root}:$PYTHONPATH && {cmd}'",
         shell=True,
@@ -67,6 +69,9 @@ def run_pipeline(input_dir, query, target, output_dir, model="RIMEfull", bedtool
 
 
 if __name__ == "__main__":
+
+    warnings.simplefilter('ignore', FutureWarning)
+
     parser = argparse.ArgumentParser(description="Run RIME inference pipeline.")
     parser.add_argument("--input_dir", required=True, help="Directory with input FASTA files")
     parser.add_argument("--query", required=True, help="Query FASTA file name")
